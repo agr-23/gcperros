@@ -1,0 +1,104 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gcperros"
+version = "0.1.0"
+description = "Pipeline de streaming de datos deportivos para analítica de apuestas en vivo"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+# El generador no declara dependencias a propósito: solo biblioteca estándar.
+# Cualquier dependencia externa introduce una versión más que podría alterar el
+# muestreo pseudoaleatorio y romper la reproducibilidad bajo semilla fija.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "commitizen>=4.0",
+  "pre-commit>=4.0",
+]
+
+[project.scripts]
+gcperros-generate-match = "gcperros.generators.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gcperros"]
+
+###############################################################################
+# Ruff — linter y formateador
+###############################################################################
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W",    # pycodestyle
+  "F",         # pyflakes
+  "I",         # isort
+  "N",         # pep8-naming
+  "UP",        # pyupgrade
+  "B",         # bugbear
+  "A",         # builtins shadowing
+  "C4",        # comprehensions
+  "SIM",       # simplify
+  "PTH",       # usar pathlib
+  "RET",       # returns
+  "ARG",       # argumentos sin usar
+  "PL",        # pylint
+  "RUF",       # reglas propias de ruff
+  "ANN",       # anotaciones de tipo obligatorias
+  "S",         # bandit (seguridad)
+  "D",         # docstrings
+]
+ignore = [
+  "D203",      # incompatible con D211
+  "D213",      # incompatible con D212
+  "S311",      # `random` no criptográfico: es justamente lo que necesitamos
+]
+
+[tool.ruff.lint.per-file-ignores]
+# En las pruebas se permiten asserts y docstrings menos formales.
+"tests/**" = ["S101", "D103", "PLR2004"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+###############################################################################
+# Mypy — verificación estática de tipos
+###############################################################################
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+files = ["src", "tests"]
+
+###############################################################################
+# Pytest
+###############################################################################
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+  "statistical: pruebas que agregan muchos partidos y tardan más en correr",
+]
+
+###############################################################################
+# Commitizen — Conventional Commits
+###############################################################################
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = ["pyproject.toml:^version"]
+tag_format = "v$version"

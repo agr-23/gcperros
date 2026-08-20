@@ -1,0 +1,50 @@
+# Ganchos que corren antes de cada commit.
+#
+#   pip install -e ".[dev]"
+#   pre-commit install --install-hooks
+#
+# Las comprobaciones de Terraform NO están aquí a propósito: exigirían el
+# binario de terraform en la máquina de cada integrante y romperían el commit
+# de quien no lo tenga instalado. Corren en integración continua, donde el
+# entorno sí está garantizado.
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-added-large-files
+        args: [--maxkb=512]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.3
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Escaneo de secretos: la matriz de riesgos del proyecto lo exige de forma
+  # explícita ("prohibición de credenciales en el repositorio mediante gestor
+  # de secretos y escaneo automático en la integración continua").
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  # Conventional Commits. El historial es parte de la trazabilidad que pide la
+  # gobernanza: un mensaje con tipo y alcance permite reconstruir qué cambió y
+  # por qué sin abrir el diff.
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.18.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]

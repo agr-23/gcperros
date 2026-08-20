@@ -1,0 +1,16 @@
+# Finales de línea normalizados a LF en el repositorio y en el árbol de trabajo.
+#
+# No es cosmética: el equipo trabaja en Windows y en Linux, y la conversión
+# automática a CRLF haría que el mismo fichero tuviera hash distinto según quién
+# lo hubiera descargado. En un proyecto cuya premisa es que "la misma semilla
+# produce el mismo partido byte a byte", esa diferencia sería ruido puro.
+* text=auto eol=lf
+
+*.jsonl text eol=lf
+*.tf text eol=lf
+*.py text eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.pptx binary

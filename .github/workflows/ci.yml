@@ -1,0 +1,105 @@
+name: CI
+
+# GitHub Actions es gratuito y sin límite de minutos en repositorios públicos,
+# que es el caso de este proyecto.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Un push nuevo sobre la misma rama cancela la ejecución anterior: evita gastar
+# ejecuciones en revisiones ya superadas.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Linters y ganchos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # gitleaks necesita el historial completo para escanear los commits
+          # nuevos, no solo el árbol de trabajo.
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: pre-commit/action@v3.0.1
+
+  types-and-tests:
+    name: Tipos y pruebas (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - name: mypy
+        run: mypy
+      - name: pytest
+        run: pytest
+
+  reproducibility:
+    name: Reproducibilidad del generador
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e .
+      # La HU-8 promete que la misma semilla produce el mismo partido byte a
+      # byte. Se comprueba en el pipeline y no solo en una prueba unitaria,
+      # porque es la premisa de la que depende toda la validación posterior de
+      # streaming contra batch.
+      - name: Generar el mismo partido dos veces
+        run: |
+          gcperros-generate-match --seed 20260826 --out primera.jsonl
+          gcperros-generate-match --seed 20260826 --out segunda.jsonl
+          cmp primera.jsonl segunda.jsonl
+          echo "Partido reproducible: $(wc -l < primera.jsonl) eventos idénticos."
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+      - run: terraform fmt -check -recursive
+      # -backend=false valida la sintaxis y los módulos sin necesitar
+      # credenciales de GCP ni acceso al estado remoto.
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  commit-messages:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install commitizen
+      - name: Validar los mensajes de la rama
+        run: |
+          cz check --rev-range origin/${{ github.base_ref }}..HEAD

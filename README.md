@@ -52,10 +52,12 @@ estudio del proyecto.
 
 | Componente | Estado | Historia |
 |---|---|---|
+| Generador de eventos de partido | ✅ Funcional | HU-8 |
 | `infra/terraform/` — capa de ingestión (Pub/Sub) | ✅ Desplegable | HU-13 (parcial) |
+| Generador de cuotas sintéticas | ⏳ Pendiente | HU-9 |
+| Publicación hacia Pub/Sub | ⏳ Pendiente | HU-10 |
 | Motor analítico en Cloud Run | ⏳ Pendiente | HU-11, HU-12 |
 | Datasets de BigQuery / Firestore | ⏳ Pendiente | HU-14, HU-15 |
-| Generadores sintéticos | ⏳ Pendiente | HU-8, HU-9, HU-10 |
 | Contratos de datos y reglas de calidad | ⏳ Pendiente | HU-16, HU-17 |
 
 ---
@@ -63,16 +65,55 @@ estudio del proyecto.
 ## Estructura
 
 ```
-infra/terraform/     Infraestructura como código (empezar por su README)
+src/gcperros/core/          Dominio compartido: contrato de evento, campo, modelo de xG
+src/gcperros/generators/    Generadores sintéticos de los flujos de entrada
+tests/                      Determinismo, contrato, xG y plausibilidad estadística
+infra/terraform/            Infraestructura como código (empezar por su README)
 ```
 
-> La estructura completa del repositorio —`generators/`, `engine/`, `docs/`,
-> `tests/`— corresponde a la HU-7 y está pendiente de definir por el equipo.
-> Este árbol es el punto de partida, no la propuesta final.
+`core/` existe porque el generador y el motor deben compartir el **mismo** modelo
+de xG: la HU-8 decide cada gol muestreando `Bernoulli(xG)` y el motor recalcula
+ese xG desde las coordenadas que le llegan por el broker. Si fueran dos
+implementaciones distintas, comparar ambos planos no probaría nada.
+
+> La estructura definitiva del repositorio corresponde a la HU-7 y sigue
+> pendiente de acordar por el equipo.
 
 ---
 
-## Empezar
+## Generar un partido
+
+```bash
+pip install -e ".[dev]"
+
+gcperros-generate-match --seed 20260826 --out partido.jsonl --summary
+```
+
+Sale un evento por línea, en el mismo formato que viajará por Pub/Sub y que se
+persistirá sin transformar en la capa Raw:
+
+```json
+{"attrs":{"is_goal":false,"period":1,"x":96.73,"xg":0.0098,"y":12.4},"contract_version":"v1","event_id":"40e1678e-…","event_time":"2026-08-26T19:05:39.269Z","event_type":"shot","match_id":"match-0001","team":"HOME"}
+```
+
+La promesa de la HU-8 es que la misma semilla produce el mismo partido **byte a
+byte**, y se comprueba en cada ejecución de la CI:
+
+```bash
+gcperros-generate-match --seed 42 --out a.jsonl
+gcperros-generate-match --seed 42 --out b.jsonl
+cmp a.jsonl b.jsonl        # sin diferencias
+```
+
+El simulador está calibrado contra los rangos de referencia del dominio (1.214
+eventos, 26,4 remates con xG medio 0,116, 2,92 goles, 83,5 % de pase completado
+por partido). La tabla completa está en el docstring de
+[`match.py`](src/gcperros/generators/match.py) y las pruebas marcadas
+`statistical` la vuelven a verificar en cada ejecución.
+
+---
+
+## Desplegar la infraestructura
 
 La capa de ingestión se despliega por sí sola y no depende de ningún otro
 componente:
@@ -86,3 +127,10 @@ terraform apply tfplan
 
 Instrucciones completas, decisiones de diseño y comandos de verificación en
 [`infra/terraform/README.md`](infra/terraform/README.md).
+
+---
+
+## Contribuir
+
+Linters, ganchos de pre-commit, convención de mensajes de commit y las reglas
+que no son negociables, en [`CONTRIBUTING.md`](CONTRIBUTING.md).
