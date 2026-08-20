@@ -1,0 +1,20 @@
+# Credenciales — nunca en el repositorio (ver matriz de riesgos del proyecto)
+*-key.json
+application_default_credentials.json
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,34 @@
+# Copia este archivo como terraform.tfvars y ajusta los valores.
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# terraform.tfvars está en .gitignore: no se versiona.
+
+# ID del proyecto de GCP (no el nombre ni el número).
+project_id = "futbol-rt-000000"
+
+region      = "us-central1"
+environment = "dev"
+
+# Prefijo de recursos. Vacío = los topics se llaman `match-events` y
+# `odds-updates`, exactamente como los nombra el contrato de datos.
+resource_prefix = ""
+
+enable_apis = true
+
+# Retención en el topic: habilita `seek` para reproducir un tramo del partido.
+topic_message_retention_duration = "86400s"
+
+# Residencia del dato. Vacío = Google elige la región.
+# allowed_persistence_regions = ["us-central1"]
+
+###############################################################################
+# Motor analítico (Cloud Run) — aún no desplegado.
+#
+# Mientras estas dos variables sigan comentadas, `terraform apply` crea
+# únicamente la capa de Pub/Sub con sus suscripciones pull. Al desplegar el
+# motor, se descomentan y las suscripciones push aparecen en el siguiente plan
+# sin tocar una sola línea de código.
+###############################################################################
+
+# engine_push_endpoint = "https://gcperros-engine-xxxxxxxx-uc.a.run.app"
+# engine_service_name  = "gcperros-engine"

@@ -1,0 +1,22 @@
+# Estado y respaldos: nunca deben subirse al repositorio
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# .terraform.lock.hcl SÍ se versiona (a diferencia de la plantilla original).
+# Fija el hash exacto del provider, de modo que cualquier integrante del equipo
+# planifique contra la misma versión. Es el equivalente, en infraestructura, de
+# la semilla fija de los generadores: sin él, "reproducible" es una intención.
+
+# Variables con datos sensibles
+terraform.tfvars
+*.auto.tfvars
+!terraform.tfvars.example
+
+# Credenciales
+*.json
+!*.tf.json
+
+# Planes
+*.tfplan
+crash.log
