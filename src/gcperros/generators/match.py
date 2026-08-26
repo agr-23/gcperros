@@ -52,6 +52,7 @@ from datetime import UTC, datetime, timedelta
 
 from gcperros.core import pitch
 from gcperros.core.contracts import EventType, JsonValue, MatchEvent, new_event_id
+from gcperros.core.stats import MatchSummary, summarize_events
 from gcperros.core.xg import expected_goals
 
 # Hora de comienzo por defecto. Es una constante y no `datetime.now()` porque
@@ -152,26 +153,6 @@ class _PassOutcome:
     left_the_field: bool
     end_x: float
     end_y: float
-
-
-@dataclass(frozen=True, slots=True)
-class MatchSummary:
-    """Agregados de un partido, calculados sobre los eventos ya emitidos.
-
-    Se derivan del propio flujo y no del estado interno del simulador: es la
-    misma operación que hará el plano batch de referencia, de modo que el motor
-    de streaming pueda contrastarse contra ella (OE-2).
-    """
-
-    event_count: int
-    goals: dict[str, int]
-    shots: dict[str, int]
-    total_xg: dict[str, float]
-    passes: dict[str, int]
-    completed_passes: dict[str, int]
-    fouls: dict[str, int]
-    red_cards: dict[str, int]
-    possessions: dict[str, int]
 
 
 def pass_completion_probability(x: float) -> float:
@@ -450,66 +431,20 @@ def simulate_match(seed: int, config: MatchConfig | None = None) -> list[MatchEv
     return _MatchSimulator(seed, config or MatchConfig()).run()
 
 
-def _as_float(value: JsonValue) -> float:
-    """Lee un número de ``attrs`` rechazando lo que no lo sea.
-
-    Un agregador que sumara silenciosamente lo que le llega convertiría un
-    evento mal formado en un indicador plausible pero incorrecto, que es
-    exactamente el fallo que la capa de gobernanza busca evitar.
-    """
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise TypeError(f"se esperaba un número y llegó {type(value).__name__}")
-    return float(value)
-
-
-def summarize_match(events: list[MatchEvent]) -> MatchSummary:
-    """Agrega un flujo de eventos ya emitido.
-
-    Recorre el flujo tal como llegaría a un consumidor, sin acceso al estado
-    interno del simulador: por eso sirve como referencia contra la que medir el
-    resultado del motor de streaming.
-    """
-    teams = {event.team for event in events}
-    goals = dict.fromkeys(teams, 0)
-    shots = dict.fromkeys(teams, 0)
-    passes = dict.fromkeys(teams, 0)
-    completed_passes = dict.fromkeys(teams, 0)
-    fouls = dict.fromkeys(teams, 0)
-    red_cards = dict.fromkeys(teams, 0)
-    possessions = dict.fromkeys(teams, 0)
-    total_xg = dict.fromkeys(teams, 0.0)
-
-    for event in events:
-        match event.event_type:
-            case "goal":
-                goals[event.team] += 1
-            case "shot":
-                shots[event.team] += 1
-                total_xg[event.team] += _as_float(event.attrs["xg"])
-            case "pass":
-                passes[event.team] += 1
-                if event.attrs["completed"]:
-                    completed_passes[event.team] += 1
-            case "foul":
-                fouls[event.team] += 1
-            case "red_card":
-                red_cards[event.team] += 1
-            case "possession_change":
-                possessions[event.team] += 1
-
-    return MatchSummary(
-        event_count=len(events),
-        goals=goals,
-        shots=shots,
-        total_xg={team: round(value, 4) for team, value in total_xg.items()},
-        passes=passes,
-        completed_passes=completed_passes,
-        fouls=fouls,
-        red_cards=red_cards,
-        possessions=possessions,
-    )
-
-
 def with_match_id(config: MatchConfig, match_id: str) -> MatchConfig:
     """Devuelve una copia de la configuración con otro identificador de partido."""
     return replace(config, match_id=match_id)
+
+
+#: Alias del plano batch de referencia. Vive en ``core.stats`` porque el motor
+#: de streaming necesita producir exactamente la misma estructura, y el motor no
+#: puede depender de un generador.
+summarize_match = summarize_events
+
+__all__ = [
+    "MatchConfig",
+    "MatchSummary",
+    "simulate_match",
+    "summarize_match",
+    "with_match_id",
+]

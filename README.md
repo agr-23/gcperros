@@ -56,7 +56,9 @@ estudio del proyecto.
 | `infra/terraform/` — capa de ingestión (Pub/Sub) | ✅ Desplegable | HU-13 (parcial) |
 | Generador de cuotas sintéticas | ✅ Funcional | HU-9 |
 | Publicación hacia Pub/Sub | ⏳ Pendiente | HU-10 |
-| Motor analítico en Cloud Run | ⏳ Pendiente | HU-11, HU-12 |
+| Motor: deduplicación por `event_id` | ✅ Funcional | HU-11 |
+| Motor: reordenamiento por marca de agua | ⏳ Pendiente | HU-12 |
+| Despliegue del motor en Cloud Run | ⏳ Pendiente | HU-11, HU-12 |
 | Datasets de BigQuery / Firestore | ⏳ Pendiente | HU-14, HU-15 |
 | Contratos de datos y reglas de calidad | ⏳ Pendiente | HU-16, HU-17 |
 
@@ -65,9 +67,10 @@ estudio del proyecto.
 ## Estructura
 
 ```
-src/gcperros/core/          Dominio compartido: contratos, campo, modelo de xG y de cuotas
-src/gcperros/generators/    Generadores sintéticos de los flujos de entrada
-tests/                      Determinismo, contrato, xG y plausibilidad estadística
+src/gcperros/core/          Dominio compartido: contratos, campo, xG, cuotas y agregados
+src/gcperros/generators/    Generadores sintéticos y el inyector de perturbaciones
+src/gcperros/engine/        Motor con estado: deduplicación y estado vivo del partido
+tests/                      Determinismo, contrato, xG, cuotas, motor y estadística
 infra/terraform/            Infraestructura como código (empezar por su README)
 ```
 
@@ -143,6 +146,55 @@ El feed publica **precios, no probabilidades**, igual que un feed real. Converti
 la cuota en probabilidad implícita exige descontar el margen del operador, que no
 es dividir uno entre la cuota: con un overround de 1,06 el atajo sobreestima cada
 resultado un 6 %. `core/odds.py` expone las dos operaciones por separado.
+
+---
+
+## El motor: un duplicado no se cuenta dos veces
+
+Pub/Sub entrega **al menos una vez**: si el consumidor tarda en confirmar, el
+broker reentrega. Es el trato que se acepta a cambio de no perder nada, y sin
+tratarlo se convierte en un gol contado dos veces.
+
+El motor deduplica por `event_id` **antes** de tocar el estado. Al revés, el
+estado ya estaría corrupto cuando se detectara la repetición.
+
+```python
+from gcperros.engine.pipeline import MatchEngine
+
+engine = MatchEngine()
+for event in delivered:  # tal como llega del broker, con repeticiones
+    engine.process(event)
+
+engine.result().summary  # indicadores del partido
+engine.dedup_stats.duplicates  # cuántas repeticiones se suprimieron
+```
+
+Reentregando cada gol, cada remate y cada cambio de posesión de un partido real:
+
+| Indicador | Real | Sin deduplicar | Con el motor |
+|---|---|---|---|
+| Goles | 4 | **8** | 4 |
+| Remates | 16 | **32** | 16 |
+| Posesiones | 110 | **220** | 110 |
+| xG acumulado | 0,975 | **1,950** | 0,975 |
+
+El resultado del motor coincide con el del plano batch de referencia
+(`core.stats.summarize_events`), que es la comparación que el OE-2 exige y que
+aquí ya queda preparada.
+
+### La garantía, enunciada con precisión
+
+La memoria está acotada: se recuerdan los últimos `capacity` identificadores.
+Así que la promesa no es absoluta, y conviene saber decirla bien: **un duplicado
+se detecta siempre que entre el original y la repetición lleguen menos de
+`capacity` eventos distintos.** Con el valor por defecto (100.000) caben decenas
+de partidos, y la unidad de procesamiento declarada del proyecto es el partido
+individual — así que dentro de esa unidad la deduplicación es exacta. Hay una
+prueba que documenta el límite en vez de esconderlo.
+
+No se usa un filtro de Bloom, que es la estructura habitual para esto, porque
+admite falsos positivos: diría «ya lo vi» sobre un evento nuevo y el motor
+descartaría un gol legítimo. Perder un evento real es peor que gastar memoria.
 
 ---
 
