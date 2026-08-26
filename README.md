@@ -54,7 +54,7 @@ estudio del proyecto.
 |---|---|---|
 | Generador de eventos de partido | ✅ Funcional | HU-8 |
 | `infra/terraform/` — capa de ingestión (Pub/Sub) | ✅ Desplegable | HU-13 (parcial) |
-| Generador de cuotas sintéticas | ⏳ Pendiente | HU-9 |
+| Generador de cuotas sintéticas | ✅ Funcional | HU-9 |
 | Publicación hacia Pub/Sub | ⏳ Pendiente | HU-10 |
 | Motor analítico en Cloud Run | ⏳ Pendiente | HU-11, HU-12 |
 | Datasets de BigQuery / Firestore | ⏳ Pendiente | HU-14, HU-15 |
@@ -65,7 +65,7 @@ estudio del proyecto.
 ## Estructura
 
 ```
-src/gcperros/core/          Dominio compartido: contrato de evento, campo, modelo de xG
+src/gcperros/core/          Dominio compartido: contratos, campo, modelo de xG y de cuotas
 src/gcperros/generators/    Generadores sintéticos de los flujos de entrada
 tests/                      Determinismo, contrato, xG y plausibilidad estadística
 infra/terraform/            Infraestructura como código (empezar por su README)
@@ -74,7 +74,9 @@ infra/terraform/            Infraestructura como código (empezar por su README)
 `core/` existe porque el generador y el motor deben compartir el **mismo** modelo
 de xG: la HU-8 decide cada gol muestreando `Bernoulli(xG)` y el motor recalcula
 ese xG desde las coordenadas que le llegan por el broker. Si fueran dos
-implementaciones distintas, comparar ambos planos no probaría nada.
+implementaciones distintas, comparar ambos planos no probaría nada. Por la misma
+razón vive ahí `core/odds.py`, que el motor usará para descontar el margen del
+operador y obtener la probabilidad implícita (HU-19).
 
 > La estructura definitiva del repositorio corresponde a la HU-7 y sigue
 > pendiente de acordar por el equipo.
@@ -110,6 +112,37 @@ eventos, 26,4 remates con xG medio 0,116, 2,92 goles, 83,5 % de pase completado
 por partido). La tabla completa está en el docstring de
 [`match.py`](src/gcperros/generators/match.py) y las pruebas marcadas
 `statistical` la vuelven a verificar en cada ejecución.
+
+---
+
+## Generar el flujo de cuotas
+
+```bash
+gcperros-generate-odds --seed 20260826 --out cuotas.jsonl --summary
+```
+
+Las cuotas se derivan del mismo partido: **la misma semilla describe el mismo
+encuentro** desde el campo y desde el mercado. Se modelan tres operadores
+sintéticos, cada uno con su margen, su retardo de reacción y su propia
+valoración del local — de ahí salen las discrepancias entre casas que la HU-19
+tendrá que detectar.
+
+Un gol acorta la cuota del que marca, de golpe y en todas las casas:
+
+```json
+{"market":"1x2","operator":"OP-A","outcomes":[{"odds":2.15,"outcome":"home"},{"odds":3.72,"outcome":"draw"},{"odds":3.12,"outcome":"away"}],"trigger":"open", ...}
+{"market":"1x2","operator":"OP-A","outcomes":[{"odds":1.34,"outcome":"home"},{"odds":5.06,"outcome":"draw"},{"odds":8.82,"outcome":"away"}],"trigger":"goal", ...}
+```
+
+El patrón de tráfico es el que la historia pide reproducir: unas **3 actualizaciones
+por minuto** de fondo, contra **15 o más** en los veinte segundos siguientes a un
+gol o una expulsión. Ese contraste es lo que someterá al pipeline al tráfico que
+encontrará en producción.
+
+El feed publica **precios, no probabilidades**, igual que un feed real. Convertir
+la cuota en probabilidad implícita exige descontar el margen del operador, que no
+es dividir uno entre la cuota: con un overround de 1,06 el atajo sobreestima cada
+resultado un 6 %. `core/odds.py` expone las dos operaciones por separado.
 
 ---
 

@@ -26,6 +26,7 @@ dev = [
 
 [project.scripts]
 gcperros-generate-match = "gcperros.generators.cli:main"
+gcperros-generate-odds = "gcperros.generators.cli:odds_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gcperros"]

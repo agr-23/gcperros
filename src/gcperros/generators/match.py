@@ -2,7 +2,8 @@
 
 El partido se modela como una **secuencia de posesiones**, no como una lista de
 eventos sueltos. La diferencia importa: una posesión encadena pases que avanzan
-el balón y termina por una causa concreta —pérdida, remate, gol o falta—, lo que
+el balón y termina por una causa concreta —pérdida, remate, gol, falta o balón
+fuera—, lo que
 produce correlaciones temporales y espaciales que un muestreo independiente de
 eventos no reproduce. La posesión acumulada, que es uno de los indicadores del
 proyecto, solo tiene sentido si el generador la produce como consecuencia del
@@ -34,6 +35,7 @@ xG por remate                0.116          ~0.11
 xG acumulado                  3.06           ~2.7
 Goles                         2.92           ~2.7
 Faltas                        23.5            ~22
+Tarjetas rojas               0.240          ~0.25
 Posesiones                     224      200 - 250
 ======================= ========== ==============
 
@@ -92,8 +94,21 @@ SHOT_ZONE_START_X = pitch.LENGTH - 32.0
 SHOT_BASE_PROBABILITY = 0.24
 SHOT_ZONE_EXPONENT = 0.5
 
-# --- Faltas ------------------------------------------------------------------
+# --- Faltas y tarjetas --------------------------------------------------------
 FOUL_PROBABILITY_PER_TOUCH = 0.024
+
+# Una expulsión cada cuatro partidos, aproximadamente, que es la frecuencia
+# real. Se sortea sobre la falta ya cometida, no de forma independiente: no hay
+# roja sin infracción previa.
+RED_CARD_PROBABILITY_PER_FOUL = 0.012
+
+# Efecto de jugar con uno menos. El equipo en inferioridad conserva peor el
+# balón y llega menos, y su rival encuentra más espacio. Sin este efecto la
+# tarjeta sería un evento decorativo: las cuotas se moverían (HU-9) pero el
+# partido seguiría igual, y la señal de discrepancia compararía el mercado
+# contra un modelo que ignora lo que acaba de pasar en el campo.
+SENT_OFF_PASS_PENALTY = 0.93
+SENT_OFF_SHOT_PENALTY = 0.72
 
 # --- Duraciones (segundos) ---------------------------------------------------
 PASS_DURATION_MEAN_S = 3.9
@@ -115,6 +130,8 @@ GOAL_KICK_X = 8.0
 # activarse casi nunca, pero evita que un ajuste desafortunado de constantes
 # produzca una posesión que no termina.
 MAX_TOUCHES_PER_POSSESSION = 60
+
+STARTING_PLAYERS = 11
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +170,7 @@ class MatchSummary:
     passes: dict[str, int]
     completed_passes: dict[str, int]
     fouls: dict[str, int]
+    red_cards: dict[str, int]
     possessions: dict[str, int]
 
 
@@ -181,6 +199,7 @@ class _MatchSimulator:
         self._sequence = 0
         self._clock_s = 0.0
         self._period = 1
+        self._sent_off: dict[str, int] = {config.home_team: 0, config.away_team: 0}
 
     # -- emisión --------------------------------------------------------------
 
@@ -260,7 +279,7 @@ class _MatchSimulator:
             if self._clock_s >= half_end_s:
                 return opponent, *pitch.mirror(x, y), "half_end"
 
-            if self._rng.random() < shot_probability(x):
+            if self._rng.random() < shot_probability(x) * self._disadvantage(team)[1]:
                 return self._resolve_shot(team, x, y)
 
             if self._rng.random() < FOUL_PROBABILITY_PER_TOUCH:
@@ -272,6 +291,9 @@ class _MatchSimulator:
                     {"x": round(x, 2), "y": round(y, 2), "against_team": team},
                 )
                 self._advance(DEAD_BALL_AFTER_FOUL_S)
+
+                if self._rng.random() < RED_CARD_PROBABILITY_PER_FOUL:
+                    self._send_off(opponent, x, y)
                 continue
 
             outcome = self._attempt_pass(team, x, y)
@@ -305,9 +327,29 @@ class _MatchSimulator:
         self._advance(DEAD_BALL_AFTER_THROW_IN_S)
         return restarting_team, *pitch.mirror(*pitch.clamp_to_pitch(x, y)), "out_for_throw_in"
 
+    def _send_off(self, team: str, x: float, y: float) -> None:
+        """Expulsa a un jugador del equipo infractor."""
+        self._sent_off[team] += 1
+        self._emit(
+            team,
+            "red_card",
+            {
+                "x": round(x, 2),
+                "y": round(y, 2),
+                "players_remaining": STARTING_PLAYERS - self._sent_off[team],
+            },
+        )
+
+    def _disadvantage(self, team: str) -> tuple[float, float]:
+        """Penalización de pase y de remate por jugar en inferioridad numérica."""
+        deficit = self._sent_off[team] - self._sent_off[self._opponent(team)]
+        if deficit <= 0:
+            return 1.0, 1.0
+        return SENT_OFF_PASS_PENALTY**deficit, SENT_OFF_SHOT_PENALTY**deficit
+
     def _attempt_pass(self, team: str, x: float, y: float) -> _PassOutcome:
         """Emite un pase y devuelve cómo terminó."""
-        probability = pass_completion_probability(x)
+        probability = pass_completion_probability(x) * self._disadvantage(team)[0]
         reached_target = self._rng.random() < probability
 
         target_x = x + self._rng.gauss(PASS_ADVANCE_MEAN_M, PASS_ADVANCE_STDEV_M)
@@ -433,6 +475,7 @@ def summarize_match(events: list[MatchEvent]) -> MatchSummary:
     passes = dict.fromkeys(teams, 0)
     completed_passes = dict.fromkeys(teams, 0)
     fouls = dict.fromkeys(teams, 0)
+    red_cards = dict.fromkeys(teams, 0)
     possessions = dict.fromkeys(teams, 0)
     total_xg = dict.fromkeys(teams, 0.0)
 
@@ -449,6 +492,8 @@ def summarize_match(events: list[MatchEvent]) -> MatchSummary:
                     completed_passes[event.team] += 1
             case "foul":
                 fouls[event.team] += 1
+            case "red_card":
+                red_cards[event.team] += 1
             case "possession_change":
                 possessions[event.team] += 1
 
@@ -460,6 +505,7 @@ def summarize_match(events: list[MatchEvent]) -> MatchSummary:
         passes=passes,
         completed_passes=completed_passes,
         fouls=fouls,
+        red_cards=red_cards,
         possessions=possessions,
     )
 

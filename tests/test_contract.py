@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from gcperros.core.contracts import CONTRACT_VERSION
+from gcperros.core.contracts import MATCH_CONTRACT_VERSION
 from gcperros.generators.match import MatchConfig, simulate_match
 
 CONFIG = MatchConfig(match_id="match-0007", home_team="RMA", away_team="BAR")
@@ -33,7 +33,7 @@ def test_every_event_carries_the_required_fields(events: list[dict[str, Any]]) -
 
 
 def test_contract_version_is_stamped(events: list[dict[str, Any]]) -> None:
-    assert {event["contract_version"] for event in events} == {CONTRACT_VERSION}
+    assert {event["contract_version"] for event in events} == {MATCH_CONTRACT_VERSION}
 
 
 def test_only_declared_event_types_are_emitted(events: list[dict[str, Any]]) -> None:
@@ -42,6 +42,7 @@ def test_only_declared_event_types_are_emitted(events: list[dict[str, Any]]) -> 
         "shot",
         "goal",
         "foul",
+        "red_card",
         "possession_change",
     }
 
