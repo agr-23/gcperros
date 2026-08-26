@@ -93,3 +93,89 @@ def inject_duplicates(
         delivered_count=len(delivered),
         injected=injected,
     )
+
+
+#: Retardo medio de red por defecto, en segundos. Es el que decide cuánto se
+#: adelantan unos eventos a otros: si todos sufrieran el mismo retardo el flujo
+#: llegaría tarde pero en orden, y no habría nada que reordenar.
+DEFAULT_MEAN_DELAY_S = 2.0
+
+#: Tope del retardo. Acota la cola de la exponencial para que un solo evento no
+#: se vaya a varios minutos y distorsione la medición.
+DEFAULT_MAX_DELAY_S = 30.0
+
+
+@dataclass(frozen=True, slots=True)
+class DisorderReport:
+    """Cuánto se desordenó el flujo respecto del orden cronológico."""
+
+    displaced: int
+    max_displacement: int
+    max_delay_s: float
+
+    @property
+    def is_ordered(self) -> bool:
+        """Indica si el flujo llegó en orden pese a la perturbación."""
+        return self.displaced == 0
+
+
+def inject_disorder(
+    events: list[MatchEvent],
+    seed: int,
+    mean_delay_s: float = DEFAULT_MEAN_DELAY_S,
+    max_delay_s: float = DEFAULT_MAX_DELAY_S,
+) -> tuple[list[MatchEvent], DisorderReport]:
+    """Reordena las entregas simulando latencia de red variable.
+
+    Cada evento sufre un retardo propio, extraído de una exponencial: la mayoría
+    llega enseguida y unos pocos se rezagan mucho. Esa cola larga es lo que
+    genera adelantamientos, que es la condición que el motor debe resolver.
+
+    El ``event_time`` **no** se toca. El evento sigue diciendo cuándo ocurrió;
+    lo único que cambia es cuándo llega, que es exactamente lo que hace la red.
+
+    Args:
+        events: Flujo original, en orden cronológico.
+        seed: Semilla de la perturbación, independiente de la del partido.
+        mean_delay_s: Retardo medio de entrega.
+        max_delay_s: Retardo máximo, para acotar la cola.
+
+    Returns:
+        El flujo en orden de llegada, y el informe del desorden provocado.
+
+    Raises:
+        ValueError: Si los retardos son negativos o el máximo es menor que la
+            media, en cuyo caso la distribución no tendría sentido.
+    """
+    if mean_delay_s < 0 or max_delay_s < 0:
+        raise ValueError("los retardos no pueden ser negativos")
+    if max_delay_s < mean_delay_s:
+        raise ValueError("el retardo máximo no puede ser menor que el medio")
+
+    rng = random.Random(seed)
+    arrivals: list[tuple[float, int, MatchEvent]] = []
+    worst_delay = 0.0
+
+    for index, event in enumerate(events):
+        delay = min(rng.expovariate(1.0 / mean_delay_s), max_delay_s) if mean_delay_s else 0.0
+        worst_delay = max(worst_delay, delay)
+        arrival = event.event_time.timestamp() + delay
+        # El índice original desempata: dos llegadas simultáneas conservan el
+        # orden de emisión, y el resultado no depende del orden del montículo.
+        arrivals.append((arrival, index, event))
+
+    arrivals.sort(key=lambda item: (item[0], item[1]))
+
+    displaced = 0
+    max_displacement = 0
+    for position, (_, original_index, _) in enumerate(arrivals):
+        shift = abs(position - original_index)
+        if shift:
+            displaced += 1
+            max_displacement = max(max_displacement, shift)
+
+    return [event for _, _, event in arrivals], DisorderReport(
+        displaced=displaced,
+        max_displacement=max_displacement,
+        max_delay_s=worst_delay,
+    )

@@ -24,10 +24,12 @@ un partido entero varias veces —un partido emite del orden de 1.300 eventos—
 la unidad de procesamiento declarada del proyecto es el partido individual, así
 que dentro de esa unidad la deduplicación es exacta.
 
-Cuando exista la marca de agua (HU-12) esta heurística podrá sustituirse por
-una expiración por tiempo de evento, que es exacta en lugar de aproximada:
-pasado el margen de desorden tolerado, ningún duplicado legítimo puede llegar ya
-y su identificador se puede olvidar sin riesgo.
+Ahora que existe la marca de agua (HU-12), esta heurística admite una mejora
+pendiente: expirar por tiempo de evento en lugar de por número de eventos. Sería
+exacta en vez de aproximada, porque pasado el margen de desorden tolerado ningún
+duplicado legítimo puede llegar ya y su identificador se puede olvidar sin
+riesgo. No se ha hecho todavía porque cambia la semántica del componente y
+merece decidirse aparte.
 
 Por qué no un filtro de Bloom
 -----------------------------

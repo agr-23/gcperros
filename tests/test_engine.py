@@ -10,10 +10,10 @@ import pytest
 
 from gcperros.core.contracts import MatchEvent
 from gcperros.core.stats import summarize_events, teams_in_order
-from gcperros.engine.pipeline import MatchEngine
+from gcperros.engine.pipeline import MatchEngine, Outcome
 from gcperros.engine.state import LiveMatchState
 from gcperros.generators.match import MatchConfig, simulate_match
-from gcperros.generators.perturbation import inject_duplicates
+from gcperros.generators.perturbation import inject_disorder, inject_duplicates
 
 CONFIG = MatchConfig(match_id="match-0011", home_team="RMA", away_team="BAR")
 SEED = 20260826
@@ -106,12 +106,12 @@ def test_a_stream_delivered_twice_in_full_changes_nothing(clean: list[MatchEvent
     assert engine.dedup_stats.duplicates == len(clean)
 
 
-def test_process_reports_whether_the_event_was_applied(clean: list[MatchEvent]) -> None:
+def test_process_reports_what_it_did_with_the_event(clean: list[MatchEvent]) -> None:
     engine = MatchEngine()
     first = clean[0]
 
-    assert engine.process(first) is True
-    assert engine.process(first) is False
+    assert engine.process(first) is Outcome.ACCEPTED
+    assert engine.process(first) is Outcome.DUPLICATE
 
 
 def test_deduplication_happens_before_the_state(clean: list[MatchEvent]) -> None:
@@ -172,3 +172,105 @@ def test_state_learns_the_teams_from_the_stream(clean: list[MatchEvent]) -> None
         state.apply(event)
 
     assert list(state.summary().goals) == [CONFIG.home_team, CONFIG.away_team]
+
+
+###############################################################################
+# Desorden de red (HU-12)
+###############################################################################
+
+
+def test_disorder_alone_does_not_corrupt_the_state(clean: list[MatchEvent]) -> None:
+    """Con margen suficiente, un flujo desordenado da el mismo resultado."""
+    delivered, report = inject_disorder(clean, seed=7)
+    assert not report.is_ordered, "la perturbación tiene que desordenar algo"
+
+    result = MatchEngine(allowed_lateness_s=30.0).process_all(delivered)
+    assert result.summary == summarize_events(clean)
+    assert result.watermark.dropped_late == 0
+
+
+def test_disorder_and_duplication_together(clean: list[MatchEvent]) -> None:
+    """Las dos perturbaciones a la vez, que es lo que hace un broker real."""
+    duplicated, duplication = inject_duplicates(clean, seed=3, rate=0.15)
+    delivered, _ = inject_disorder(duplicated, seed=11)
+
+    result = MatchEngine(allowed_lateness_s=30.0).process_all(delivered)
+
+    assert result.summary == summarize_events(clean)
+    assert result.dedup.duplicates == duplication.injected
+
+
+def test_a_late_event_is_recorded_not_silently_lost(clean: list[MatchEvent]) -> None:
+    """La distinción que pide la historia: descartado por tardío, no perdido."""
+    delivered, _ = inject_disorder(clean, seed=7)
+
+    engine = MatchEngine(allowed_lateness_s=0.0)
+    outcomes = [engine.process(event) for event in delivered]
+    engine.flush()
+
+    late = [outcome for outcome in outcomes if outcome is Outcome.DROPPED_LATE]
+    assert late, "con margen cero tiene que haber rezagados"
+
+    stats = engine.watermark_stats
+    assert stats.dropped_late == len(late)
+    assert stats.seen == len(delivered)
+    # Todo evento entregado acabó contado en una de las dos cuentas: ninguno se
+    # evaporó sin dejar rastro.
+    assert stats.released + stats.dropped_late == len(delivered)
+
+
+def test_lateness_is_quantified_for_the_audit(clean: list[MatchEvent]) -> None:
+    delivered, _ = inject_disorder(clean, seed=7)
+    engine = MatchEngine(allowed_lateness_s=0.0)
+    engine.process_all(delivered)
+
+    stats = engine.watermark_stats
+    assert stats.max_lateness_s > 0.0
+    assert 0.0 < stats.mean_lateness_s <= stats.max_lateness_s
+
+
+def test_a_wider_margin_sacrifices_less_information(clean: list[MatchEvent]) -> None:
+    """La perilla que gradúa latencia contra completitud, comprobada."""
+    delivered, _ = inject_disorder(clean, seed=7)
+
+    timeliness = [
+        MatchEngine(allowed_lateness_s=margin).process_all(delivered).watermark.timeliness
+        for margin in (0.0, 1.0, 5.0, 20.0)
+    ]
+
+    assert timeliness == sorted(timeliness)
+    assert timeliness[-1] == 1.0
+
+
+def test_the_default_margin_meets_the_declared_thresholds() -> None:
+    """El proyecto declara <1 % en posesión, <0,05 en xG y >=95 % de oportunidad."""
+    config = MatchConfig(match_id="match-0012", home_team="RMA", away_team="BAR")
+
+    for seed in range(6):
+        events = simulate_match(seed, config)
+        reference = summarize_events(events)
+        delivered, _ = inject_disorder(events, seed=7)
+
+        result = MatchEngine().process_all(delivered)
+
+        assert result.watermark.timeliness >= 0.95
+
+        possessions = sum(reference.possessions.values())
+        divergence = abs(possessions - sum(result.summary.possessions.values())) / possessions
+        assert divergence < 0.01
+
+        for team, value in reference.total_xg.items():
+            assert abs(value - result.summary.total_xg.get(team, 0.0)) < 0.05
+
+
+def test_pending_events_are_not_counted_until_released(clean: list[MatchEvent]) -> None:
+    engine = MatchEngine(allowed_lateness_s=30.0)
+    for event in clean[:20]:
+        engine.process(event)
+
+    assert engine.pending > 0
+    assert engine.result().summary.event_count < 20
+
+    engine.flush()
+    assert engine.pending == 0
+    assert engine.result().summary.event_count == 20
