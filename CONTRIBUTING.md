@@ -52,9 +52,12 @@ gobernanza.
 1. **Nada de credenciales en el repositorio.** Ni llaves JSON de service
    account, ni `terraform.tfvars`, ni ficheros `.env`. Para hablar con GCP se
    usa suplantación de service account. `gitleaks` corre en cada commit.
-2. **El generador no incorpora dependencias externas.** Solo biblioteca
-   estándar: cualquier paquete de terceros introduce una versión más que podría
-   alterar el muestreo pseudoaleatorio y romper la reproducibilidad.
+2. **El generador y el motor no incorporan dependencias externas.** Solo
+   biblioteca estándar: cualquier paquete de terceros introduce una versión más
+   que podría alterar el muestreo pseudoaleatorio y romper la reproducibilidad.
+   El cliente de Pub/Sub es la excepción, y por eso es un extra opcional
+   (`pip install -e '.[pubsub]'`) que se importa de forma diferida: quien solo
+   genere ficheros no tiene por qué instalarlo.
 3. **Nada de `random` global, `uuid4` ni `datetime.now()`** en el código de
    generación. Los tres rompen el determinismo bajo semilla fija, que es la
    premisa sobre la que se apoya toda la validación del proyecto.

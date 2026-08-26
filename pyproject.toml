@@ -16,17 +16,23 @@ license = { text = "MIT" }
 dependencies = []
 
 [project.optional-dependencies]
+# Cliente de Pub/Sub. Es opcional a propósito: los generadores y el motor no lo
+# necesitan, y quien solo produzca ficheros no tiene por qué arrastrarlo.
+pubsub = ["google-cloud-pubsub>=2.20"]
+
 dev = [
   "pytest>=8.0",
   "ruff>=0.8",
   "mypy>=1.13",
   "commitizen>=4.0",
   "pre-commit>=4.0",
+  "google-cloud-pubsub>=2.20",
 ]
 
 [project.scripts]
 gcperros-generate-match = "gcperros.generators.cli:main"
 gcperros-generate-odds = "gcperros.generators.cli:odds_main"
+gcperros-publish = "gcperros.publishing.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gcperros"]
@@ -70,6 +76,13 @@ ignore = [
 # En las pruebas se permiten asserts y docstrings menos formales.
 "tests/**" = ["S101", "D103", "PLR2004"]
 
+# Los imports diferidos de la capa de publicación son deliberados: mantienen
+# `google-cloud-pubsub` como dependencia opcional, de modo que el paquete se
+# pueda usar para generar ficheros sin instalar el cliente. Moverlos arriba
+# rompería esa propiedad.
+"src/gcperros/publishing/cli.py" = ["PLC0415"]
+"src/gcperros/publishing/pubsub.py" = ["PLC0415"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -82,6 +95,13 @@ python_version = "3.11"
 strict = true
 warn_unreachable = true
 files = ["src", "tests"]
+
+# google-cloud-pubsub no distribuye marcadores de tipo, así que sus símbolos
+# llegan sin anotar. Se acota la excepción a ese paquete en vez de sembrar el
+# código de `type: ignore`.
+[[tool.mypy.overrides]]
+module = ["google.*"]
+ignore_missing_imports = true
 
 ###############################################################################
 # Pytest

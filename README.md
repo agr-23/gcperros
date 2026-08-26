@@ -55,7 +55,7 @@ estudio del proyecto.
 | Generador de eventos de partido | ✅ Funcional | HU-8 |
 | `infra/terraform/` — capa de ingestión (Pub/Sub) | ✅ Desplegable | HU-13 (parcial) |
 | Generador de cuotas sintéticas | ✅ Funcional | HU-9 |
-| Publicación hacia Pub/Sub | ⏳ Pendiente | HU-10 |
+| Publicación hacia Pub/Sub | ✅ Funcional (sin broker todavía) | HU-10 |
 | Motor: deduplicación por `event_id` | ✅ Funcional | HU-11 |
 | Motor: reordenamiento por marca de agua | ✅ Funcional | HU-12 |
 | Despliegue del motor en Cloud Run | ⏳ Pendiente | HU-11, HU-12 |
@@ -70,6 +70,7 @@ estudio del proyecto.
 src/gcperros/core/          Dominio compartido: contratos, campo, xG, cuotas y agregados
 src/gcperros/generators/    Generadores sintéticos y el inyector de perturbaciones
 src/gcperros/engine/        Motor con estado: deduplicación, marca de agua y estado vivo
+src/gcperros/publishing/    Publicación hacia el broker, con reintento y registro
 tests/                      Determinismo, contrato, xG, cuotas, motor y estadística
 infra/terraform/            Infraestructura como código (empezar por su README)
 ```
@@ -246,6 +247,63 @@ cumple los tres**, y por eso es el valor por defecto.
 > propio margen antes de aplicarse. Los dos objetivos no se cumplen a la vez con
 > este diseño. Resolverlo —publicar estado provisional y corregirlo al cerrar la
 > ventana— corresponde al sprint que caracteriza la latencia bajo carga (OE-3).
+
+---
+
+## Publicar hacia el broker
+
+```bash
+# Recorre todo el camino sin salir del proceso
+gcperros-publish --seed 20260826 --dry-run
+
+# Contra un broker real (o el emulador)
+gcperros-publish --seed 20260826 --project futbol-rt-000000
+```
+
+Cada flujo va a su topic —`match-events` y `odds-updates`— y el mensaje lleva
+atributos (`event_type`, `match_id`, `operator`, `market`) que permiten a una
+suscripción filtrar **sin abrir el contenido**.
+
+### Reintento y registro
+
+Un fallo de publicación casi nunca es definitivo: una desconexión, un pico de
+latencia. Se reintenta con espera creciente y **jitter** — sin él, todos los
+mensajes que fallaron a la vez reintentarían a la vez y reproducirían el pico
+que tumbó al broker.
+
+```
+WARNING  fallo al publicar en match-events (intento 1 de 5): ... Reintento en 0.01s
+WARNING  fallo al publicar en match-events (intento 2 de 5): ... Reintento en 0.02s
+ERROR    descartada la publicación en match-events tras 3 intentos: ...
+```
+
+Agotados los intentos, **se detiene con error**. Sería más cómodo descartar el
+evento y seguir, pero eso perdería un dato sin que nadie se entere. El proyecto
+trata la pérdida silenciosa como el fallo grave que es: un rezagado se cuenta
+(HU-12), un duplicado se cuenta (HU-11), y uno que no se pudo publicar para la
+ejecución.
+
+### Sin nube: el emulador de Pub/Sub
+
+El cliente respeta `PUBSUB_EMULATOR_HOST`. Con esa variable definida habla con
+un emulador local y **no pide credenciales ni cuenta de Google**:
+
+```bash
+gcloud components install pubsub-emulator
+gcloud beta emulators pubsub start --project=gcperros-local
+
+export PUBSUB_EMULATOR_HOST=localhost:8085
+gcperros-publish --seed 20260826 --project gcperros-local --create-topics
+```
+
+> **Requisito.** El emulador necesita **Java 11 o superior**. Con Java 8 falla
+> con `UnsupportedClassVersionError` (class file 55.0 contra 52.0).
+>
+> `--create-topics` es sólo para el emulador, que arranca vacío. En un proyecto
+> real los topics los crea Terraform (HU-13) y el publicador no debería tener
+> permiso para crearlos.
+
+El mismo código publica en GCP en cuanto se quita esa variable de entorno.
 
 ---
 

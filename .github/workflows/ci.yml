@@ -70,6 +70,11 @@ jobs:
           gcperros-generate-match --seed 20260826 --out segunda.jsonl
           cmp primera.jsonl segunda.jsonl
           echo "Partido reproducible: $(wc -l < primera.jsonl) eventos idénticos."
+      # El modo de ensayo recorre el camino completo de publicación sin salir
+      # del proceso, así que verifica el cableado generador -> publicador sin
+      # necesitar broker ni credenciales.
+      - name: Publicación en modo de ensayo
+        run: gcperros-publish --seed 20260826 --dry-run
 
   terraform:
     name: Terraform
