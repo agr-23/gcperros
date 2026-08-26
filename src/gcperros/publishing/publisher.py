@@ -1,27 +1,11 @@
 """Publicación de los flujos hacia el broker, con reintento y registro (HU-10).
 
 Saca los eventos de la memoria del proceso y los pone en el topic que les
-corresponde, que es lo que convierte a la capa de ingestión en algo que
-realmente tiene tráfico que consumir.
+corresponde, que es lo que da a la capa de ingestión tráfico real que consumir.
 
-Sobre el reintento
-------------------
-Un fallo de publicación casi nunca es definitivo: una desconexión, un pico de
-latencia, un reinicio del servicio al otro lado. Reintentar con espera creciente
-es lo que distingue una interrupción momentánea de una caída real.
-
-La espera lleva **jitter**, un desorden deliberado. Sin él, todos los mensajes
-que fallaron a la vez reintentarían a la vez, y el pico que tumbó al broker se
-reproduciría intacto en cada ronda. El jitter reparte esos reintentos.
-
-Sobre el fallo definitivo
--------------------------
-Agotados los intentos, el publicador **se detiene con error**. Podría descartar
-el evento y continuar, y sería más cómodo, pero significaría perder un dato sin
-que nadie se entere. El proyecto trata la pérdida silenciosa como el fallo grave
-que es: un evento que llega tarde se cuenta (HU-12), un duplicado se cuenta
-(HU-11), y uno que no se pudo publicar detiene la ejecución con su causa
-registrada.
+El reintento usa espera creciente con jitter, y agotados los intentos el
+publicador se detiene con error en vez de descartar el evento en silencio. El
+porqué de ambas decisiones: ver `docs/decisiones-de-diseno.md`, sección 4.
 """
 
 from __future__ import annotations

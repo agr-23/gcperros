@@ -1,19 +1,13 @@
 """Modelo de goles esperados (xG).
 
 Función paramétrica cerrada, calibrada analíticamente sobre puntos de referencia
-del dominio. **No es un modelo entrenado**: su propósito es habilitar la
-validación del sistema de datos, no competir con modelos comerciales de
-predicción deportiva (ver alcance del proyecto, "Que NO incluye").
+del dominio. No es un modelo entrenado: entrenar ML está fuera del alcance
+declarado del proyecto.
 
-Este módulo es la pieza que comparten el generador y el motor. El generador
-decide cada gol muestreando ``Bernoulli(xG)`` sobre esta función (HU-8); el
-motor recalcula el mismo xG a partir de las coordenadas que le llegan por el
-broker (HU-11/12). Que ambos planos usen exactamente esta implementación es lo
-que hace informativa la comparación "goles observados contra xG acumulado": la
-convergencia no valida el acierto del modelo —eso sería tautológico, porque el
-gol se muestrea del propio xG— sino que las coordenadas del tiro atravesaron el
-pipeline sin corromperse. Si el motor reconstruye un xG distinto del que usó el
-generador, el dato se degradó en el transporte.
+La comparten el generador, que decide cada gol muestreando ``Bernoulli(xG)``
+(HU-8), y el motor, que recalcula el mismo xG desde las coordenadas que le llegan
+por el broker (HU-11/12). Por qué esa comparación es informativa y no
+tautológica: ver `docs/decisiones-de-diseno.md`, sección 1.
 """
 
 from __future__ import annotations

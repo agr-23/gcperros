@@ -13,6 +13,14 @@ venv/
 .pytest_cache/
 .ipynb_checkpoints/
 
+# Artefactos de herramientas
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+*.jsonl
+
 # Sistema operativo / editores
 .DS_Store
 Thumbs.db

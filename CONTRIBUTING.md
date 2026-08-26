@@ -22,11 +22,16 @@ Lo mismo que corre la CI, en local:
 | `ruff check .` | Errores, imports, nombres, seguridad, docstrings |
 | `ruff format .` | Formato |
 | `mypy` | Tipos en modo estricto, sobre `src` y `tests` |
-| `pytest` | 40 pruebas: determinismo, contrato, xG y plausibilidad estadística |
+| `pytest` | La suite completa: unitarias por componente y de tubería |
+| `pytest --cov=gcperros --cov-fail-under=90` | Lo mismo con el umbral de cobertura de la CI |
 | `pre-commit run --all-files` | Todo lo anterior más el escaneo de secretos |
 
 Las comprobaciones de Terraform (`terraform fmt -check`, `terraform validate`)
 corren solo en CI, para no exigir el binario instalado a todo el equipo.
+
+La CI además ejecuta las pruebas en **Windows y Linux**: el proyecto promete
+ficheros idénticos byte a byte en cualquier sistema operativo, y sin comprobarlo
+en ambos esa promesa sería una suposición.
 
 ## Mensajes de commit
 
@@ -63,4 +68,21 @@ gobernanza.
    premisa sobre la que se apoya toda la validación del proyecto.
 4. **Un cambio en las constantes del simulador exige revisar la calibración.**
    Las pruebas marcadas `statistical` acotan los agregados del partido contra
-   los rangos del dominio; si fallan, el simulador dejó de ser plausible.
+   los rangos del dominio; si fallan, el simulador dejó de ser plausible, y hay
+   que actualizar la tabla de [docs/decisiones-de-diseno.md](docs/decisiones-de-diseno.md).
+5. **Si cambia la huella de referencia, se explica.** `tests/test_pipeline.py`
+   guarda el SHA-256 de la salida de la semilla de referencia. Que falle no es
+   necesariamente un error —una recalibración legítima la cambia— pero nunca
+   debe pasar sin querer: se actualiza a propósito y se dice por qué en el
+   commit.
+6. **Nada de `type: ignore` ni `noqa` sin discutirlo.** Ahora mismo el repo no
+   tiene ninguno. Las excepciones reales se declaran en `pyproject.toml`, con su
+   justificación al lado, donde todo el equipo las ve.
+
+## Dónde está documentado el porqué
+
+El código explica **qué** hace y las decisiones no obvias que lo condicionan.
+El razonamiento largo —alternativas descartadas, tablas de calibración, tensiones
+sin resolver— vive en
+[docs/decisiones-de-diseno.md](docs/decisiones-de-diseno.md), que es su única
+fuente. Si una tabla aparece en dos sitios, uno de los dos acabará mintiendo.

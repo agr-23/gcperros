@@ -2,26 +2,14 @@
 
 Deliberadamente delgado: traduce la llamada y convierte cualquier fallo del
 cliente en ``TransportError``, que es lo que el publicador sabe reintentar. Toda
-la lógica de reintento, espera y registro vive en ``publisher.py``, donde sí se
-puede probar.
+la lógica de reintento y registro vive en ``publisher.py``, donde sí se puede
+probar.
 
-La librería cliente es una dependencia **opcional**: quien solo quiera generar
-ficheros no tiene por qué instalarla. Se importa dentro del constructor para que
-el resto del paquete siga funcionando sin ella.
+La librería cliente es una dependencia opcional y se importa de forma diferida,
+para que el resto del paquete funcione sin ella.
 
-Contra el emulador, sin nube ni tarjeta
----------------------------------------
-El cliente respeta la variable ``PUBSUB_EMULATOR_HOST``. Si está definida, habla
-con el emulador local en lugar de con Google, y no pide credenciales::
-
-    gcloud components install pubsub-emulator
-    gcloud beta emulators pubsub start --project=gcperros-local
-
-    export PUBSUB_EMULATOR_HOST=localhost:8085
-    gcperros-publish --seed 20260826 --project gcperros-local --create-topics
-
-El mismo código, sin cambiar una línea, publica en el proyecto real en cuanto se
-quita esa variable.
+El cliente respeta ``PUBSUB_EMULATOR_HOST``: con esa variable definida habla con
+un emulador local y no pide credenciales. Instrucciones en el README.
 """
 
 from __future__ import annotations

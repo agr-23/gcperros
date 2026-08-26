@@ -18,8 +18,8 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Literal, TypeAlias
+from datetime import UTC, datetime
+from typing import Literal, TypeAlias, cast, get_args
 
 MATCH_CONTRACT_VERSION = "v1"
 ODDS_CONTRACT_VERSION = "v1"
@@ -32,6 +32,10 @@ JsonValue: TypeAlias = str | int | float | bool | list["JsonValue"] | dict[str, 
 #: para el modelo y el gol es un hecho de negocio autónomo, que los consumidores
 #: pueden contar sin tener que entender la semántica de un remate.
 EventType: TypeAlias = Literal["pass", "shot", "goal", "foul", "red_card", "possession_change"]
+
+#: Los mismos valores en tiempo de ejecución, para validarlos al leer un mensaje.
+#: Se derivan del propio Literal para que no puedan divergir de él.
+EVENT_TYPES: frozenset[str] = frozenset(get_args(EventType))
 
 #: Espacio de nombres fijo para derivar identificadores. Al ser constante, el
 #: mismo partido con la misma semilla produce los mismos `event_id`, que es lo
@@ -177,3 +181,113 @@ class OddsUpdate:
             separators=(",", ":"),
             ensure_ascii=False,
         )
+
+
+###############################################################################
+# Lectura: del mensaje del broker de vuelta al objeto
+###############################################################################
+
+
+class ContractViolationError(ValueError):
+    """Un mensaje no cumple el contrato de su flujo.
+
+    La HU-16 desviará estos mensajes a un repositorio de inválidos con la causa
+    registrada. Aquí sólo se detectan y se nombran.
+    """
+
+
+def _require(payload: dict[str, JsonValue], field: str, expected: type) -> object:
+    value = payload.get(field)
+    if not isinstance(value, expected):
+        raise ContractViolationError(f"falta el campo {field} o no es {expected.__name__}")
+    return value
+
+
+def parse_event_time(stamp: str) -> datetime:
+    """Interpreta una marca temporal del contrato.
+
+    Raises:
+        ContractViolationError: Si no tiene el formato acordado.
+    """
+    try:
+        return datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
+    except ValueError as error:
+        raise ContractViolationError(f"marca temporal no conforme: {stamp!r}") from error
+
+
+def parse_match_event(message: bytes | str) -> MatchEvent:
+    """Reconstruye un evento de partido a partir del mensaje publicado.
+
+    Es la vuelta de ``MatchEvent.to_json``. La necesitan el motor, cuando consuma
+    del broker, y el cargador de la capa Raw (HU-14).
+
+    Raises:
+        ContractViolationError: Si el mensaje no es JSON o le faltan campos.
+    """
+    try:
+        payload = json.loads(message)
+    except json.JSONDecodeError as error:
+        raise ContractViolationError(f"el mensaje no es JSON válido: {error}") from error
+
+    if not isinstance(payload, dict):
+        raise ContractViolationError("el mensaje debe ser un objeto JSON")
+
+    attrs = payload.get("attrs")
+    if not isinstance(attrs, dict):
+        raise ContractViolationError("falta el objeto attrs")
+
+    event_type = _require(payload, "event_type", str)
+    if event_type not in EVENT_TYPES:
+        raise ContractViolationError(f"tipo de evento desconocido: {event_type!r}")
+
+    return MatchEvent(
+        event_id=str(_require(payload, "event_id", str)),
+        event_time=parse_event_time(str(_require(payload, "event_time", str))),
+        match_id=str(_require(payload, "match_id", str)),
+        team=str(_require(payload, "team", str)),
+        # Ya se comprobó contra EVENT_TYPES: el estrechamiento es seguro.
+        event_type=cast(EventType, event_type),
+        attrs=attrs,
+    )
+
+
+def parse_odds_update(message: bytes | str) -> OddsUpdate:
+    """Reconstruye una actualización de cuotas a partir del mensaje publicado.
+
+    Raises:
+        ContractViolationError: Si el mensaje no es JSON o le faltan campos.
+    """
+    try:
+        payload = json.loads(message)
+    except json.JSONDecodeError as error:
+        raise ContractViolationError(f"el mensaje no es JSON válido: {error}") from error
+
+    if not isinstance(payload, dict):
+        raise ContractViolationError("el mensaje debe ser un objeto JSON")
+
+    market = _require(payload, "market", str)
+    if market not in MARKET_OUTCOMES:
+        raise ContractViolationError(f"mercado desconocido: {market!r}")
+
+    outcomes = payload.get("outcomes")
+    if not isinstance(outcomes, list):
+        raise ContractViolationError("falta la lista de outcomes")
+
+    odds: dict[str, float] = {}
+    for entry in outcomes:
+        if not isinstance(entry, dict) or "outcome" not in entry or "odds" not in entry:
+            raise ContractViolationError("cada outcome necesita nombre y cuota")
+        odds[str(entry["outcome"])] = float(str(entry["odds"]))
+
+    if set(odds) != set(MARKET_OUTCOMES[market]):
+        raise ContractViolationError(f"el mercado {market} llegó incompleto")
+
+    return OddsUpdate(
+        event_id=str(_require(payload, "event_id", str)),
+        event_time=parse_event_time(str(_require(payload, "event_time", str))),
+        match_id=str(_require(payload, "match_id", str)),
+        operator=str(_require(payload, "operator", str)),
+        market=market,
+        odds=odds,
+        trigger=cast(OddsTrigger, _require(payload, "trigger", str)),
+    )

@@ -1,69 +1,19 @@
 """Reordenamiento por tiempo de evento mediante marca de agua (HU-12).
 
-El broker entrega sin orden. Un pase emitido en el minuto 12 puede llegar
-después de otro del minuto 13, y aplicar los eventos en orden de llegada
-corrompería la secuencia cronológica del partido.
+El broker entrega sin orden, y aplicar los eventos según llegan corrompería la
+secuencia cronológica del partido.
 
-La marca de agua es el **reloj de confianza** del motor: la afirmación «doy por
+La marca de agua es el reloj de confianza del motor: la afirmación «doy por
 recibido todo lo anterior a este instante». Se calcula como el mayor
 ``event_time`` visto menos un margen de desorden tolerado. Los eventos esperan en
 un buffer ordenado y sólo se liberan cuando la marca de agua los rebasa, momento
 en el que ya no puede llegar nada anterior a ellos.
 
-El compromiso, que es el punto
-------------------------------
-El margen tolerado no es un parámetro más: es la perilla que gradúa latencia
-contra completitud.
+Un evento que llega con su ventana cerrada se registra como descartado por
+tardío, con su retraso medido, en lugar de perderse en silencio.
 
-* Margen **grande**: casi ningún evento llega tarde, pero todos esperan más
-  antes de aplicarse, y el estado vivo va por detrás del partido.
-* Margen **pequeño**: el estado va casi al día, pero los eventos rezagados
-  encuentran su ventana ya cerrada.
-
-Por eso un evento que llega tarde se registra como **descartado por tardío** y
-no se pierde en silencio. Esa cuenta es la que permite auditar después cuánta
-información se sacrificó a cambio de latencia, y alimenta la dimensión de
-*oportunidad* del marco de calidad (HU-17), cuyo umbral declarado es que al
-menos el 95 % de los eventos se apliquen dentro de la marca de agua.
-
-Cómo se eligió el margen por defecto
-------------------------------------
-Medido sobre ocho partidos con retardo de red exponencial de media 2 s y cola
-acotada a 30 s, que es la perturbación por defecto del inyector:
-
-======== ============= =============== ========== ==============
- Margen   Oportunidad   Div. posesión   Div. xG    Cumple OE-2
-======== ============= =============== ========== ==============
-    0 s        87,22 %         11,05 %     0,3391   no
-    1 s        89,52 %          9,27 %     0,0000   no
-    3 s        94,80 %          6,32 %     0,0000   no
-    5 s        98,28 %          2,15 %     0,0000   no
-   10 s        99,91 %          0,17 %     0,0000   **sí**
-   20 s       100,00 %          0,00 %     0,0000   sí
-======== ============= =============== ========== ==============
-
-El proyecto declara divergencia máxima del 1 % en posesión y de 0,05 en xG
-frente al plano batch, y oportunidad mínima del 95 %. Diez segundos es el
-margen más ajustado que cumple los tres criterios, y por eso es el valor por
-defecto.
-
-Una tensión que conviene tener presente
----------------------------------------
-Ese margen entra en conflicto con el SLA declarado de latencia extremo a extremo
-por debajo de 2 s en el percentil 95: un evento retenido a la espera de la marca
-de agua espera del orden del propio margen antes de aplicarse. Los dos objetivos
-no se pueden cumplir a la vez con este diseño, y la elección está documentada en
-vez de disimulada. Resolverlo —publicando estado provisional y corrigiéndolo al
-cerrar la ventana, por ejemplo— corresponde al sprint que caracteriza la latencia
-bajo carga (OE-3).
-
-Eventos con el mismo instante
------------------------------
-El contrato no define un orden entre eventos que comparten ``event_time`` —el
-gol y el remate que lo produjo se emiten en el mismo instante, por ejemplo—, así
-que se desempata por ``event_id`` para que el resultado sea determinista
-independientemente del orden de llegada. Los indicadores del partido son
-recuentos y sumas, que conmutan, de modo que ese desempate no altera el estado.
+El margen tolerado gradúa latencia contra completitud, y su valor por defecto
+está medido, no elegido: ver `docs/decisiones-de-diseno.md`, sección 3.
 """
 
 from __future__ import annotations

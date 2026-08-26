@@ -1,18 +1,13 @@
 """Transporte de mensajes hacia el broker.
 
-El publicador no habla con Pub/Sub directamente: habla con un ``Transport``.
-Esa indirección tiene un propósito concreto y no es arquitectura por gusto.
+El publicador habla con un ``Transport``, no con Pub/Sub directamente. La razón
+es concreta: la historia pide reintento y registro ante fallo, y eso no se puede
+probar contra un broker real, porque no hay forma de pedirle a Pub/Sub que falle
+las dos primeras veces y acierte a la tercera.
 
-La historia pide **reintento y registro ante fallo de publicación**, y eso no se
-puede probar contra un broker real: no hay forma de pedirle a Pub/Sub que falle
-las dos primeras veces y acierte a la tercera. Con un transporte inyectable, la
-prueba provoca el fallo exacto que quiere y comprueba que el publicador se
-comporta. El transporte real queda como un adaptador delgado, con tan poca
-lógica propia que no hay casi nada que pueda romperse sin que las pruebas lo
-vean.
-
-Además mantiene el paquete utilizable sin la librería cliente instalada: quien
-solo quiera generar ficheros no necesita arrastrar ``google-cloud-pubsub``.
+Con un transporte inyectable la prueba provoca el fallo exacto que quiere, y el
+adaptador real queda tan delgado que apenas tiene lógica propia que pueda
+romperse sin que las pruebas lo vean.
 """
 
 from __future__ import annotations

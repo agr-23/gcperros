@@ -26,6 +26,7 @@ dev = [
   "mypy>=1.13",
   "commitizen>=4.0",
   "pre-commit>=4.0",
+  "pytest-cov>=6.0",
   "google-cloud-pubsub>=2.20",
 ]
 
@@ -112,6 +113,25 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
 markers = [
   "statistical: pruebas que agregan muchos partidos y tardan más en correr",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["gcperros"]
+# El adaptador real de Pub/Sub queda fuera de la medición: sólo se ejecuta con
+# un broker delante, y no hay forma honesta de cubrirlo en la integración
+# continua. Está escrito para ser trivial justamente por eso — toda la lógica
+# que sí se puede probar vive en `publisher.py`.
+omit = ["*/publishing/pubsub.py"]
+
+[tool.coverage.report]
+# Se excluyen las líneas que sólo se recorren sin la librería cliente instalada
+# o al ejecutar un módulo como script: cubrirlas costaría más de lo que aporta.
+exclude_also = [
+  'if TYPE_CHECKING:',
+  'raise NotImplementedError',
+  'if __name__ == .__main__.:',
+  '\.\.\.',
 ]
 
 ###############################################################################

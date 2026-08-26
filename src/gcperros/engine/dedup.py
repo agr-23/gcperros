@@ -1,42 +1,18 @@
 """Deduplicación por ``event_id`` (HU-11).
 
-Pub/Sub entrega **al menos una vez**: si el consumidor tarda en confirmar un
-mensaje, el broker lo vuelve a entregar. Es el trato que se acepta a cambio de
-no perder nada, y significa que el mismo evento puede llegar dos veces. Sin
-esta pieza, esa característica del broker se convertiría en un gol contado dos
-veces o en una posesión inflada.
+Pub/Sub entrega al menos una vez: si el consumidor tarda en confirmar, el broker
+vuelve a entregar. Sin esta pieza, esa característica se convertiría en un gol
+contado dos veces o en una posesión inflada.
 
-El deduplicador se coloca **antes** de aplicar nada al estado. No es un detalle
-de orden: si el evento se aplicase primero y se comprobase después, el estado ya
-estaría corrupto cuando se detectara el duplicado.
+Se coloca antes de aplicar nada al estado. Si el evento se aplicase primero y se
+comprobase después, el estado ya estaría corrupto cuando se detectara el
+duplicado.
 
-Por qué la memoria está acotada
--------------------------------
-Recordar todos los identificadores vistos es correcto sobre un flujo finito y
-ruinoso sobre uno no acotado: la memoria crecería sin límite mientras el
-servicio siga vivo. Aquí se recuerdan los últimos ``capacity`` identificadores y
-se descartan los más antiguos por orden de llegada.
-
-Eso convierte la garantía en condicional, y conviene enunciarla con precisión:
-**un duplicado se detecta siempre que lleguen menos de ``capacity`` eventos
-distintos entre el original y la repetición.** Con la capacidad por defecto cabe
-un partido entero varias veces —un partido emite del orden de 1.300 eventos— y
-la unidad de procesamiento declarada del proyecto es el partido individual, así
-que dentro de esa unidad la deduplicación es exacta.
-
-Ahora que existe la marca de agua (HU-12), esta heurística admite una mejora
-pendiente: expirar por tiempo de evento en lugar de por número de eventos. Sería
-exacta en vez de aproximada, porque pasado el margen de desorden tolerado ningún
-duplicado legítimo puede llegar ya y su identificador se puede olvidar sin
-riesgo. No se ha hecho todavía porque cambia la semántica del componente y
-merece decidirse aparte.
-
-Por qué no un filtro de Bloom
------------------------------
-Es la estructura habitual para este problema y aquí sería un error. Un filtro de
-Bloom admite falsos positivos: diría «ya lo vi» sobre un evento que no ha visto,
-y el motor descartaría un gol legítimo. Perder un evento real es un fallo mucho
-más grave que gastar memoria, así que se prefiere la estructura exacta.
+La memoria está acotada, así que la garantía es condicional: un duplicado se
+detecta siempre que entre el original y la repetición lleguen menos de
+``capacity`` eventos distintos. Por qué no un filtro de Bloom, y por qué la
+capacidad por defecto basta para la unidad de proceso del proyecto:
+ver `docs/decisiones-de-diseno.md`, sección 3.
 """
 
 from __future__ import annotations
