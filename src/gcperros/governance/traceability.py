@@ -132,9 +132,27 @@ class AuditTrail:
 
 
 def _value(summary: MatchSummary, indicator: str, scope: str) -> float:
-    """Lee del resumen el número que se está explicando."""
+    """Lee del resumen el número que se está explicando.
+
+    Comprueba que el alcance corresponda al indicador. Sin esa comprobación,
+    pedir un indicador de equipo con el alcance del partido devolvía el recuento
+    de eventos etiquetado con otro nombre: un número acompañado de una
+    explicación falsa, que es exactamente lo que esta historia existe para
+    evitar.
+
+    Raises:
+        KeyError: Si el indicador no se mide en ese alcance.
+        AttributeError: Si el indicador no existe.
+    """
+    if indicator in MATCH_INDICATORS:
+        if scope != WHOLE_MATCH:
+            raise KeyError(f"{indicator!r} es del partido entero, no de {scope!r}")
+        total: int = getattr(summary, indicator)
+        return float(total)
+
     if scope == WHOLE_MATCH:
-        return float(summary.event_count)
+        raise KeyError(f"{indicator!r} es de un equipo, no del partido entero")
+
     counters: Mapping[str, float] = getattr(summary, indicator)
     return float(counters[scope])
 

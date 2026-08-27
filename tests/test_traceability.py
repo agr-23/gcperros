@@ -252,3 +252,28 @@ def test_a_red_card_is_traced_like_any_other_indicator() -> None:
         explain(played.state, "red_cards", team).lineage.event_count for team in ("RMA", "BAR")
     )
     assert traced == len(sent_off)
+
+
+###############################################################################
+# El alcance tiene que corresponder al indicador
+###############################################################################
+
+
+def test_a_team_indicator_cannot_be_asked_of_the_whole_match(engine: MatchEngine) -> None:
+    """Devolvía el recuento de eventos con el nombre de otro indicador.
+
+    Un número acompañado de una explicación falsa es peor que un número sin
+    explicación: el segundo se cuestiona, el primero se cree.
+    """
+    with pytest.raises(KeyError):
+        explain(engine.state, "goals", WHOLE_MATCH)
+
+
+def test_a_match_indicator_cannot_be_attributed_to_a_team(engine: MatchEngine) -> None:
+    with pytest.raises(KeyError):
+        explain(engine.state, "event_count", "RMA")
+
+
+def test_an_indicator_that_does_not_exist_fails(engine: MatchEngine) -> None:
+    with pytest.raises(AttributeError):
+        explain(engine.state, "corners", "RMA")
