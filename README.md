@@ -30,6 +30,9 @@ Generadores sintéticos          (fuera de GCP, costo cero)
 Pub/Sub · match-events + odds-updates        ← capa de ingestión
         │
         ▼
+Frontera de contrato ──▶ repositorio de inválidos   ← rechaza antes de gastar
+        │
+        ▼
 Cloud Run · motor con estado                 ← dedup, watermark, ventanas
         │
         ├──▶ Firestore   · estado vivo por partido
@@ -63,12 +66,27 @@ gcperros-generate-odds --seed 20260826 --out cuotas.jsonl --summary
 
 # Publicar hacia el broker (--dry-run recorre todo sin salir del proceso)
 gcperros-publish --seed 20260826 --dry-run
+
+# La frontera de contrato: deja pasar lo conforme y aísla lo demás con su causa
+gcperros-validate --stream match --in partido.jsonl --invalid invalidos.jsonl
 ```
+
+`gcperros-validate` es un filtro: escribe los mensajes conformes en la salida
+estándar y archiva el resto. Con `--strict` termina con código 1 si algo se
+cayó, que es lo que permite usarlo como puerta en integración continua.
 
 Procesar un flujo con el motor:
 
 ```python
+from pathlib import Path
+
 from gcperros.engine.pipeline import MatchEngine
+from gcperros.governance.gate import match_event_gate
+from gcperros.governance.quarantine import JsonlInvalidStore
+
+# Nada llega al motor sin haber cumplido el contrato primero.
+gate = match_event_gate(JsonlInvalidStore(Path("invalidos.jsonl")))
+delivered = gate.admit_all(raw_messages)  # lo no conforme queda archivado
 
 engine = MatchEngine()
 for event in delivered:  # con duplicados y desordenados
@@ -94,15 +112,17 @@ engine.watermark_stats.timeliness  # proporción aplicada dentro de plazo
 | Infraestructura Pub/Sub en Terraform | ✅ código; sin desplegar | HU-13 |
 | Consumidor a BigQuery Raw | ⏳ | HU-14 |
 | Estado vivo en Firestore | ⏳ | HU-15 |
-| Contratos formales y reglas de calidad | ⏳ | HU-16, HU-17 |
+| Contrato formal y repositorio de inválidos | ✅ | HU-16 |
+| Reglas de calidad sobre lo ingerido | ⏳ | HU-17 |
 
 ---
 
 ## Estructura
 
 ```
-src/gcperros/core/          Dominio compartido: contratos, campo, xG, cuotas, agregados
+src/gcperros/core/          Dominio compartido: contratos, esquema, campo, xG, cuotas
 src/gcperros/generators/    Generadores sintéticos e inyector de perturbaciones
+src/gcperros/governance/    Frontera de contrato y repositorio de eventos inválidos
 src/gcperros/engine/        Motor con estado: dedup, marca de agua, estado vivo
 src/gcperros/publishing/    Publicación hacia el broker
 tests/                      Unitarias por componente y de tubería completa

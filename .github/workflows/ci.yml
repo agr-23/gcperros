@@ -89,6 +89,16 @@ jobs:
           gcperros-generate-odds --seed "$REFERENCE_SEED" --out cuotas-a.jsonl
           gcperros-generate-odds --seed "$REFERENCE_SEED" --out cuotas-b.jsonl
           cmp cuotas-a.jsonl cuotas-b.jsonl
+      # La HU-16 rechaza en la frontera lo que incumple el contrato. Aquí se
+      # comprueba la otra mitad, que es la que nadie vigila: que lo que el
+      # propio proyecto produce cumple el contrato que declara. Si el generador
+      # y el esquema se separan, este paso falla en vez de que lo descubra un
+      # consumidor.
+      - name: Los dos flujos cumplen su propio contrato
+        run: |
+          gcperros-validate --stream match --in primera.jsonl --strict > /dev/null
+          gcperros-validate --stream odds --in cuotas-a.jsonl --strict > /dev/null
+
       # El modo de ensayo recorre el camino completo de publicación sin salir
       # del proceso: verifica el cableado sin broker ni credenciales.
       - name: Publicación en modo de ensayo

@@ -8,9 +8,12 @@ Los dos flujos se versionan por separado, igual que viajan por topics separados:
 ``match-events`` puede evolucionar sin obligar a los consumidores de
 ``odds-updates`` a cambiar nada.
 
-Aquí vive únicamente la *forma* de los eventos y su serialización. El mecanismo
-de validación y aislamiento de mensajes no conformes es la HU-16 y se implementa
-por separado: esto describe los contratos, no los hace cumplir.
+Aquí vive únicamente la *forma* de los eventos y su serialización. Qué hace que
+un mensaje sea **conforme** se declara en ``core/schema.py``, y el mecanismo que
+lo hace cumplir —rechazo en la frontera y aislamiento de lo no conforme— vive en
+``gcperros.governance`` (HU-16). La separación es deliberada: describir un
+contrato y hacerlo cumplir son dos trabajos distintos, y mezclarlos haría que el
+productor tuviera que arrastrar la maquinaria de validación del consumidor.
 """
 
 from __future__ import annotations
@@ -37,6 +40,27 @@ EventType: TypeAlias = Literal["pass", "shot", "goal", "foul", "red_card", "poss
 #: Se derivan del propio Literal para que no puedan divergir de él.
 EVENT_TYPES: frozenset[str] = frozenset(get_args(EventType))
 
+#: Por qué cambió la posesión. Es vocabulario **del contrato**, no de la
+#: simulación: un consumidor que ramifique sobre ``reason`` necesita saber qué
+#: valores puede recibir, y no puede averiguarlo leyendo el generador. Que sea
+#: cerrado tiene un precio deliberado —añadir un motivo obliga a versionar el
+#: contrato— y ese precio es justamente lo que hace que el contrato signifique
+#: algo. Ver `docs/decisiones-de-diseno.md`, sección 7.
+PossessionReason: TypeAlias = Literal[
+    "kickoff",
+    "goal",
+    "shot",
+    "incomplete_pass",
+    "loose_ball",
+    "out_for_throw_in",
+    "out_for_goal_kick",
+    "half_end",
+    "possession_exhausted",
+]
+
+#: Los mismos valores en tiempo de ejecución.
+POSSESSION_REASONS: frozenset[str] = frozenset(get_args(PossessionReason))
+
 #: Espacio de nombres fijo para derivar identificadores. Al ser constante, el
 #: mismo partido con la misma semilla produce los mismos `event_id`, que es lo
 #: que permite comparar dos ejecuciones byte a byte.
@@ -52,6 +76,12 @@ def new_event_id(match_id: str, sequence: int) -> str:
     HU-8 dejaría de tener sentido.
     """
     return str(uuid.uuid5(_EVENT_NAMESPACE, f"{match_id}:{sequence}"))
+
+
+#: Formato de la marca temporal del contrato. Es constante y no una cadena
+#: repetida en cada sitio que la necesita: el lector y el esquema formal la
+#: comparten, y dos copias acabarían divergiendo.
+EVENT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 def format_event_time(moment: datetime) -> str:
@@ -121,6 +151,9 @@ MARKET_OUTCOMES: dict[Market, tuple[str, ...]] = {
 #: metadato del generador sintético, y sirve para auditar después si el pipeline
 #: reaccionó a los eventos que debía.
 OddsTrigger: TypeAlias = Literal["open", "goal", "red_card", "drift", "heartbeat"]
+
+#: Los mismos valores en tiempo de ejecución, para validarlos al leer.
+ODDS_TRIGGERS: frozenset[str] = frozenset(get_args(OddsTrigger))
 
 _ODDS_NAMESPACE = uuid.UUID("7b3e9d41-2a68-5f0c-8d17-4e6a9c2b5f83")
 
@@ -210,7 +243,7 @@ def parse_event_time(stamp: str) -> datetime:
         ContractViolationError: Si no tiene el formato acordado.
     """
     try:
-        return datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
+        return datetime.strptime(stamp, EVENT_TIME_FORMAT).replace(tzinfo=UTC)
     except ValueError as error:
         raise ContractViolationError(f"marca temporal no conforme: {stamp!r}") from error
 

@@ -276,3 +276,145 @@ serializa la entrega, con su coste de latencia.
 
 Los procesos locales se autentican por suplantación de service account. Responde
 al riesgo declarado de «prohibición de credenciales en el repositorio».
+
+---
+
+## 7. Contratos y frontera de ingestión
+
+### El contrato se declara como dato, no como comprobaciones
+
+`core/schema.py` es una estructura, no una cadena de `if`. El motivo es que el
+mismo contrato tiene que servir para tres trabajos distintos: rechazar en la
+frontera (HU-16), medir completitud (HU-17) y derivar la tabla de destino cuando
+exista la capa Raw (HU-14). Tres implementaciones del mismo contrato acabarían
+divergiendo; una declaración no puede.
+
+El vocabulario es corto a propósito —tipo, obligatoriedad, valores admisibles y
+rango— porque un esquema capaz de expresar cualquier cosa deja de poder leerse, y
+este fichero es el documento que se consulta para saber qué promete el proyecto a
+sus consumidores.
+
+### El defecto que motivó la historia
+
+El lector comprobaba los campos de nivel superior y que `attrs` fuera un objeto,
+pero **nunca miraba dentro**. Un remate sin `xg` atravesaba `parse_match_event`
+sin protestar y reventaba mucho más tarde, al agregarlo:
+
+```
+LiveMatchState.apply -> as_float(event.attrs["xg"]) -> KeyError
+```
+
+Es exactamente el enunciado de la historia: gastar cómputo procesando basura y
+descubrirlo cuando ya se ha gastado. `tests/test_gate.py` conserva las dos caras
+—el fallo sin frontera y su ausencia con ella— porque una historia cuya
+motivación no se puede reproducir es una historia que nadie puede evaluar.
+
+### El vocabulario de `reason` es cerrado, y eso cuesta
+
+Los motivos de cambio de posesión vivían implícitos en el generador. Ahora son un
+`Literal` del contrato, y la frontera rechaza cualquier otro.
+
+Tiene un precio real: añadir un motivo nuevo rompe la validación y obliga a
+versionar el contrato. **Ese precio es justamente lo que hace que el contrato
+signifique algo.** Un vocabulario abierto no promete nada, y un consumidor que
+ramifique sobre `reason` no tendría forma de saber qué puede recibir sin leer el
+código del productor —que es precisamente lo que un contrato existe para evitar.
+
+### Todas las violaciones, una por campo
+
+Dos reglas que parecen contradictorias y no lo son:
+
+- **Se reportan todos los campos defectuosos**, no el primero. Un rechazo que
+  informa de un problema por vez obliga a quien produce el mensaje a reenviarlo
+  tantas veces como defectos tenga. Con el mensaje delante, la frontera ya sabe
+  todo lo que está mal: decirlo entero cuesta lo mismo.
+- **Una sola violación por campo.** Un campo vacío tampoco está entre los valores
+  admitidos, y decir las dos cosas no añade información: la primera causa ya
+  explica qué hay que arreglar.
+
+Y cuando el discriminador no sirve —un `event_type` desconocido— **no se
+inventan causas sobre los atributos**. Sin saber qué evento es, exigir unos u
+otros sería adivinar, y una causa falsa es peor que ninguna: manda a quien la lee
+a arreglar algo que no está roto.
+
+### El mensaje inválido se archiva crudo
+
+Sin normalizar, sin recortar espacios, sin reordenar claves. El registro existe
+para demostrarle al productor qué mandó; si no reproduce exactamente lo que
+mandó, no demuestra nada.
+
+Por lo mismo se archiva lo que ni siquiera es UTF-8, decodificado con reemplazo:
+un repositorio que se cae ante la basura peor formada es el que menos sirve.
+
+Cada registro guarda además **la versión del contrato contra la que se juzgó**.
+Sin ella el archivo no se puede interpretar más adelante: el mismo mensaje puede
+ser inválido bajo `v1` y perfectamente válido bajo `v2`.
+
+Esto no se solapa con el *dead letter* de Pub/Sub; la distinción está en la
+sección 6.
+
+### La frontera va antes del deduplicador
+
+El recorrido completo de un mensaje queda así:
+
+1. **Validar** contra el contrato y apartar lo no conforme (HU-16).
+2. **Deduplicar** por `event_id` (HU-11).
+3. **Reordenar** por marca de agua (HU-12).
+4. **Aplicar** al estado.
+
+Es el mismo argumento que ordena los otros tres pasos: cada uno descarta trabajo
+que los siguientes ya no tendrán que hacer. Un mensaje inválido no merece ocupar
+sitio en la memoria acotada del deduplicador, y menos aún en el buffer de la
+marca de agua.
+
+Hay un segundo efecto, menos obvio y más valioso: con la frontera delante, **el
+motor puede asumir que todo lo que recibe es conforme**. Esa suposición es lo que
+le permite ser tan simple como es. Validar dentro del motor lo obligaría además a
+decidir qué hacer con lo que no entiende, que es una responsabilidad de
+gobernanza y no de cálculo.
+
+### Lo que la frontera no valida
+
+La coherencia **entre** eventos: que un `goal` venga acompañado de su `shot`, que
+el reloj avance, que la posesión sume. Son propiedades del flujo, no de un
+mensaje suelto, y la frontera juzga de uno en uno porque es lo único que se puede
+hacer antes de gastar cómputo. Eso es trabajo del marco de calidad (HU-17).
+
+### El reloj del rechazo se inyecta
+
+La regla 3 de `CONTRIBUTING.md` prohíbe `datetime.now()` en el código de
+generación. Un rechazo sí ocurre en un instante real, así que la prohibición no
+aplica tal cual — pero un repositorio que no se puede reproducir en una prueba
+tampoco se puede verificar. El reloj es un parámetro con valor por defecto: en
+producción marca la hora, en las pruebas se fija.
+
+Los identificadores de rechazo siguen la misma regla que los del contrato: UUID
+v5 derivado del flujo, la huella del mensaje y su posición. Con `uuid4`, comparar
+dos ejecuciones del repositorio no significaría nada.
+
+### Política de versionado
+
+Los dos flujos se versionan **por separado**, igual que viajan por topics
+separados: `match-events` puede evolucionar sin obligar a los consumidores de
+`odds-updates` a tocar nada. La versión viaja en el sobre (`contract_version`) y
+además como etiqueta del topic en Terraform, de modo que sea visible desde la
+propia infraestructura.
+
+| Cambio | ¿Compatible? | Qué exige |
+|---|---|---|
+| Añadir un campo **opcional** | Sí | Nada. Es el único cambio que no rompe. |
+| Añadir un valor a un vocabulario cerrado | No | Subir versión |
+| Añadir un tipo de evento | No | Subir versión y declarar su variante |
+| Renombrar o eliminar un campo | No | Subir versión |
+| Cambiar el tipo de un campo | No | Subir versión |
+| Ensanchar o estrechar un rango | No | Subir versión |
+| Cambiar la semántica sin cambiar la forma | No, y es el peor de todos | Subir versión |
+
+El último merece su propia línea porque es el que se cuela: un campo que sigue
+llamándose igual, con el mismo tipo, y que pasa a significar otra cosa no rompe
+ninguna validación y rompe a todos los consumidores. Ningún mecanismo automático
+lo detecta; por eso está escrito aquí.
+
+Un `v2` que nadie acordó **no se acepta**: la versión es un valor cerrado del
+esquema, así que un mensaje que se declare de una versión desconocida se rechaza
+en la frontera en lugar de procesarse a medias.

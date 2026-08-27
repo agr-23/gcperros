@@ -78,6 +78,13 @@ gobernanza.
 6. **Nada de `type: ignore` ni `noqa` sin discutirlo.** Ahora mismo el repo no
    tiene ninguno. Las excepciones reales se declaran en `pyproject.toml`, con su
    justificación al lado, donde todo el equipo las ve.
+7. **Un cambio en el contrato de datos exige versionarlo.** El esquema formal de
+   los dos flujos vive en `src/gcperros/core/schema.py` y la frontera lo hace
+   cumplir. Añadir un campo opcional es el único cambio que no rompe a nadie;
+   todo lo demás —renombrar, cambiar un tipo, ampliar un vocabulario cerrado,
+   o cambiar lo que un campo significa sin cambiar su forma— obliga a subir
+   `contract_version`. La tabla completa está en la sección 7 de
+   [docs/decisiones-de-diseno.md](docs/decisiones-de-diseno.md).
 
 ## Dónde está documentado el porqué
 
