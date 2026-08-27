@@ -687,4 +687,3 @@ provocar a voluntad contra el servicio real. Con el protocolo inyectado, la
 prueba lo provoca exactamente cuando quiere, y el adaptador real
 (`loading/pubsub.py`, `loading/bigquery.py`) queda tan delgado que ambos
 quedan fuera de la medición de cobertura, igual que `publishing/pubsub.py`.
-
