@@ -102,18 +102,24 @@ engine.watermark_stats.timeliness  # proporción aplicada dentro de plazo
 
 ## Estado
 
-| Componente | Estado | Historia |
-|---|---|---|
-| Generador de eventos de partido | ✅ | HU-8 |
-| Generador de cuotas | ✅ | HU-9 |
-| Publicación hacia Pub/Sub | ✅ código; sin broker vivo todavía | HU-10 |
-| Motor: deduplicación | ✅ | HU-11 |
-| Motor: marca de agua | ✅ | HU-12 |
-| Infraestructura Pub/Sub en Terraform | ✅ código; sin desplegar | HU-13 |
-| Consumidor a BigQuery Raw | ⏳ | HU-14 |
-| Estado vivo en Firestore | ⏳ | HU-15 |
-| Contrato formal y repositorio de inválidos | ✅ | HU-16 |
-| Reglas de calidad sobre lo ingerido | ⏳ | HU-17 |
+| Componente | Estado | Historia | Tablero |
+|---|---|---|---|
+| Generador de eventos de partido | ✅ | HU-8 | H-001 |
+| Generador de cuotas | ✅ | HU-9 | H-002 |
+| Publicación hacia Pub/Sub | ✅ código; sin broker vivo todavía | HU-10 | H-003 |
+| Motor: deduplicación | ✅ | HU-11 | H-004 |
+| Motor: marca de agua | ✅ | HU-12 | H-005 |
+| Infraestructura Pub/Sub en Terraform | ✅ código; sin desplegar | HU-13 | H-006 |
+| Consumidor a BigQuery Raw | ⏳ | HU-14 | H-007 |
+| Estado vivo en Firestore | ⏳ | HU-15 | H-008 |
+| Contrato formal y repositorio de inválidos | ✅ | HU-16 | H-009 |
+| Reglas de calidad sobre lo ingerido | ⏳ | HU-17 | H-010 |
+| Trazabilidad de las señales | ⏳ | HU-18 | H-011 |
+
+El tablero numera las mismas historias con un desfase de siete (`H-00N` es
+`HU-(N+7)`). El código y los commits usan `HU-N`, que es la numeración con la que
+nació el repositorio; esta columna es la única traducción entre ambas, para que
+nadie tenga que deducirla.
 
 ---
 
