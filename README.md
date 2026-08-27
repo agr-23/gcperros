@@ -75,6 +75,10 @@ gcperros-quality --stream match --in partido.jsonl --report calidad.json
 
 # De dónde sale un número: qué eventos lo formaron y qué modelo lo calculó
 gcperros-trace --in partido.jsonl --indicator total_xg --scope HOME
+
+# Capa histórica Raw: persiste cada mensaje sin transformar (--dry-run lee de
+# un fichero en vez de una suscripción, y escribe en memoria en vez de BigQuery)
+gcperros-load-raw --dry-run --stream match --in partido.jsonl
 ```
 
 `gcperros-validate` es un filtro: escribe los mensajes conformes en la salida
@@ -116,7 +120,7 @@ engine.watermark_stats.timeliness  # proporción aplicada dentro de plazo
 | Motor: deduplicación | ✅ | HU-11 | H-004 |
 | Motor: marca de agua | ✅ | HU-12 | H-005 |
 | Infraestructura Pub/Sub en Terraform | ✅ código; sin desplegar | HU-13 | H-006 |
-| Consumidor a BigQuery Raw | ⏳ | HU-14 | H-007 |
+| Consumidor a BigQuery Raw | ✅ código; sin desplegar | HU-14 | H-007 |
 | Estado vivo en Firestore | ⏳ | HU-15 | H-008 |
 | Contrato formal y repositorio de inválidos | ✅ | HU-16 | H-009 |
 | Reglas de calidad sobre lo ingerido | ✅ | HU-17 | H-010 |

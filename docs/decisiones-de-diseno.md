@@ -591,3 +591,100 @@ idénticas por construcción. Se deja fuera a propósito: el mapeo de evento a
 indicador vive hoy junto a los contadores del motor, donde no puede divergir de
 ellos, y duplicarlo en el plano batch reintroduciría exactamente el riesgo que
 esa cercanía evita. Merece decidirse aparte.
+
+---
+
+## 10. Cargador de la capa Raw (HU-14)
+
+### Por qué el cargador no deduplica ni interpreta `attrs`
+
+Es la decisión que más se presta a la confusión, porque el proyecto ya tiene
+un deduplicador (HU-11) y sería tentador reutilizarlo aquí. No se hace, y es
+deliberado: la capa Raw existe para responder a una pregunta distinta de la
+que responde el estado vivo del motor.
+
+El motor mantiene el estado *correcto* de un partido en curso —sin
+repeticiones, en orden cronológico— porque de eso depende un indicador en
+vivo. La capa Raw existe para poder reconstruir **qué pasó exactamente en el
+broker**, repeticiones y desorden incluidos, algo que el propio README declara
+premisa de diseño: *"la entrega del broker es at-least-once y sin orden"*. Si
+el cargador dedujera por `event_id` antes de guardar, la capa Raw dejaría de
+poder responder preguntas como "¿cuántas veces entregó el broker este
+mensaje?" o "¿cuánto tardó la segunda entrega respecto a la primera?" —
+exactamente el tipo de pregunta que una capa histórica está para sostener, y
+que una copia ya limpiada no puede.
+
+Interpretar `attrs` tendría el mismo problema en otra forma: la tabla Raw
+declara `payload STRING` y no columnas por campo del contrato a propósito.
+Abrir `attrs` para promover alguno de sus campos a columna sería tomar hoy una
+decisión de esquema que un cambio de `contract_version` (regla 7 de
+`CONTRIBUTING.md`) podría volver incorrecta mañana, y la tabla Raw es
+justamente la que no debe romperse cuando el contrato evoluciona: es su
+capacidad de reproceso completo la que permite reconstruir cualquier capa
+derivada bajo el contrato que sea.
+
+### El orden que sostiene la promesa de "sin pérdida"
+
+Extraer, persistir y **después** confirmar, en ese orden y no en otro. Es la
+misma lógica que ya aplica `gcperros.governance.gate` al validar antes de
+deduplicar: cada paso descarta un riesgo que el siguiente ya no tiene que
+correr. Confirmar antes de escribir dejaría una ventana en la que un fallo de
+BigQuery —cuota agotada, tabla no encontrada, lo que sea— perdería el mensaje
+en silencio: Pub/Sub ya lo daría por entregado y jamás lo reintentaría. Con el
+orden actual, un fallo de escritura dispara `SinkError`, el lote **no** se
+confirma, y el broker lo reentrega en el siguiente sondeo. La historia pide
+"sin pérdida", y esta es la única forma de sostenerlo frente a un fallo
+transitorio sin inventar un mecanismo de reintento propio.
+
+### `insert_rows_json` con `row_ids`, y qué NO resuelve
+
+El adaptador real (`loading/bigquery.py`) pasa el `message_id` de cada
+registro como `row_id` del streaming insert. BigQuery usa esa columna para una
+deduplicación de mejor esfuerzo, acotada a una ventana corta. Se activa a
+propósito, pero conviene ser preciso sobre su alcance: protege contra que el
+**propio cargador** duplique una fila si reintenta un lote que en realidad sí
+se había insertado (un timeout de red tras un `insert_rows_json` exitoso, por
+ejemplo). No protege, ni pretende hacerlo, contra que Pub/Sub entregue el
+mismo mensaje dos veces con más separación temporal: esa repetición sí produce
+dos filas, y es correcto que lo haga, por la razón de la primera sección de
+este apartado.
+
+### Pull síncrono en vez de `StreamingPull`
+
+`PubSubPullSubscriber` sondea por lotes (`client.pull`) en vez de mantener una
+conexión de streaming abierta. La razón es operativa, no de rendimiento: la
+historia describe un consumidor mínimo, y un proceso que sondea es más
+sencillo de desplegar como trabajo programado (Cloud Scheduler + Cloud Run
+Job, o un cron sobre una VM) que uno que necesita permanecer vivo. El costo es
+más latencia entre sondeos —aceptable para una capa histórica, que no sirve
+ningún indicador en vivo—, y `run_forever` en `raw_loader.py` deja la puerta
+abierta a operarlo como servicio continuo el día que convenga, sin cambiar el
+protocolo de extracción.
+
+### Por qué la tabla se particiona por `loaded_at` y no por `event_time`
+
+El registro trae tres marcas de tiempo candidatas: `publish_time` (cuándo lo
+aceptó el broker), `event_time` (dentro de `payload`, sin abrir) y `loaded_at`
+(cuándo lo escribió el cargador). Sólo la última es estable frente a un
+reproceso: si el mismo partido se vuelve a publicar meses después para
+depurar el motor, `event_time` seguiría señalando la fecha original del
+partido sintético y las filas nuevas caerían en particiones viejas, mezclando
+dos ejecuciones en la misma partición. `loaded_at` en cambio refleja siempre
+cuándo *esta* fila entró a la tabla, que es la pregunta que la partición está
+para responder: acotar el costo de una consulta reciente sin tener que abrir
+`payload`.
+
+### Protocolos, no clientes concretos
+
+`PullSubscriber` y `RawSink` repiten deliberadamente la forma de `Transport`
+(`publishing/transport.py`) e `InvalidEventStore`
+(`governance/quarantine.py`): un protocolo mínimo más un doble en memoria. La
+razón es la misma en los tres sitios y ya está documentada donde vive cada
+uno — se resume aquí para no tener que ir a buscarla: la historia exige un
+comportamiento ante un fallo concreto del colaborador externo (aquí, que
+escribir en BigQuery falle a mitad de sondeo), y ese fallo no se puede
+provocar a voluntad contra el servicio real. Con el protocolo inyectado, la
+prueba lo provoca exactamente cuando quiere, y el adaptador real
+(`loading/pubsub.py`, `loading/bigquery.py`) queda tan delgado que ambos
+quedan fuera de la medición de cobertura, igual que `publishing/pubsub.py`.
+

@@ -20,6 +20,10 @@ dependencies = []
 # necesitan, y quien solo produzca ficheros no tiene por qué arrastrarlo.
 pubsub = ["google-cloud-pubsub>=2.20"]
 
+# Cliente de BigQuery. Lo necesita únicamente el cargador de la capa Raw
+# (HU-14); el resto del proyecto no depende de él, igual que con Pub/Sub.
+bigquery = ["google-cloud-bigquery>=3.20"]
+
 dev = [
   "pytest>=8.0",
   "ruff>=0.8",
@@ -28,6 +32,7 @@ dev = [
   "pre-commit>=4.0",
   "pytest-cov>=6.0",
   "google-cloud-pubsub>=2.20",
+  "google-cloud-bigquery>=3.20",
 ]
 
 [project.scripts]
@@ -37,6 +42,7 @@ gcperros-publish = "gcperros.publishing.cli:main"
 gcperros-validate = "gcperros.governance.cli:main"
 gcperros-quality = "gcperros.governance.cli:quality_main"
 gcperros-trace = "gcperros.governance.cli:trace_main"
+gcperros-load-raw = "gcperros.loading.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gcperros"]
@@ -86,6 +92,9 @@ ignore = [
 # rompería esa propiedad.
 "src/gcperros/publishing/cli.py" = ["PLC0415"]
 "src/gcperros/publishing/pubsub.py" = ["PLC0415"]
+"src/gcperros/loading/cli.py" = ["PLC0415"]
+"src/gcperros/loading/pubsub.py" = ["PLC0415"]
+"src/gcperros/loading/bigquery.py" = ["PLC0415"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -107,6 +116,13 @@ files = ["src", "tests"]
 module = ["google.*"]
 ignore_missing_imports = true
 
+# `google.cloud.bigquery.Client.close` llega sin anotar en los marcadores de
+# tipo del cliente. Se acota la excepción al único módulo que lo invoca
+# (HU-14) en vez de relajar `disallow_untyped_calls` para todo el proyecto.
+[[tool.mypy.overrides]]
+module = ["gcperros.loading.bigquery"]
+disallow_untyped_calls = false
+
 ###############################################################################
 # Pytest
 ###############################################################################
@@ -125,7 +141,7 @@ source = ["gcperros"]
 # un broker delante, y no hay forma honesta de cubrirlo en la integración
 # continua. Está escrito para ser trivial justamente por eso — toda la lógica
 # que sí se puede probar vive en `publisher.py`.
-omit = ["*/publishing/pubsub.py"]
+omit = ["*/publishing/pubsub.py", "*/loading/pubsub.py", "*/loading/bigquery.py"]
 
 [tool.coverage.report]
 # Se excluyen las líneas que sólo se recorren sin la librería cliente instalada
