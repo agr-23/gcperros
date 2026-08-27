@@ -501,3 +501,93 @@ informe de esa pasada. No es un script que alguien tiene que acordarse de
 ejecutar sobre datos ya guardados: es el propio camino del dato el que produce la
 medición. Un paso del pipeline lo ejecuta con `--strict` sobre el flujo de
 referencia, de modo que una regresión de calidad rompe la construcción.
+
+---
+
+## 9. Trazabilidad de los indicadores
+
+### Qué se traza, y qué no
+
+La historia habla de trazar **señales**. El proyecto no tiene ninguna: la de
+discrepancia entre mercados es la HU-19, que el código menciona en siete sitios
+como trabajo futuro y que **no tiene historia asignada en el tablero**. Trazar
+algo que nadie va a construir habría sido escribir un mecanismo sin sujeto.
+
+Lo que se traza son los indicadores que el motor sí produce, que además es lo que
+cualquier señal futura va a consumir. Cuando la señal exista, declarar su linaje
+es añadir una entrada a `MODELS_BY_INDICATOR` y plegar los identificadores que la
+formaron: el mecanismo ya está montado.
+
+### Una huella verificable en lugar de la lista de identificadores
+
+Guardar los `event_id` completos no escala —1.200 eventos por partido, y la
+temporada no está acotada—. Guardar solo un hash tampoco basta, porque por sí
+solo no permite comprobar nada contra el origen.
+
+La salida está en una premisa que el proyecto ya sostiene: **el pipeline es
+determinista y la capa Raw guarda el flujo sin transformar**. No hace falta
+almacenar el linaje entero; hace falta que **la re-derivación sea verificable**.
+Se reprocesa el partido, se vuelve a plegar la huella y se compara. Es el mismo
+mecanismo que las huellas SHA-256 congeladas de `tests/test_pipeline.py`, y
+cuesta memoria constante por indicador en lugar de lineal.
+
+Se conservan además tres identificadores en claro por indicador. No son el
+linaje: son una muestra, para poder comprobar a mano contra la capa Raw sin
+reprocesar el partido entero.
+
+### El pliegue conmuta, y no es comodidad
+
+La huella se acumula **sumando** las huellas individuales, de modo que no depende
+del orden de llegada.
+
+Es coherencia, no atajo. La sección 3 justifica el desempate entre eventos del
+mismo instante diciendo que *"los indicadores son recuentos y sumas, que
+conmutan, de modo que el desempate no altera el estado"*. Si el linaje **no**
+conmutara, introduciría una dependencia del orden que el propio indicador no
+tiene: el mismo partido entregado en dos órdenes distintos daría el mismo número
+con dos procedencias distintas, y la auditoría no probaría nada.
+
+Verificado: con duplicados al 5 % y desorden inyectados a la vez, las huellas de
+los diecisiete indicadores son idénticas a las del flujo limpio.
+
+**No se usa un XOR**, que también conmuta: el XOR de un valor consigo mismo se
+cancela, así que un identificador repetido desaparecería de la huella sin dejar
+rastro. La deduplicación (HU-11) debería impedirlo, pero un mecanismo de
+auditoría no puede apoyarse en que otro no falle.
+
+Por lo mismo, la muestra son los identificadores **menores**, no los primeros:
+sin orden garantizado, «primero» no significaría lo mismo en dos ejecuciones.
+
+### Solo se estampa versión donde de verdad hay un modelo
+
+Contar goles no usa ningún modelo. Ponerle `xg-1.0.0` a un recuento haría el
+informe más uniforme y menos cierto, y quien lo audite acabaría desconfiando de
+todas las versiones al descubrir que una era decorativa. Hoy el único indicador
+del motor con modelo detrás es `total_xg`.
+
+### La versión del modelo no puede quedarse atrás
+
+Un número calculado con otros coeficientes tiene que poder distinguirse del
+anterior, así que `MODEL_VERSION` sube cuando el modelo cambia. Confiar en que
+alguien se acuerde no es un mecanismo: `tests/test_xg.py` y
+`tests/test_odds_math.py` congelan la huella de las **salidas** del modelo sobre
+una rejilla, no de sus constantes, para detectar también un cambio en la fórmula.
+Si la huella cambia, la prueba falla y obliga a subir la versión en el mismo
+commit.
+
+### Un indicador que vale cero también se explica
+
+La auditoría recorre los indicadores declarados, no los linajes acumulados. Cero
+tarjetas rojas es una respuesta legítima y su linaje es el conjunto vacío;
+omitirla dejaría un número visible sin procedencia, que es justo lo que esta
+historia persigue.
+
+### Mejora pendiente: el linaje del plano batch
+
+`core.stats.summarize_events` produce los mismos indicadores y **no** calcula
+linaje, así que la comparación streaming-contra-batch del OE-2 sigue siendo de
+valores y no de procedencias. Como el pliegue conmuta, añadirlo daría huellas
+idénticas por construcción. Se deja fuera a propósito: el mapeo de evento a
+indicador vive hoy junto a los contadores del motor, donde no puede divergir de
+ellos, y duplicarlo en el plano batch reintroduciría exactamente el riesgo que
+esa cercanía evita. Merece decidirse aparte.

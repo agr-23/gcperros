@@ -72,6 +72,9 @@ gcperros-validate --stream match --in partido.jsonl --invalid invalidos.jsonl
 
 # El informe de calidad de esa misma ingestión
 gcperros-quality --stream match --in partido.jsonl --report calidad.json
+
+# De dónde sale un número: qué eventos lo formaron y qué modelo lo calculó
+gcperros-trace --in partido.jsonl --indicator total_xg --scope HOME
 ```
 
 `gcperros-validate` es un filtro: escribe los mensajes conformes en la salida
@@ -117,7 +120,8 @@ engine.watermark_stats.timeliness  # proporción aplicada dentro de plazo
 | Estado vivo en Firestore | ⏳ | HU-15 | H-008 |
 | Contrato formal y repositorio de inválidos | ✅ | HU-16 | H-009 |
 | Reglas de calidad sobre lo ingerido | ✅ | HU-17 | H-010 |
-| Trazabilidad de las señales | ⏳ | HU-18 | H-011 |
+| Trazabilidad de los indicadores | ✅ | HU-18 | H-011 |
+| Señal de discrepancia entre mercados | ❌ sin historia asignada | HU-19 | — |
 
 El tablero numera las mismas historias con un desfase de siete (`H-00N` es
 `HU-(N+7)`). El código y los commits usan `HU-N`, que es la numeración con la que
@@ -131,7 +135,7 @@ nadie tenga que deducirla.
 ```
 src/gcperros/core/          Dominio compartido: contratos, esquema, campo, xG, cuotas
 src/gcperros/generators/    Generadores sintéticos e inyector de perturbaciones
-src/gcperros/governance/    Frontera de contrato, repositorio de inválidos y calidad
+src/gcperros/governance/    Frontera de contrato, inválidos, calidad y trazabilidad
 src/gcperros/engine/        Motor con estado: dedup, marca de agua, estado vivo
 src/gcperros/publishing/    Publicación hacia el broker
 tests/                      Unitarias por componente y de tubería completa

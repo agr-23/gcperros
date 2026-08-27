@@ -27,6 +27,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+#: Versión del modelo de mercado. Mismo papel que la de `xg.py`: acompaña a
+#: cualquier salida derivada de él para que se sepa qué la calculó.
+MODEL_VERSION = "odds-1.0.0"
+
 FULL_TIME_MINUTES = 90.0
 
 # Goles esperados por partido completo. El local marca más: la ventaja de campo

@@ -16,6 +16,13 @@ import math
 
 from gcperros.core import pitch
 
+#: Versión del modelo. Viaja con cada indicador que lo usa (HU-18): un xG
+#: calculado hoy tiene que poder distinguirse del mismo xG calculado con otros
+#: coeficientes, o el número deja de ser auditable. Tocar cualquier coeficiente
+#: obliga a subirla, y `tests/test_xg.py` lo comprueba con una huella congelada
+#: en lugar de confiar en que alguien se acuerde.
+MODEL_VERSION = "xg-1.0.0"
+
 # Coeficientes del modelo logístico. Calibrados para reproducir los siguientes
 # valores de referencia en tiro central de juego abierto, que son los que
 # verifica `tests/test_xg.py`:

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
 from gcperros.core.odds import (
+    MODEL_VERSION,
     MatchState,
     implied_probabilities,
     match_result_probabilities,
@@ -143,3 +146,35 @@ def test_a_bigger_margin_means_worse_prices() -> None:
 
     for outcome in probabilities:
         assert expensive[outcome] < cheap[outcome]
+
+
+###############################################################################
+# Versión del modelo (HU-18)
+###############################################################################
+
+#: Huella de las salidas del modelo de mercado. Mismo papel que la de `xg.py`:
+#: si cambia, `MODEL_VERSION` sube en el mismo commit.
+MODEL_FINGERPRINT = "2602a5ba8b6c0e1bf449359b25020c1a6b60f9f27ef3e2772b8660b0c4ea5814"
+
+
+def _model_fingerprint() -> str:
+    valores: list[str] = []
+    for minute in (0, 15, 30, 45, 60, 75, 89):
+        for home in range(3):
+            for away in range(3):
+                for reds in range(2):
+                    estado = MatchState(minute, home, away, reds, 0)
+                    valores.extend(f"{v:.6f}" for v in match_result_probabilities(estado).values())
+                    valores.extend(f"{v:.6f}" for v in total_goals_probabilities(estado).values())
+    return hashlib.sha256("|".join(valores).encode("utf-8")).hexdigest()
+
+
+def test_the_model_has_not_drifted_without_saying_so() -> None:
+    assert _model_fingerprint() == MODEL_FINGERPRINT, (
+        "el modelo de mercado cambió. Si es a propósito, sube MODEL_VERSION y "
+        "actualiza esta huella en el mismo commit, explicando el motivo."
+    )
+
+
+def test_the_model_declares_a_version() -> None:
+    assert MODEL_VERSION.strip()

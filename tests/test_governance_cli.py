@@ -344,3 +344,68 @@ def test_rejected_messages_are_archived_during_the_quality_run(
     )
 
     assert len(invalid.read_text(encoding="utf-8").splitlines()) == 3
+
+
+###############################################################################
+# gcperros-trace (HU-18)
+###############################################################################
+
+
+def test_a_single_indicator_can_be_explained_on_demand(
+    match_file: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = governance_cli.trace_main(
+        ["--in", str(match_file), "--indicator", "total_xg", "--scope", "HOME"]
+    )
+
+    explanation = json.loads(capsys.readouterr().out)
+
+    assert code == 0
+    assert explanation["indicator"] == "total_xg"
+    assert explanation["model_versions"] == {"xg": "xg-1.0.0"}
+    assert explanation["lineage"]["event_count"] > 0
+
+
+def test_without_an_indicator_it_audits_everything(match_file: Path, tmp_path: Path) -> None:
+    out = tmp_path / "linaje.json"
+
+    governance_cli.trace_main(["--in", str(match_file), "--out", str(out)])
+
+    trail = json.loads(out.read_text(encoding="utf-8"))
+
+    assert len(trail["explanations"]) == 17
+    assert {e["scope"] for e in trail["explanations"]} == {"HOME", "AWAY", "*"}
+
+
+def test_an_indicator_without_a_team_is_refused(match_file: Path) -> None:
+    """Un indicador es de alguien: adivinar de quién daría una respuesta falsa."""
+    with pytest.raises(SystemExit):
+        governance_cli.trace_main(["--in", str(match_file), "--indicator", "goals"])
+
+
+def test_an_indicator_the_engine_does_not_produce_is_refused(match_file: Path) -> None:
+    with pytest.raises(SystemExit):
+        governance_cli.trace_main(
+            ["--in", str(match_file), "--indicator", "corners", "--scope", "HOME"]
+        )
+
+
+def test_a_team_that_never_played_is_refused(match_file: Path) -> None:
+    with pytest.raises(SystemExit):
+        governance_cli.trace_main(
+            ["--in", str(match_file), "--indicator", "goals", "--scope", "ATM"]
+        )
+
+
+def test_garbage_never_reaches_the_lineage(match_file: Path, tmp_path: Path) -> None:
+    """La frontera va delante también aquí: lo inválido no explica ningún número."""
+    dirty = tmp_path / "sucio.jsonl"
+    _corrupt(match_file, dirty)
+    out = tmp_path / "linaje.json"
+
+    governance_cli.trace_main(["--in", str(dirty), "--out", str(out)])
+
+    trail = json.loads(out.read_text(encoding="utf-8"))
+    (event_count,) = [e for e in trail["explanations"] if e["indicator"] == "event_count"]
+
+    assert event_count["lineage"]["event_count"] == 2

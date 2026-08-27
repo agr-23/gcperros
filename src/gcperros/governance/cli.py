@@ -18,6 +18,11 @@ rompería cualquier comparación byte a byte aguas abajo.
 informe de calidad de esa pasada. Es lo que convierte la calidad en una señal
 continua en lugar de una auditoría al final: se mide en el mismo acto de
 ingerir, no en un ejercicio aparte que alguien tiene que acordarse de ejecutar.
+
+``gcperros-trace`` explica de dónde sale un número: qué eventos lo formaron, qué
+modelo lo calculó y bajo qué contrato llegaron. Sin argumentos extra audita
+todos los indicadores del partido; con ``--indicator`` responde por uno solo,
+que es el «auditable a demanda» que pide la HU-18.
 """
 
 from __future__ import annotations
@@ -39,6 +44,7 @@ from gcperros.governance.quarantine import (
     InvalidEventStore,
     JsonlInvalidStore,
 )
+from gcperros.governance.traceability import audit, explain
 
 #: Nombre corto de cada flujo en la línea de comandos.
 STREAMS = ("match", "odds")
@@ -276,6 +282,94 @@ def quality_main(argv: list[str] | None = None) -> int:
     print(_describe(report), file=sys.stderr)
 
     return 1 if args.strict and not report.passed else 0
+
+
+###############################################################################
+# gcperros-trace
+###############################################################################
+
+
+def build_trace_parser() -> argparse.ArgumentParser:
+    """Construye el analizador de argumentos de la auditoría de indicadores."""
+    parser = argparse.ArgumentParser(
+        prog="gcperros-trace",
+        description=(
+            "Explica de dónde sale un indicador: qué eventos lo formaron, qué "
+            "modelo lo calculó y bajo qué versión del contrato."
+        ),
+    )
+    parser.add_argument(
+        "--in",
+        dest="source",
+        type=Path,
+        help="Fichero de entrada. Si se omite, lee de la entrada estándar.",
+    )
+    parser.add_argument(
+        "--invalid",
+        type=Path,
+        help="Repositorio de eventos inválidos.",
+    )
+    parser.add_argument(
+        "--indicator",
+        help="Indicador a explicar. Si se omite, audita todos.",
+    )
+    parser.add_argument(
+        "--scope",
+        help="Equipo del indicador. Obligatorio junto a --indicator.",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        help="Dónde escribir el informe JSON. Por defecto, la salida estándar.",
+    )
+    return parser
+
+
+def _ingest(lines: list[str], store: InvalidEventStore) -> MatchEngine:
+    """Lleva el flujo de partido por la frontera y el motor."""
+    gate = match_event_gate(store)
+    engine = MatchEngine()
+    try:
+        for line in lines:
+            event = gate.admit(line)
+            if event is not None:
+                engine.process(event)
+        engine.flush()
+    finally:
+        gate.close()
+    return engine
+
+
+def trace_main(argv: list[str] | None = None) -> int:
+    """Punto de entrada de la auditoría de indicadores.
+
+    Returns:
+        ``0`` si se pudo explicar lo pedido.
+
+    Raises:
+        SystemExit: Si se pide un indicador sin decir de qué equipo, o uno que
+            el motor no produce.
+    """
+    args = build_trace_parser().parse_args(argv)
+
+    if args.indicator and not args.scope:
+        raise SystemExit("--indicator necesita --scope: un indicador es de un equipo")
+
+    engine = _ingest(_read_lines(args.source), _build_store(args.invalid))
+
+    if args.indicator:
+        try:
+            payload = explain(engine.state, args.indicator, args.scope).to_json()
+        except (AttributeError, KeyError) as error:
+            raise SystemExit(f"no hay indicador {args.indicator!r} para {args.scope!r}") from error
+        print(f"explicado {args.indicator} de {args.scope}", file=sys.stderr)
+    else:
+        trail = audit(engine.state)
+        payload = trail.to_json()
+        print(f"auditados {len(trail.explanations)} indicadores", file=sys.stderr)
+
+    _write(payload + "\n", args.out)
+    return 0
 
 
 if __name__ == "__main__":

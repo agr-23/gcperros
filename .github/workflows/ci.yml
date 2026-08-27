@@ -107,6 +107,11 @@ jobs:
           gcperros-quality --stream match --in primera.jsonl --strict > /dev/null
           gcperros-quality --stream odds --in cuotas-a.jsonl --strict > /dev/null
 
+      # La HU-18 promete que cualquier indicador se puede explicar a demanda.
+      # Aquí se comprueba el cableado de punta a punta, sin broker.
+      - name: Trazabilidad del flujo de referencia
+        run: gcperros-trace --in primera.jsonl > /dev/null
+
       # El modo de ensayo recorre el camino completo de publicación sin salir
       # del proceso: verifica el cableado sin broker ni credenciales.
       - name: Publicación en modo de ensayo
