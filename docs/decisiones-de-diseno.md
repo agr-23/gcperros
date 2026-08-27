@@ -418,3 +418,86 @@ lo detecta; por eso está escrito aquí.
 Un `v2` que nadie acordó **no se acepta**: la versión es un valor cerrado del
 esquema, así que un mensaje que se declare de una versión desconocida se rechaza
 en la frontera en lugar de procesarse a medias.
+
+---
+
+## 8. Marco de calidad
+
+### Tres dimensiones, no las seis del catálogo
+
+Exactitud, consistencia y validez quedan fuera de este sprint. No por descuido:
+son las que **no se pueden medir con lo que el pipeline ya observa**, y una
+dimensión sin forma de medirla es una casilla en un informe, no una garantía.
+
+Las tres que sí entran ya tenían sus contadores repartidos por el código
+—`GateStats`, `DedupStats`, `WatermarkStats`—. Lo que faltaba no era el número,
+era **el umbral**: sin él se podía describir la calidad pero no afirmar que
+estuviera bien ni mal.
+
+### Dónde se mide cada dimensión, y por qué ahí
+
+Es la decisión de fondo de esta historia, y las dos caras del mismo error:
+
+- **Completitud sobre lo entregado, no sobre lo admitido.** Medir solo lo que
+  entró daría siempre el cien por cien, y lo daría por construcción: lo
+  incompleto lo rechazó la propia frontera (HU-16). Una regla así estaría
+  midiendo su propio filtro.
+- **Unicidad sobre la entrega, no después de deduplicar.** Contar identificadores
+  ya deduplicados daría siempre uno. Lo que se mide es el flujo tal como lo
+  entregó el broker, que es donde la repetición ocurre.
+
+Es la misma forma del argumento que sostiene que la posesión sea un resultado y
+no un parámetro (sección 1): **un indicador que sale bien porque se fijó de
+antemano no prueba nada.**
+
+### No medido no es lo mismo que aprobado
+
+El flujo de cuotas no pasa por el motor, así que no tiene deduplicación ni marca
+de agua. El informe **nombra** esas dimensiones como no medidas en lugar de
+omitirlas. Omitirlas dejaría un informe en verde que parecería decir que todo se
+comprobó, que es peor que no tener informe.
+
+### Los umbrales: dos medidos y uno que no
+
+El proyecto exige que un umbral se sostenga en evidencia. Dos la tienen y el
+tercero no, y conviene decirlo antes de que lo pregunten:
+
+| Dimensión | Umbral | De dónde sale |
+|---|---|---|
+| Oportunidad | 0,95 | **Declarado** por el proyecto en el OE-2. Es el mismo que sostiene el margen de 10 s de la sección 3. Observado: 0,9992 – 1,0000 |
+| Unicidad | 0,90 | **Medido.** Con el inyector de duplicados en su 5 % por defecto —ya exagerado frente a Pub/Sub— ocho partidos dan entre 0,942 y 0,955 |
+| Completitud | 0,99 | **Política, no medido.** Con los generadores del propio proyecto no hay rechazos, así que no hay nada que observar todavía |
+
+El umbral de unicidad queda deliberadamente por debajo del peor caso observado:
+**acota lo anormal, no la adversidad que el proyecto se autoimpone**. Si un día
+salta, es que el broker se comporta peor que el escenario de estrés, y eso sí es
+noticia.
+
+El de completitud se recalibra cuando exista ingestión real (HU-14). Hasta
+entonces es una política declarada, y `tests/test_quality.py` deja constancia de
+cuál es la evidencia de cada uno para que nadie los endurezca sin aportar la
+suya.
+
+### El informe guarda numerador y denominador
+
+Nueve de diez y novecientos de mil dan el mismo 0,9 y no merecen la misma
+confianza. Publicar solo la proporción perdería esa diferencia justo cuando más
+importa: al decidir si un fallo es una señal o una casualidad.
+
+Guarda además los **motivos de rechazo**, que no son una medición sino el
+diagnóstico. Saber que la completitud cayó no dice qué arreglar; saber que fueron
+cuarenta `missing_field` en `attrs.xg`, sí.
+
+### El informe lleva marca temporal
+
+Sin ella no hay serie, y sin serie la calidad vuelve a ser una auditoría suelta
+al final del semestre, que es exactamente lo que la historia pide evitar. El
+reloj se inyecta, por el mismo motivo que en el repositorio de inválidos.
+
+### Se mide en el mismo acto de ingerir
+
+`gcperros-quality` recorre la ingestión completa —frontera y motor— y emite el
+informe de esa pasada. No es un script que alguien tiene que acordarse de
+ejecutar sobre datos ya guardados: es el propio camino del dato el que produce la
+medición. Un paso del pipeline lo ejecuta con `--strict` sobre el flujo de
+referencia, de modo que una regresión de calidad rompe la construcción.

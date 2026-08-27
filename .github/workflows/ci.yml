@@ -99,6 +99,14 @@ jobs:
           gcperros-validate --stream match --in primera.jsonl --strict > /dev/null
           gcperros-validate --stream odds --in cuotas-a.jsonl --strict > /dev/null
 
+      # La HU-17 mide la calidad en el mismo acto de ingerir. Con --strict una
+      # regresión de calidad rompe la construccion, en vez de descubrirse en una
+      # auditoría al final.
+      - name: Informe de calidad del flujo de referencia
+        run: |
+          gcperros-quality --stream match --in primera.jsonl --strict > /dev/null
+          gcperros-quality --stream odds --in cuotas-a.jsonl --strict > /dev/null
+
       # El modo de ensayo recorre el camino completo de publicación sin salir
       # del proceso: verifica el cableado sin broker ni credenciales.
       - name: Publicación en modo de ensayo

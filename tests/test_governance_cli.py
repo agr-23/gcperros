@@ -219,3 +219,128 @@ def test_the_stream_is_mandatory() -> None:
 def test_an_unknown_stream_is_rejected() -> None:
     with pytest.raises(SystemExit):
         governance_cli.main(["--stream", "quiniela"])
+
+
+###############################################################################
+# gcperros-quality (HU-17)
+###############################################################################
+
+
+def test_a_clean_match_passes_every_rule(match_file: Path, tmp_path: Path) -> None:
+    report_file = tmp_path / "calidad.json"
+
+    code = governance_cli.quality_main(
+        ["--stream", "match", "--in", str(match_file), "--report", str(report_file), "--strict"]
+    )
+
+    report = json.loads(report_file.read_text(encoding="utf-8"))
+
+    assert code == 0
+    assert report["passed"] is True
+    assert {m["dimension"] for m in report["measurements"]} == {
+        "completeness",
+        "uniqueness",
+        "timeliness",
+    }
+
+
+def test_the_odds_stream_can_only_be_measured_on_completeness(
+    odds_file: Path, tmp_path: Path
+) -> None:
+    """No pasa por el motor, y lo que no se midió se dice en vez de aprobarse."""
+    report_file = tmp_path / "calidad.json"
+
+    governance_cli.quality_main(
+        ["--stream", "odds", "--in", str(odds_file), "--report", str(report_file)]
+    )
+
+    report = json.loads(report_file.read_text(encoding="utf-8"))
+
+    assert [m["dimension"] for m in report["measurements"]] == ["completeness"]
+    assert report["unmeasured"] == ["uniqueness", "timeliness"]
+
+
+def test_the_report_says_which_causes_ate_the_completeness(
+    match_file: Path, tmp_path: Path
+) -> None:
+    dirty = tmp_path / "sucio.jsonl"
+    _corrupt(match_file, dirty)
+    report_file = tmp_path / "calidad.json"
+
+    governance_cli.quality_main(
+        ["--stream", "match", "--in", str(dirty), "--report", str(report_file)]
+    )
+
+    report = json.loads(report_file.read_text(encoding="utf-8"))
+
+    assert set(report["rejections_by_rule"]) == {
+        "malformed_json",
+        "missing_field",
+        "not_an_object",
+    }
+
+
+def test_a_stream_below_the_threshold_fails_under_strict(match_file: Path, tmp_path: Path) -> None:
+    """Es lo que permite usar el informe como puerta y no solo como lectura."""
+    lines = match_file.read_text(encoding="utf-8").splitlines()
+    ruined = tmp_path / "arruinado.jsonl"
+    ruined.write_text("\n".join([*lines[:5], "{basura", "[1]", "null"]) + "\n", encoding="utf-8")
+
+    arguments = ["--stream", "match", "--in", str(ruined), "--report", str(tmp_path / "c.json")]
+
+    assert governance_cli.quality_main(arguments) == 0
+    assert governance_cli.quality_main([*arguments, "--strict"]) == 1
+
+
+def test_the_scope_can_be_named(match_file: Path, tmp_path: Path) -> None:
+    report_file = tmp_path / "calidad.json"
+
+    governance_cli.quality_main(
+        [
+            "--stream",
+            "match",
+            "--in",
+            str(match_file),
+            "--report",
+            str(report_file),
+            "--scope",
+            "jornada-3",
+        ]
+    )
+
+    assert json.loads(report_file.read_text(encoding="utf-8"))["scope"] == "jornada-3"
+
+
+def test_the_report_goes_to_stdout_and_the_summary_to_stderr(
+    match_file: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    governance_cli.quality_main(["--stream", "match", "--in", str(match_file)])
+
+    captured = capsys.readouterr()
+
+    assert json.loads(captured.out)["passed"] is True
+    assert "calidad=PASA" in captured.err
+
+
+def test_rejected_messages_are_archived_during_the_quality_run(
+    match_file: Path, tmp_path: Path
+) -> None:
+    """El informe mide; el repositorio conserva la evidencia de cada rechazo."""
+    dirty = tmp_path / "sucio.jsonl"
+    _corrupt(match_file, dirty)
+    invalid = tmp_path / "invalidos.jsonl"
+
+    governance_cli.quality_main(
+        [
+            "--stream",
+            "match",
+            "--in",
+            str(dirty),
+            "--invalid",
+            str(invalid),
+            "--report",
+            str(tmp_path / "c.json"),
+        ]
+    )
+
+    assert len(invalid.read_text(encoding="utf-8").splitlines()) == 3

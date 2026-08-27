@@ -69,6 +69,9 @@ gcperros-publish --seed 20260826 --dry-run
 
 # La frontera de contrato: deja pasar lo conforme y aísla lo demás con su causa
 gcperros-validate --stream match --in partido.jsonl --invalid invalidos.jsonl
+
+# El informe de calidad de esa misma ingestión
+gcperros-quality --stream match --in partido.jsonl --report calidad.json
 ```
 
 `gcperros-validate` es un filtro: escribe los mensajes conformes en la salida
@@ -113,7 +116,7 @@ engine.watermark_stats.timeliness  # proporción aplicada dentro de plazo
 | Consumidor a BigQuery Raw | ⏳ | HU-14 | H-007 |
 | Estado vivo en Firestore | ⏳ | HU-15 | H-008 |
 | Contrato formal y repositorio de inválidos | ✅ | HU-16 | H-009 |
-| Reglas de calidad sobre lo ingerido | ⏳ | HU-17 | H-010 |
+| Reglas de calidad sobre lo ingerido | ✅ | HU-17 | H-010 |
 | Trazabilidad de las señales | ⏳ | HU-18 | H-011 |
 
 El tablero numera las mismas historias con un desfase de siete (`H-00N` es
@@ -128,7 +131,7 @@ nadie tenga que deducirla.
 ```
 src/gcperros/core/          Dominio compartido: contratos, esquema, campo, xG, cuotas
 src/gcperros/generators/    Generadores sintéticos e inyector de perturbaciones
-src/gcperros/governance/    Frontera de contrato y repositorio de eventos inválidos
+src/gcperros/governance/    Frontera de contrato, repositorio de inválidos y calidad
 src/gcperros/engine/        Motor con estado: dedup, marca de agua, estado vivo
 src/gcperros/publishing/    Publicación hacia el broker
 tests/                      Unitarias por componente y de tubería completa
