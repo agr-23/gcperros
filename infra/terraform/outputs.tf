@@ -40,3 +40,13 @@ output "engine_push_subscriptions_enabled" {
   description = "Indica si las suscripciones push hacia el motor están activas."
   value       = local.push_enabled
 }
+
+output "raw_dataset_id" {
+  description = "Dataset de BigQuery que contiene las tablas Raw (HU-14)."
+  value       = google_bigquery_dataset.raw.dataset_id
+}
+
+output "raw_tables" {
+  description = "Flujo -> ID completo de su tabla Raw (proyecto.dataset.tabla)."
+  value       = { for name, table in google_bigquery_table.raw : name => table.id }
+}

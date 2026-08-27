@@ -22,6 +22,18 @@ topic_message_retention_duration = "86400s"
 # allowed_persistence_regions = ["us-central1"]
 
 ###############################################################################
+# Capa histórica Raw en BigQuery (HU-14).
+###############################################################################
+
+raw_dataset_id       = "gcperros_raw"
+raw_dataset_location = "US"
+
+# null = las particiones no expiran nunca (premisa de la capa histórica).
+# raw_partition_expiration_ms = 2592000000  # 30 días, sólo para un ambiente desechable
+
+raw_table_deletion_protection = true
+
+###############################################################################
 # Motor analítico (Cloud Run) — aún no desplegado.
 #
 # Mientras estas dos variables sigan comentadas, `terraform apply` crea

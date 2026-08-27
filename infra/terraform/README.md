@@ -1,17 +1,20 @@
-# Infraestructura — Capa de ingestión (Pub/Sub)
+# Infraestructura — Capa de ingestión (Pub/Sub) y capa histórica Raw (BigQuery)
 
-Definición declarativa de la **capa de ingestión** de la arquitectura de cinco
-capas: los dos topics de Pub/Sub que desacoplan a los generadores sintéticos del
-motor de procesamiento, con sus suscripciones, sus topics de mensajes muertos y
-las identidades que pueden publicar y consumir.
+Definición declarativa de la **capa de ingestión** y de la **capa histórica
+Raw** de la arquitectura de cinco capas: los dos topics de Pub/Sub que
+desacoplan a los generadores sintéticos del motor de procesamiento, con sus
+suscripciones, sus topics de mensajes muertos y las identidades que pueden
+publicar y consumir; y el dataset de BigQuery con una tabla por flujo donde el
+cargador de HU-14 persiste cada mensaje sin transformar.
 
-Corresponde a la **HU-13** (*"Infraestructura que es declarada, no clickeada"*) y
-habilita la **HU-10** (publicación de los generadores) y la **HU-14** (consumidor
-que persiste en la capa Raw de BigQuery).
+Corresponde a la **HU-13** (*"Infraestructura que es declarada, no clickeada"*)
+y habilita la **HU-10** (publicación de los generadores) y la **HU-14**
+(consumidor que persiste en la capa Raw de BigQuery, cuyo dataset y tablas
+declara `bigquery.tf`).
 
-> Cloud Run, Firestore y los datasets de BigQuery completan la HU-13 y se
-> agregan en las historias que los introducen. Este directorio se despliega
-> solo y no depende de ellos: ver *Qué falta* al final.
+> Cloud Run y Firestore completan la HU-13 y se agregan en las historias que
+> los introducen. Este directorio se despliega solo y no depende de ellos: ver
+> *Qué falta* al final.
 
 ---
 
@@ -36,6 +39,19 @@ Más tres identidades de privilegio mínimo:
 | `gcperros-ps-invoker` | `roles/run.invoker` sobre el motor | Pub/Sub, para firmar el token OIDC del push |
 
 La tercera solo se crea cuando el motor está desplegado.
+
+Y, para la capa histórica Raw:
+
+| Recurso | Nombre | Para qué |
+|---|---|---|
+| Dataset de BigQuery | `gcperros_raw` (configurable) | Contiene las dos tablas Raw |
+| Tabla | `match_events_raw` / `odds_updates_raw` | Una fila por mensaje entregado, sin transformar (HU-14) |
+
+Particionadas por `loaded_at` (marca de ingestión) sin expiración por defecto:
+la capa histórica existe para acumular desde el Sprint 1, no para rotar datos.
+`raw_loader` recibe `roles/bigquery.dataEditor` sobre el dataset y
+`roles/bigquery.jobUser` sobre el proyecto — lo mínimo para insertar filas por
+streaming.
 
 ---
 
@@ -104,10 +120,11 @@ terraform plan -out=tfplan                     # revisar SIEMPRE antes de aplica
 terraform apply tfplan
 ```
 
-Con `engine_push_endpoint` sin definir, el plan crea **12 recursos**: 2 topics,
-2 topics de dead letter, 4 suscripciones, 2 service accounts y las
-autorizaciones IAM correspondientes. No hay nada que facture mientras no se
-publiquen mensajes.
+Con `engine_push_endpoint` sin definir, el plan crea la capa de ingestión —2
+topics, 2 topics de dead letter, 4 suscripciones, 2 service accounts y sus
+autorizaciones IAM— más la capa histórica Raw —1 dataset, 2 tablas y sus
+permisos—. Nada de esto factura mientras no se publiquen ni se inserten
+mensajes.
 
 Salidas:
 
@@ -115,6 +132,8 @@ Salidas:
 terraform output topic_names
 terraform output subscriptions
 terraform output publisher_service_account
+terraform output raw_dataset_id
+terraform output raw_tables
 ```
 
 ---
@@ -132,6 +151,21 @@ gcloud pubsub subscriptions pull match-events-raw --auto-ack --limit=5
 # Lo mismo para el flujo de cuotas
 gcloud pubsub topics publish odds-updates --message='{"market":"1x2","home":2.10}'
 gcloud pubsub subscriptions pull odds-updates-raw --auto-ack --limit=5
+```
+
+### Cargar y verificar la capa Raw
+
+```bash
+# Suplanta la SA del cargador (ver "Publicar sin llaves JSON" más abajo, el
+# mismo mecanismo aplica con roles/iam.serviceAccountTokenCreator sobre
+# raw_loader_service_account) y ejecuta un lote:
+gcperros-load-raw --project TU_PROJECT_ID --stream match --max-messages 10
+
+# Confirmar que llegó, sin transformar:
+bq query --use_legacy_sql=false \
+  'SELECT message_id, stream, loaded_at, payload
+   FROM `TU_PROJECT_ID.gcperros_raw.match_events_raw`
+   ORDER BY loaded_at DESC LIMIT 5'
 ```
 
 ### Publicar sin llaves JSON
@@ -194,6 +228,12 @@ Lo que sí factura es la **retención**: `topic_message_retention_duration` est�
 en 24 h, suficiente para reproducir un partido con `seek` sin volver a
 publicarlo, y despreciable en almacenamiento.
 
+BigQuery tiene un nivel gratuito mensual de **10 GiB de almacenamiento activo**
+y **1 TiB de consultas**. Un partido genera del orden de 1 MB de eventos crudos
+más las cuotas asociadas: la capa Raw se mantiene igual de holgada dentro del
+nivel gratuito durante todo el semestre. El streaming insert que usa
+`gcperros-load-raw` no tiene costo aparte en el nivel actual de la API.
+
 ---
 
 ## 9. Qué falta para cerrar la HU-13
@@ -201,8 +241,8 @@ publicarlo, y despreciable en almacenamiento.
 | Pendiente | Historia | Qué hay que agregar |
 |---|---|---|
 | Servicio de Cloud Run del motor | HU-11 / HU-12 | Imagen en Artifact Registry, invocar `modules/cloud_run` y poner `engine_push_endpoint` en `terraform.tfvars` |
-| Datasets de BigQuery (Raw) | HU-14 | `bigquery.tf` + `bigquery.googleapis.com` en `apis.tf` |
 | Base de datos de Firestore | HU-15 | `firestore.tf` + `firestore.googleapis.com` en `apis.tf` |
 
-Los módulos `modules/cloud_run/` y `modules/cloud_storage/` están presentes y sin
+Los datasets de BigQuery (HU-14) ya están declarados en `bigquery.tf`. Los
+módulos `modules/cloud_run/` y `modules/cloud_storage/` están presentes y sin
 modificar, listos para invocarse cuando corresponda.

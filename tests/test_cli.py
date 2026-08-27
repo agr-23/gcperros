@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from gcperros.generators import cli as generators_cli
+from gcperros.loading import cli as loading_cli
 from gcperros.publishing import cli as publishing_cli
 
 SEED = ["--seed", "20260826"]
@@ -91,3 +92,48 @@ def test_only_lets_you_publish_one_stream(caplog: pytest.LogCaptureFixture) -> N
 def test_an_unknown_stream_is_rejected() -> None:
     with pytest.raises(SystemExit):
         publishing_cli.main([*SEED, "--dry-run", "--only", "corners"])
+
+
+###############################################################################
+# Cargador de la capa Raw (HU-14)
+###############################################################################
+
+
+def test_raw_loader_dry_run_persists_every_line(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    events = tmp_path / "partido.jsonl"
+    generators_cli.main([*SEED, "--out", str(events)])
+    line_count = len(events.read_text(encoding="utf-8").splitlines())
+
+    with caplog.at_level("INFO"):
+        exit_code = loading_cli.main(["--dry-run", "--stream", "match", "--in", str(events)])
+
+    assert exit_code == 0
+    summary = next(r for r in caplog.records if "extraídos" in r.message)
+    assert f"{line_count} extraídos" in summary.getMessage()
+    assert f"{line_count} persistidos" in summary.getMessage()
+    assert "0 sin confirmar" in summary.getMessage()
+
+
+def test_raw_loader_dry_run_needs_an_input_file() -> None:
+    with pytest.raises(SystemExit, match="--in"):
+        loading_cli.main(["--dry-run", "--stream", "match"])
+
+
+def test_raw_loader_dry_run_rejects_both_streams_at_once(tmp_path: Path) -> None:
+    events = tmp_path / "partido.jsonl"
+    generators_cli.main([*SEED, "--out", str(events)])
+
+    with pytest.raises(SystemExit, match="--stream match u odds"):
+        loading_cli.main(["--dry-run", "--in", str(events)])
+
+
+def test_raw_loader_loop_rejects_both_streams_at_once() -> None:
+    with pytest.raises(SystemExit, match="--stream match u odds"):
+        loading_cli.main(["--loop", "--project", "demo", "--stream", "both"])
+
+
+def test_raw_loading_for_real_demands_a_project() -> None:
+    with pytest.raises(SystemExit, match="--project"):
+        loading_cli.main(["--stream", "match"])

@@ -107,3 +107,48 @@ variable "engine_max_delivery_attempts" {
   type        = number
   default     = 5
 }
+
+###############################################################################
+# Capa histórica Raw en BigQuery — HU-14
+###############################################################################
+
+variable "raw_dataset_id" {
+  description = <<-EOT
+    Nombre del dataset de BigQuery que contiene las tablas Raw. Debe coincidir
+    con `--dataset` en `gcperros-load-raw` (por defecto, `gcperros_raw`).
+  EOT
+  type        = string
+  default     = "gcperros_raw"
+}
+
+variable "raw_dataset_location" {
+  description = <<-EOT
+    Ubicación del dataset. BigQuery la fija al crearlo y no se puede cambiar
+    después sin recrear el dataset; por defecto multi-región de EE. UU. para
+    quedar dentro del nivel gratuito durante el proyecto.
+  EOT
+  type        = string
+  default     = "US"
+}
+
+variable "raw_partition_expiration_ms" {
+  description = <<-EOT
+    Milisegundos que una partición sobrevive antes de expirar. `null` = nunca
+    expira, que es la premisa de la capa histórica (acumular desde el Sprint 1
+    y no perder nada). Se deja como variable y no como constante porque un
+    ambiente de pruebas sí puede querer expirar particiones viejas para no
+    acumular costo de almacenamiento sin necesidad.
+  EOT
+  type        = number
+  default     = null
+}
+
+variable "raw_table_deletion_protection" {
+  description = <<-EOT
+    Impide que `terraform destroy` borre las tablas Raw. Se desactiva sólo en
+    ambientes desechables (por ejemplo, para recrear el dataset durante el
+    desarrollo); en producción debe quedar en `true`.
+  EOT
+  type        = bool
+  default     = true
+}
