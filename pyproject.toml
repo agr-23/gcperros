@@ -24,6 +24,11 @@ pubsub = ["google-cloud-pubsub>=2.20"]
 # (HU-14); el resto del proyecto no depende de él, igual que con Pub/Sub.
 bigquery = ["google-cloud-bigquery>=3.20"]
 
+# Cliente de Firestore. Lo necesita únicamente el adaptador real del estado
+# vivo (HU-15); el motor y sus pruebas escriben contra `DocumentStore`, no
+# contra este cliente, así que tampoco lo arrastran.
+firestore = ["google-cloud-firestore>=2.16"]
+
 dev = [
   "pytest>=8.0",
   "ruff>=0.8",
@@ -33,6 +38,7 @@ dev = [
   "pytest-cov>=6.0",
   "google-cloud-pubsub>=2.20",
   "google-cloud-bigquery>=3.20",
+  "google-cloud-firestore>=2.16",
 ]
 
 [project.scripts]
@@ -95,6 +101,7 @@ ignore = [
 "src/gcperros/loading/cli.py" = ["PLC0415"]
 "src/gcperros/loading/pubsub.py" = ["PLC0415"]
 "src/gcperros/loading/bigquery.py" = ["PLC0415"]
+"src/gcperros/firestore/client.py" = ["PLC0415"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -123,6 +130,12 @@ ignore_missing_imports = true
 module = ["gcperros.loading.bigquery"]
 disallow_untyped_calls = false
 
+# Mismo caso que `google.cloud.bigquery.Client.close`, ahora con
+# `google.cloud.firestore.Client.close` (HU-15).
+[[tool.mypy.overrides]]
+module = ["gcperros.firestore.client"]
+disallow_untyped_calls = false
+
 ###############################################################################
 # Pytest
 ###############################################################################
@@ -141,7 +154,12 @@ source = ["gcperros"]
 # un broker delante, y no hay forma honesta de cubrirlo en la integración
 # continua. Está escrito para ser trivial justamente por eso — toda la lógica
 # que sí se puede probar vive en `publisher.py`.
-omit = ["*/publishing/pubsub.py", "*/loading/pubsub.py", "*/loading/bigquery.py"]
+omit = [
+  "*/publishing/pubsub.py",
+  "*/loading/pubsub.py",
+  "*/loading/bigquery.py",
+  "*/firestore/client.py",
+]
 
 [tool.coverage.report]
 # Se excluyen las líneas que sólo se recorren sin la librería cliente instalada
