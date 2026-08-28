@@ -152,3 +152,21 @@ class LiveMatchState:
             red_cards=dict(self._red_cards),
             possessions=dict(self._possessions),
         )
+
+    @property
+    def event_count(self) -> int:
+        """Cuántos eventos se han aplicado hasta ahora.
+
+        Es la misma cifra que trae ``summary().event_count``, pero sin
+        reconstruir los diccionarios del resumen. La usa el publicador del
+        estado vivo (``gcperros.firestore``, HU-15) para decidir, en cada
+        evento, si el estado realmente cambió y toca escribir un documento
+        nuevo, sin pagar el costo de armar un resumen completo sólo para
+        comprobarlo.
+        """
+        return self._event_count
+
+    @property
+    def teams(self) -> tuple[str, ...]:
+        """Equipos conocidos, en el orden en que aparecieron en el flujo."""
+        return tuple(self._teams)
