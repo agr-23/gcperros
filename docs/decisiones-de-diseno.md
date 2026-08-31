@@ -790,4 +790,3 @@ inconsistencia del proyecto: declarar una colección vacía en Terraform no
 tendría ningún efecto observable en Firestore, así que hacerlo sólo añadiría
 una entrada más que mantener sincronizada con el código sin ganar nada a
 cambio.
-
