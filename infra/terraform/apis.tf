@@ -12,7 +12,8 @@ locals {
     "pubsub.googleapis.com",
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com",
-    "bigquery.googleapis.com", # capa Raw (HU-14)
+    "bigquery.googleapis.com",  # capa Raw (HU-14)
+    "firestore.googleapis.com", # estado vivo (HU-15)
   ]
 }
 

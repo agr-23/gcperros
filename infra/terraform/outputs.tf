@@ -50,3 +50,13 @@ output "raw_tables" {
   description = "Flujo -> ID completo de su tabla Raw (proyecto.dataset.tabla)."
   value       = { for name, table in google_bigquery_table.raw : name => table.id }
 }
+
+output "engine_service_account" {
+  description = "Service account del motor: la que debe suplantar localmente, o la que se le asigna al servicio de Cloud Run el día que se despliegue (HU-15)."
+  value       = google_service_account.engine.email
+}
+
+output "firestore_database" {
+  description = "Nombre de la base de datos Firestore que contiene el estado vivo (HU-15)."
+  value       = google_firestore_database.live_state.name
+}

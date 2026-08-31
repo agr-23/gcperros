@@ -1,20 +1,23 @@
-# Infraestructura — Capa de ingestión (Pub/Sub) y capa histórica Raw (BigQuery)
+# Infraestructura — Ingestión (Pub/Sub), capa histórica Raw (BigQuery) y estado vivo (Firestore)
 
-Definición declarativa de la **capa de ingestión** y de la **capa histórica
-Raw** de la arquitectura de cinco capas: los dos topics de Pub/Sub que
-desacoplan a los generadores sintéticos del motor de procesamiento, con sus
-suscripciones, sus topics de mensajes muertos y las identidades que pueden
-publicar y consumir; y el dataset de BigQuery con una tabla por flujo donde el
-cargador de HU-14 persiste cada mensaje sin transformar.
+Definición declarativa de tres de las cinco capas de la arquitectura: la
+**capa de ingestión** (los dos topics de Pub/Sub que desacoplan a los
+generadores sintéticos del motor de procesamiento, con sus suscripciones, sus
+topics de mensajes muertos y las identidades que pueden publicar y consumir),
+la **capa histórica Raw** (el dataset de BigQuery con una tabla por flujo
+donde el cargador de HU-14 persiste cada mensaje sin transformar), y el
+**estado vivo** (la base de datos Firestore donde el motor sobrescribe, por
+partido, el documento denormalizado que consulta el dashboard).
 
 Corresponde a la **HU-13** (*"Infraestructura que es declarada, no clickeada"*)
-y habilita la **HU-10** (publicación de los generadores) y la **HU-14**
-(consumidor que persiste en la capa Raw de BigQuery, cuyo dataset y tablas
-declara `bigquery.tf`).
+y habilita la **HU-10** (publicación de los generadores), la **HU-14**
+(consumidor que persiste en la capa Raw de BigQuery) y la **HU-15** (estado
+vivo por partido en Firestore, consumido con un listener en tiempo real en
+vez de sondeo).
 
-> Cloud Run y Firestore completan la HU-13 y se agregan en las historias que
-> los introducen. Este directorio se despliega solo y no depende de ellos: ver
-> *Qué falta* al final.
+> Cloud Run —el servicio del motor en sí— completa la HU-13 y se agrega en la
+> historia que lo despliega. Este directorio se despliega solo y no depende de
+> él: ver *Qué falta* al final.
 
 ---
 
@@ -30,15 +33,16 @@ Por cada uno de los dos flujos —`match-events` y `odds-updates`— se crea:
 | Topic de dead letter | `<topic>-dead-letter` | Mensajes que fallaron tras N intentos |
 | Suscripción de dead letter | `<topic>-dead-letter-sub` | Retiene los muertos para inspección manual |
 
-Más tres identidades de privilegio mínimo:
+Más cuatro identidades de privilegio mínimo:
 
 | Service account | Permiso | Quién la usa |
 |---|---|---|
 | `gcperros-publisher` | `roles/pubsub.publisher` sobre ambos topics | Generadores sintéticos (HU-10) |
-| `gcperros-raw-loader` | `roles/pubsub.subscriber` sobre las suscripciones `-raw` | Cargador de la capa Raw (HU-14) |
+| `gcperros-raw-loader` | `roles/pubsub.subscriber` + BigQuery (ver abajo) | Cargador de la capa Raw (HU-14) |
+| `gcperros-engine` | `roles/datastore.user` sobre el proyecto | Motor de procesamiento: escribe el estado vivo (HU-15) |
 | `gcperros-ps-invoker` | `roles/run.invoker` sobre el motor | Pub/Sub, para firmar el token OIDC del push |
 
-La tercera solo se crea cuando el motor está desplegado.
+La última solo se crea cuando el motor está desplegado.
 
 Y, para la capa histórica Raw:
 
@@ -52,6 +56,19 @@ la capa histórica existe para acumular desde el Sprint 1, no para rotar datos.
 `raw_loader` recibe `roles/bigquery.dataEditor` sobre el dataset y
 `roles/bigquery.jobUser` sobre el proyecto — lo mínimo para insertar filas por
 streaming.
+
+Y, para el estado vivo:
+
+| Recurso | Nombre | Para qué |
+|---|---|---|
+| Base de datos Firestore | `(default)`, modo nativo | Contiene el documento de cada partido |
+
+Sin colecciones ni documentos declarados: a diferencia de una tabla de
+BigQuery, una colección de Firestore no se crea de antemano — aparece sola en
+cuanto el motor escribe el primer documento en `live_matches/{match_id}`. Modo
+nativo, no modo Datastore: es el que trae los listeners en tiempo real sobre
+los que se apoya toda la historia (ver `docs/decisiones-de-diseno.md`, sección
+11).
 
 ---
 
@@ -121,10 +138,11 @@ terraform apply tfplan
 ```
 
 Con `engine_push_endpoint` sin definir, el plan crea la capa de ingestión —2
-topics, 2 topics de dead letter, 4 suscripciones, 2 service accounts y sus
+topics, 2 topics de dead letter, 4 suscripciones, 3 service accounts y sus
 autorizaciones IAM— más la capa histórica Raw —1 dataset, 2 tablas y sus
-permisos—. Nada de esto factura mientras no se publiquen ni se inserten
-mensajes.
+permisos— más el estado vivo —1 base de datos Firestore y el permiso de
+escritura del motor—. Nada de esto factura mientras no se publiquen mensajes,
+no se inserten filas ni se escriban documentos.
 
 Salidas:
 
@@ -134,6 +152,8 @@ terraform output subscriptions
 terraform output publisher_service_account
 terraform output raw_dataset_id
 terraform output raw_tables
+terraform output engine_service_account
+terraform output firestore_database
 ```
 
 ---
@@ -167,6 +187,33 @@ bq query --use_legacy_sql=false \
    FROM `TU_PROJECT_ID.gcperros_raw.match_events_raw`
    ORDER BY loaded_at DESC LIMIT 5'
 ```
+
+### Verificar el estado vivo en Firestore
+
+No hay CLI equivalente a `gcperros-load-raw` para esta parte: el estado vivo
+lo escribe el motor mientras procesa (`PublishingMatchEngine`, HU-15), así que
+para verlo hace falta correr el motor sobre algunos eventos. Sin desplegar
+nada todavía, puede probarse en Python contra el proyecto real:
+
+```python
+from gcperros.engine.pipeline import MatchEngine
+from gcperros.firestore.client import FirestoreDocumentStore
+from gcperros.firestore.publisher import LiveStatePublisher, PublishingMatchEngine
+from gcperros.generators.match import MatchConfig, simulate_match
+
+store = FirestoreDocumentStore("TU_PROJECT_ID")
+publisher = LiveStatePublisher(store, "match-0001")
+engine = PublishingMatchEngine(MatchEngine(), publisher)
+
+for event in simulate_match(20260826, MatchConfig("match-0001", "RMA", "BAR")):
+    engine.process(event)
+engine.flush()
+```
+
+Y confirmarlo desde la consola de Firestore (`https://console.cloud.google.com/firestore/databases/-default-/data/panel`)
+— `gcloud` no expone lectura de documentos individuales para Firestore como sí
+lo hace para Pub/Sub o BigQuery, así que la consola o el propio cliente de
+Python son el camino más directo.
 
 ### Publicar sin llaves JSON
 
@@ -234,6 +281,18 @@ más las cuotas asociadas: la capa Raw se mantiene igual de holgada dentro del
 nivel gratuito durante todo el semestre. El streaming insert que usa
 `gcperros-load-raw` no tiene costo aparte en el nivel actual de la API.
 
+Firestore tiene una **cuota diaria gratis**, no mensual: **50.000 lecturas**,
+**20.000 escrituras** y **20.000 borrados** por día, más 1 GiB de
+almacenamiento. Es exactamente la cuota que motiva el diseño de HU-15: un
+documento por evento habría significado que reconstruir el estado de un solo
+partido consumiera cientos de lecturas cada vez que alguien abriera el
+dashboard, agotando la cuota diaria con un puñado de visitas. Con un
+documento por partido que se sobrescribe, cada partido consume, del orden de
+cientos de escrituras (una por lote de eventos liberado) y **una** lectura
+por listener que se conecta —más lo que el listener reciba mientras el
+documento cambie, que Firestore no cuenta como una lectura nueva por cada
+push—.
+
 ---
 
 ## 9. Qué falta para cerrar la HU-13
@@ -241,8 +300,10 @@ nivel gratuito durante todo el semestre. El streaming insert que usa
 | Pendiente | Historia | Qué hay que agregar |
 |---|---|---|
 | Servicio de Cloud Run del motor | HU-11 / HU-12 | Imagen en Artifact Registry, invocar `modules/cloud_run` y poner `engine_push_endpoint` en `terraform.tfvars` |
-| Base de datos de Firestore | HU-15 | `firestore.tf` + `firestore.googleapis.com` en `apis.tf` |
 
-Los datasets de BigQuery (HU-14) ya están declarados en `bigquery.tf`. Los
+Los datasets de BigQuery (HU-14) y la base de datos de Firestore (HU-15) ya
+están declarados, en `bigquery.tf` y `firestore.tf` respectivamente. Los
 módulos `modules/cloud_run/` y `modules/cloud_storage/` están presentes y sin
-modificar, listos para invocarse cuando corresponda.
+modificar, listos para invocarse cuando corresponda —incluida la SA
+`gcperros-engine` (ya declarada en `iam.tf`), pensada para ser la identidad de
+ejecución del servicio de Cloud Run del motor el día que se invoque.

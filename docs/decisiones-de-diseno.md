@@ -687,3 +687,106 @@ provocar a voluntad contra el servicio real. Con el protocolo inyectado, la
 prueba lo provoca exactamente cuando quiere, y el adaptador real
 (`loading/pubsub.py`, `loading/bigquery.py`) queda tan delgado que ambos
 quedan fuera de la medición de cobertura, igual que `publishing/pubsub.py`.
+
+---
+
+## 11. Estado vivo en Firestore (HU-15)
+
+### Un documento por partido, no uno por evento — y por qué eso ahorra lecturas, no escrituras
+
+Es fácil leer la historia y pensar que la solución "ahorra cuota" en general;
+vale la pena ser preciso sobre cuál mitad de la cuota ataca. Las
+**escrituras** cambian poco entre las dos alternativas: tanto un documento
+por evento como uno por partido escriben, a grandes rasgos, una vez por cada
+lote de eventos que el motor libera. Lo que colapsa es la **lectura**: con un
+documento por evento, saber "cómo va el partido ahora" exige leer todo su
+historial —cientos de documentos—, y hay que repetir esa lectura cada vez que
+alguien abre el dashboard. Con un único documento que se sobrescribe, esa
+misma pregunta cuesta una lectura, sin importar cuántos eventos lleve el
+partido. La cuota gratis diaria de Firestore es mucho más generosa en
+escrituras (20.000) que en lecturas (50.000) pensando justamente en esta
+clase de patrón: pocas escrituras por cambio real, muchas lecturas por cada
+cliente que quiere enterarse de ese cambio.
+
+"Denormalizado" es la otra mitad de la misma decisión: el documento trae los
+indicadores de ambos equipos ya calculados y anidados adentro. La alternativa
+—una colección de indicadores por equipo, referenciada desde el documento del
+partido— habría obligado al dashboard a hacer una segunda lectura por cada
+equipo para completar el cuadro. Cada lectura adicional es, otra vez, cuota
+diaria gastada; denormalizar es literalmente pagar una vez por escritura para
+no pagar dos veces por lectura.
+
+### Por qué no se dedujo esto reutilizando la deduplicación del motor
+
+El motor ya sabe deduplicar (HU-11). La tentación de reutilizar esa misma
+lógica para decidir cuándo publicar el documento hay que resistirla: son
+preguntas distintas. La deduplicación del motor decide qué eventos entran al
+estado agregado; el publicador de HU-15 decide **cuándo ese estado, una vez
+agregado, se refleja hacia afuera**. Mezclar las dos habría significado que
+`LiveMatchState` supiera que alguien lo está publicando —una responsabilidad
+que no le corresponde, y que rompería la composición limpia que ya tienen
+HU-11/HU-12 (motor) y HU-14 (cargador de la capa Raw): cada capa nueva se
+agrega envolviendo la anterior, no modificándola.
+
+### Por qué se publica por evento y no con un temporizador
+
+Dos diseños se compararon explícitamente antes de escribir código:
+
+- **Por reloj**: un hilo aparte que, cada cierto intervalo, toma el estado
+  actual y lo escribe, haya cambiado o no. Necesita su propio ciclo de vida
+  —¿quién lo detiene, y cuándo termina el partido?— y puede escribir un
+  documento idéntico al anterior si no llegó ningún evento en la ventana:
+  cuota de escritura gastada sin ganar nada.
+- **Por evento** (la elegida): se publica en cuanto el motor aplica uno o más
+  eventos al estado. `PublishingMatchEngine` lo implementa envolviendo
+  `MatchEngine` sin modificarlo —compara `state.event_count` antes y después
+  de cada llamada, y publica sólo si avanzó—. No hace falta un reloj aparte,
+  y nunca se escribe un documento que no cambió.
+
+El costo del segundo diseño es que una ráfaga de eventos muy rápida (varios
+goles y tiros en pocos segundos, algo que sí ocurre en los partidos
+sintéticos de HU-8) puede escribir más seguido de lo que un humano percibiría
+como necesario. Se acepta a propósito: 20.000 escrituras gratis por día
+alcanzan de sobra para varios partidos completos incluso en el peor caso, y
+resolver ese detalle con un límite de frecuencia adicional (agrupar
+publicaciones dentro de una ventana mínima) es una optimización que se puede
+añadir después sin cambiar el diseño, el día que la cuota real lo exija.
+
+### Por qué el documento no interpreta ni denormaliza el linaje de los indicadores
+
+El documento trae los ocho indicadores de `MatchSummary`, pero no el linaje
+que HU-18 calcula para cada uno (qué eventos lo formaron, qué fórmula se
+aplicó). Es la misma lógica que ya sostiene por qué el cargador de la capa
+Raw (HU-14) no interpreta `attrs`: el linaje es información para quien
+audita un número, no para quien simplemente lo está mirando en un dashboard
+en vivo. Incluirlo habría inflado el documento sin que el consumidor
+declarado —un tablero en tiempo real— tuviera uso para él, y cualquier
+consulta de linaje sigue teniendo un camino: `gcperros-trace` sobre la capa
+Raw, que si hiciera falta podría exponerse aparte, sin tener que cargarlo en
+cada actualización del estado vivo.
+
+### Modo nativo de Firestore, no modo Datastore
+
+Firestore ofrece dos modos al crear la base de datos, y la elección es
+permanente: no se puede cambiar de una a otra después sin recrear la base
+completa. El modo Datastore es la opción pensada para cargas de trabajo de
+backend clásicas, y **no ofrece listeners en tiempo real**. Elegirlo habría
+significado que el propio Terraform de esta historia dejara al dashboard sin
+la única vía de consumo que la historia pide explícitamente
+("*consumed... through a real-time listener rather than polling*"): con
+Datastore, el dashboard habría tenido que volver a sondear, que es
+justamente el patrón que todo este diseño existe para evitar.
+
+### Por qué Firestore no necesita declarar la colección en Terraform
+
+A diferencia de una tabla de BigQuery (HU-14, sección 10), una colección de
+Firestore no es un recurso que haya que crear de antemano: aparece la
+primera vez que alguien escribe un documento en ella. `infra/terraform/firestore.tf`
+declara únicamente la base de datos y quién puede escribir en el proyecto;
+el nombre de la colección (`live_matches`) vive en código
+(`gcperros.firestore.publisher.LIVE_MATCHES_COLLECTION`), no en la
+infraestructura. Es una asimetría real entre los dos sistemas, no una
+inconsistencia del proyecto: declarar una colección vacía en Terraform no
+tendría ningún efecto observable en Firestore, así que hacerlo sólo añadiría
+una entrada más que mantener sincronizada con el código sin ganar nada a
+cambio.
