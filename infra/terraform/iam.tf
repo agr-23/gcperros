@@ -33,6 +33,20 @@ resource "google_service_account" "raw_loader" {
   depends_on = [google_project_service.this]
 }
 
+# Deduplica, reordena por marca de agua y publica el estado vivo de cada
+# partido en Firestore (HU-11/HU-12/HU-15). Existe independientemente de si
+# el motor ya está desplegado en Cloud Run: como con `raw_loader`, mientras
+# no haya servicio desplegado se usa por suplantación desde una máquina
+# local, y el día que lo haya, es la identidad de ejecución del servicio.
+resource "google_service_account" "engine" {
+  account_id   = "${local.prefix}gcperros-engine"
+  display_name = "Motor de procesamiento (${var.environment})"
+  description  = "Deduplica, reordena por marca de agua y publica el estado vivo de cada partido."
+  project      = var.project_id
+
+  depends_on = [google_project_service.this]
+}
+
 # Firma el token OIDC de las entregas push hacia Cloud Run. Solo existe cuando
 # el motor ya está desplegado: sin servicio que invocar, la identidad sobra.
 resource "google_service_account" "pubsub_invoker" {

@@ -152,3 +152,36 @@ variable "raw_table_deletion_protection" {
   type        = bool
   default     = true
 }
+
+###############################################################################
+# Estado vivo en Firestore — HU-15
+###############################################################################
+
+variable "firestore_location_id" {
+  description = <<-EOT
+    Ubicación de la base de datos Firestore. No admite cualquier región de
+    GCP: Firestore restringe sus bases a una lista propia de ubicaciones
+    (regionales o multi-región). `nam5` es la multi-región de Norteamérica,
+    la recomendada por defecto y la que Google documenta como elegible para
+    el nivel gratuito. Firestore la fija al crear la base y no se puede
+    cambiar después sin recrearla.
+  EOT
+  type        = string
+  default     = "nam5"
+}
+
+variable "firestore_deletion_policy" {
+  description = <<-EOT
+    Qué hace `terraform destroy` con la base de datos: `ABANDON` la retira
+    del estado de Terraform sin borrar los datos (el valor seguro, por
+    defecto); `DELETE` sí la elimina de verdad, útil sólo en un ambiente
+    desechable donde recrear la base de datos completa es aceptable.
+  EOT
+  type        = string
+  default     = "ABANDON"
+
+  validation {
+    condition     = contains(["ABANDON", "DELETE"], var.firestore_deletion_policy)
+    error_message = "firestore_deletion_policy debe ser \"ABANDON\" o \"DELETE\"."
+  }
+}

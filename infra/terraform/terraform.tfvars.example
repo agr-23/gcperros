@@ -34,6 +34,16 @@ raw_dataset_location = "US"
 raw_table_deletion_protection = true
 
 ###############################################################################
+# Estado vivo en Firestore (HU-15).
+###############################################################################
+
+firestore_location_id = "nam5"
+
+# ABANDON = "terraform destroy" no borra los datos, sólo deja de rastrear la
+# base de datos. DELETE, sólo en un ambiente desechable.
+firestore_deletion_policy = "ABANDON"
+
+###############################################################################
 # Motor analítico (Cloud Run) — aún no desplegado.
 #
 # Mientras estas dos variables sigan comentadas, `terraform apply` crea
