@@ -147,16 +147,16 @@ from gcperros.governance.quarantine import JsonlInvalidStore
 
 # Nada llega al motor sin haber cumplido el contrato primero.
 gate = match_event_gate(JsonlInvalidStore(Path("invalidos.jsonl")))
-delivered = gate.admit_all(raw_messages)   # lo no conforme queda archivado
+delivered = gate.admit_all(raw_messages)  # lo no conforme queda archivado
 
 engine = MatchEngine()
-for event in delivered:        # con duplicados y desordenados
-    engine.process(event)      # -> ACCEPTED | DUPLICATE | DROPPED_LATE
+for event in delivered:  # con duplicados y desordenados
+    engine.process(event)  # -> ACCEPTED | DUPLICATE | DROPPED_LATE
 engine.flush()
 
-engine.result().summary              # indicadores del partido
-engine.dedup_stats.duplicates        # repeticiones suprimidas
-engine.watermark_stats.timeliness    # proporción aplicada dentro de plazo
+engine.result().summary  # indicadores del partido
+engine.dedup_stats.duplicates  # repeticiones suprimidas
+engine.watermark_stats.timeliness  # proporción aplicada dentro de plazo
 ```
 
 ---
