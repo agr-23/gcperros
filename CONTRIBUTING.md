@@ -3,15 +3,20 @@
 ## Preparar el entorno
 
 ```bash
-python -m venv .venv
-source .venv/Scripts/activate      # en Linux/macOS: source .venv/bin/activate
-pip install -e ".[dev]"
-pre-commit install --install-hooks
+make setup
 ```
 
-`pre-commit install` es el paso que suele olvidarse. Sin él los ganchos no se
-ejecutan y los fallos aparecen en integración continua en vez de antes del
-commit.
+Crea el entorno virtual, instala las dependencias y engancha `pre-commit`. Ese
+último paso es el que suele olvidarse, y es el que más cuesta: sin él los
+ganchos no corren, los fallos aparecen en integración continua en vez de antes
+del commit, y hay que arreglarlos con la rama ya publicada.
+
+Si se añade un gancho nuevo al proyecto, hay que volver a engancharlos —
+`pre-commit install` solo instala los tipos que existían cuando se ejecutó:
+
+```bash
+make hooks
+```
 
 ## Comprobaciones
 
@@ -25,6 +30,7 @@ Lo mismo que corre la CI, en local:
 | `pytest` | La suite completa: unitarias por componente y de tubería |
 | `pytest --cov=gcperros --cov-fail-under=90` | Lo mismo con el umbral de cobertura de la CI |
 | `pre-commit run --all-files` | Todo lo anterior más el escaneo de secretos |
+| `make check` | Todo lo de esta tabla de una vez |
 | `python scripts/tamano_pr.py` | Que el cambio no supere los 250 deltas |
 
 Las comprobaciones de Terraform (`terraform fmt -check`, `terraform validate`)
