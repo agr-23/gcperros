@@ -25,6 +25,7 @@ Lo mismo que corre la CI, en local:
 | `pytest` | La suite completa: unitarias por componente y de tubería |
 | `pytest --cov=gcperros --cov-fail-under=90` | Lo mismo con el umbral de cobertura de la CI |
 | `pre-commit run --all-files` | Todo lo anterior más el escaneo de secretos |
+| `python scripts/tamano_pr.py` | Que el cambio no supere los 250 deltas |
 
 Las comprobaciones de Terraform (`terraform fmt -check`, `terraform validate`)
 corren solo en CI, para no exigir el binario instalado a todo el equipo.
@@ -112,7 +113,19 @@ instalados.
 6. **Nada de `type: ignore` ni `noqa` sin discutirlo.** Ahora mismo el repo no
    tiene ninguno. Las excepciones reales se declaran en `pyproject.toml`, con su
    justificación al lado, donde todo el equipo las ve.
-7. **Un cambio en el contrato de datos exige versionarlo.** El esquema formal de
+7. **Un pull request no pasa de 250 deltas**, contando líneas añadidas más
+   borradas: código, pruebas y documentación. Un cambio más grande no se
+   revisa, se hojea, y entra con la misma ceremonia que uno revisado.
+
+   Se comprueba **antes del push** —el gancho `pre-push` lo mide contra
+   `origin/main`— y otra vez en integración continua. Para verlo a mano en
+   cualquier momento: `python scripts/tamano_pr.py`.
+
+   Cuando un cambio tiene que ir junto de verdad, la excepción se declara y se
+   ve: etiqueta el pull request como `pr-grande`, o exporta
+   `GCPERROS_PR_GRANDE=1` para saltarlo en local. Una regla sin salida
+   declarada acaba desactivada entera la primera vez que estorba.
+8. **Un cambio en el contrato de datos exige versionarlo.** El esquema formal de
    los dos flujos vive en `src/gcperros/core/schema.py` y la frontera lo hace
    cumplir. Añadir un campo opcional es el único cambio que no rompe a nadie;
    todo lo demás —renombrar, cambiar un tipo, ampliar un vocabulario cerrado,
