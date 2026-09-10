@@ -1,0 +1,42 @@
+name: Tamaño del pull request
+
+# En su propio fichero y no dentro de `ci.yml` porque solo tiene sentido sobre
+# un pull request: mide el cambio contra la rama que lo va a recibir.
+on:
+  pull_request:
+    # `labeled` y `unlabeled` estan aqui a proposito: poner la etiqueta de
+    # excepcion tiene que volver a lanzar la comprobacion, o la etiqueta no
+    # serviria de nada hasta el siguiente commit.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  size:
+    name: Tamaño del cambio
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # El limite se mide contra el punto en que las ramas divergieron, y
+          # sin historial completo esa base no existe.
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+      - name: Medir el cambio contra la rama de destino
+        env:
+          ES_GRANDE: ${{ contains(github.event.pull_request.labels.*.name, 'pr-grande') }}
+        run: |
+          excepcion=""
+          if [ "$ES_GRANDE" = "true" ]; then
+            excepcion="--allow-large"
+            echo "El pull request lleva la etiqueta pr-grande: excepcion declarada."
+          fi
+          python scripts/tamano_pr.py --base "origin/${{ github.base_ref }}" $excepcion

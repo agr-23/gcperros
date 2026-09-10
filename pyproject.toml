@@ -99,6 +99,13 @@ ignore = [
 # rompería esa propiedad.
 "src/gcperros/publishing/cli.py" = ["PLC0415"]
 "src/gcperros/publishing/pubsub.py" = ["PLC0415"]
+
+# El medidor de tamaño de un pull request tiene que preguntarle a git, y no hay
+# forma de hacerlo sin lanzar un proceso. S603 avisa de ejecutar entrada no
+# confiable: aquí el ejecutable se resuelve por ruta absoluta, los argumentos
+# van como lista (nunca por shell) y el único que viene de fuera es `--base`,
+# que git interpreta como referencia y no como comando.
+"scripts/tamano_pr.py" = ["S603"]
 "src/gcperros/loading/cli.py" = ["PLC0415"]
 "src/gcperros/loading/pubsub.py" = ["PLC0415"]
 "src/gcperros/loading/bigquery.py" = ["PLC0415"]

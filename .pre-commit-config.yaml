@@ -7,7 +7,7 @@
 # binario de terraform en la máquina de cada integrante y romperían el commit
 # de quien no lo tenga instalado. Corren en integración continua, donde el
 # entorno sí está garantizado.
-default_install_hook_types: [pre-commit, prepare-commit-msg, commit-msg]
+default_install_hook_types: [pre-commit, prepare-commit-msg, commit-msg, pre-push]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -51,6 +51,19 @@ repos:
         language: system
         stages: [prepare-commit-msg]
         always_run: true
+
+  # Un pull request grande no se revisa, se hojea. El aviso llega antes del
+  # push, que es cuando reorganizar los commits todavia es barato; si llegara
+  # solo en integracion continua, llegaria cuando la rama ya esta publicada.
+  - repo: local
+    hooks:
+      - id: tamano-pr
+        name: Limite de tamano del cambio
+        entry: python scripts/tamano_pr.py
+        language: system
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false
 
   # Conventional Commits. El historial es parte de la trazabilidad que pide la
   # gobernanza: un mensaje con tipo y alcance permite reconstruir qué cambió y
