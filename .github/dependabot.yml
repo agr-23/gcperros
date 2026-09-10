@@ -1,0 +1,39 @@
+# Actualizacion automatica de dependencias.
+#
+# Cubre las dos superficies por las que entra codigo de terceros al proyecto:
+# las actions del pipeline y los paquetes de Python. Las dos llegan como pull
+# request, asi que pasan por los mismos checks y por la misma revision que
+# cualquier cambio nuestro.
+#
+# El prefijo del mensaje no es cosmetico: sin el, los commits de Dependabot
+# incumplirian Conventional Commits y romperian su propio pull request. Los
+# iconos son los que `scripts/gitmoji.py` asigna a cada tipo.
+version: 2
+
+updates:
+  # Las actions van fijadas por SHA (ver ci.yml), lo que las hace seguras pero
+  # tambien invisibles: un SHA no dice si se quedo atras. Dependabot es lo que
+  # evita que "fijado" acabe significando "abandonado".
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "👷 ci"
+    labels:
+      - "dependencias"
+    open-pull-requests-limit: 5
+
+  # El paquete no declara dependencias de ejecucion a proposito, asi que aqui
+  # se vigila sobre todo el extra de desarrollo y el cliente de Pub/Sub.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "📦️ build"
+    labels:
+      - "dependencias"
+    open-pull-requests-limit: 5

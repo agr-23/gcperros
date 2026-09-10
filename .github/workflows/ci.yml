@@ -15,6 +15,14 @@ concurrency:
 permissions:
   contents: read
 
+# Las actions van fijadas por SHA y no por etiqueta. Una etiqueta como `@v5` es
+# movil: quien controle ese repositorio puede cambiar lo que ejecuta este
+# pipeline sin que cambie una linea de nuestro codigo. Es el mismo argumento por
+# el que se versiona `.terraform.lock.hcl` y por el que la semilla de los
+# generadores es constante: reproducible significa que nadie de fuera decide que
+# se ejecuta. El comentario al lado dice a que version corresponde cada SHA, y
+# Dependabot las actualiza en un pull request revisable.
+
 env:
   PYTHON_DEFAULT: "3.12"
   REFERENCE_SEED: "20260826"
@@ -25,15 +33,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           # gitleaks necesita el historial para escanear los commits nuevos,
           # no sólo el árbol de trabajo.
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_DEFAULT }}
-      - uses: pre-commit/action@v3.0.1
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   types-and-tests:
     name: Tipos y pruebas · ${{ matrix.os }} · Python ${{ matrix.python-version }}
@@ -51,8 +59,8 @@ jobs:
           - os: windows-latest
             python-version: "3.12"
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -69,8 +77,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_DEFAULT }}
           cache: pip
@@ -104,8 +112,23 @@ jobs:
       # auditoría al final.
       - name: Informe de calidad del flujo de referencia
         run: |
-          gcperros-quality --stream match --in primera.jsonl --strict > /dev/null
-          gcperros-quality --stream odds --in cuotas-a.jsonl --strict > /dev/null
+          gcperros-quality --stream match --in primera.jsonl --strict \
+            --report calidad-match-events.json
+          gcperros-quality --stream odds --in cuotas-a.jsonl --strict \
+            --report calidad-odds-updates.json
+
+      # La HU-17 promete la calidad como señal continua y no como auditoría al
+      # final. Hasta ahora se medía y se tiraba: sin conservar los informes no
+      # hay serie, y sin serie no hay señal. Se guardan con `always()` porque el
+      # informe de una ejecución que falló es precisamente el que hay que leer.
+      - name: Conservar los informes de calidad
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: informes-de-calidad
+          path: calidad-*.json
+          if-no-files-found: warn
+          retention-days: 90
 
       # La HU-18 promete que cualquier indicador se puede explicar a demanda.
       # Aquí se comprueba el cableado de punta a punta, sin broker.
@@ -125,8 +148,8 @@ jobs:
       run:
         working-directory: infra/terraform
     steps:
-      - uses: actions/checkout@v5
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: "1.15.9"
       - run: terraform fmt -check -recursive
@@ -141,10 +164,10 @@ jobs:
     timeout-minutes: 5
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_DEFAULT }}
       - run: python -m pip install commitizen
@@ -156,3 +179,25 @@ jobs:
         run: |
           git log --format=%s origin/${{ github.base_ref }}..HEAD \
             | python scripts/gitmoji.py --check
+
+  dependencies:
+    name: Dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # A propósito **no** figura entre los checks obligatorios de la rama
+    # protegida. Una vulnerabilidad en una dependencia de desarrollo no la
+    # arregla quien abre el pull request, y bloquear la fusión por algo que el
+    # autor no puede resolver convierte la señal en ruido que se acaba
+    # ignorando. Se informa, se ve, y se decide aparte.
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_DEFAULT }}
+          cache: pip
+      - run: python -m pip install -e ".[dev]" pip-audit
+      # El repositorio ya escanea secretos en cada commit, pero nadie miraba si
+      # una dependencia arrastra una vulnerabilidad conocida. Es el mismo eje de
+      # gobernanza, en la mitad que mira hacia la cadena de suministro.
+      - name: Vulnerabilidades conocidas en las dependencias
+        run: pip-audit --desc
