@@ -185,3 +185,78 @@ variable "firestore_deletion_policy" {
     error_message = "firestore_deletion_policy debe ser \"ABANDON\" o \"DELETE\"."
   }
 }
+
+##################################################
+# Motor analítico (Cloud Run) — despliegue propio
+##################################################
+
+variable "engine_image" {
+  description = <<-EOT
+    Imagen del motor en Artifact Registry, ej:
+    us-central1-docker.pkg.dev/<proyecto>/gcperros/engine:v1
+
+    null (por defecto) = no desplegar Cloud Run desde esta raíz. Sigue siendo
+    válido apuntar `engine_push_endpoint` a un servicio desplegado por otro
+    medio; las dos rutas conviven, ver locals.tf.
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "engine_container_port" {
+  description = "Puerto en el que escucha el contenedor del motor."
+  type        = number
+  default     = 8080
+}
+
+variable "engine_health_path" {
+  description = "Ruta de healthcheck del motor, usada en startup y liveness probe."
+  type        = string
+  default     = "/healthz"
+}
+
+variable "engine_min_instances" {
+  description = "Instancias mínimas del motor. 0 permite escalar a cero entre partidos."
+  type        = number
+  default     = 0
+}
+
+variable "engine_max_instances" {
+  description = "Instancias máximas del motor."
+  type        = number
+  default     = 3
+}
+
+variable "engine_cpu" {
+  description = "CPU por instancia del motor."
+  type        = string
+  default     = "1"
+}
+
+variable "engine_memory" {
+  description = "Memoria por instancia del motor."
+  type        = string
+  default     = "512Mi"
+}
+
+variable "engine_env_vars" {
+  description = "Variables de entorno adicionales del motor, en texto plano."
+  type        = map(string)
+  default     = {}
+}
+
+variable "create_artifact_registry" {
+  description = <<-EOT
+    Crea el repositorio de Artifact Registry donde vive la imagen del motor.
+    En false porque el repositorio puede preexistir o gestionarse por otra
+    parte del pipeline de CI/CD; en true, esta raíz lo declara y lo posee.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "artifact_registry_repository_id" {
+  description = "Nombre del repositorio de Artifact Registry para la imagen del motor."
+  type        = string
+  default     = "gcperros"
+}
