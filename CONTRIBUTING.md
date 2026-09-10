@@ -52,6 +52,32 @@ Tipos admitidos: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
 cuerpo (`HU-8`): es lo que sostiene la trazabilidad que exige el eje de
 gobernanza.
 
+### El gitmoji se pone solo
+
+El asunto lleva delante el icono de [gitmoji](https://gitmoji.dev) que
+corresponde a su tipo, pero **no hay que escribirlo**: el tipo ya determina cuál
+es, y `scripts/gitmoji.py` lo antepone en el gancho `prepare-commit-msg`, antes
+de que se abra el editor.
+
+```
+escribes:  feat(engine): deduplicar antes de aplicar
+se graba:  ✨ feat(engine): deduplicar antes de aplicar
+```
+
+| | | | | | |
+|---|---|---|---|---|---|
+| ✨ `feat` | 🐛 `fix` | 📝 `docs` | 🎨 `style` | ♻️ `refactor` | ⚡️ `perf` |
+| ✅ `test` | 📦️ `build` | 👷 `ci` | 🔧 `chore` | ⏪️ `revert` | 🔖 `bump` |
+
+Si ya lo escribiste, no se duplica. Si el asunto no sigue la convención, no se
+toca: rechazarlo es trabajo de `commitizen`, que lo explica mejor.
+
+El icono es **opcional para el validador**, de modo que los commits anteriores a
+esta convención siguen pasando: reescribir historia ya publicada por un icono
+sería peor que no tenerlo. Pero la integración continua sí lo exige en los
+commits nuevos de cada pull request, para quien no tenga los ganchos
+instalados.
+
 ## Reglas que no son negociables
 
 1. **Nada de credenciales en el repositorio.** Ni llaves JSON de service
