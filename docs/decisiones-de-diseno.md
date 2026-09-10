@@ -121,6 +121,51 @@ cuota**: con overround 1,06 ese atajo sobreestima cada resultado un 6 % y suma
 una prueba que deja constancia del sesgo, porque es el error que la HU-19 debe
 evitar.
 
+### La señal compara el precio vigente, no el recién publicado
+
+Un operador tarda unos segundos en repreciar tras un gol, y durante esos
+segundos su precio **sigue publicado y ya no vale**. Ése es justamente el
+momento que la señal quiere capturar.
+
+La primera versión sólo evaluaba cuando llegaba una cuota nueva, y daba **cero
+señales tras un gol**: para cuando la cuota llegaba, el operador ya se había
+enterado. Ahora el detector guarda el último precio de cada casa y lo vuelve a
+contrastar cuando el partido se mueve. Con ese cambio, el 57 % de las señales
+cae en los 45 s siguientes a un gol o una expulsión.
+
+Sólo se reevalúa ante gol o expulsión. Revisar en cada pase sería coste y ruido:
+un pase no mueve el pronóstico.
+
+### Qué mide la señal, dicho con precisión
+
+El modelo de referencia comparte su forma con el que usan los operadores
+sintéticos, así que esta señal **no** dice «el mercado se equivoca». Medido
+sobre ocho partidos, al umbral declarado está dominada por el **precio rancio**.
+
+El sesgo del operador existe y se mide —discrepancia media de 0,0061 para la
+casa que valora al local como el modelo, contra 0,0093 y 0,0095 para las que
+no— pero se queda por debajo del umbral y casi nunca cruza por sí solo. Y un gol
+deja rancios los libros de las tres casas por igual, así que el retardo de cada
+una no cambia a cuántas señales da lugar, sólo cuándo se corrigen.
+
+Conviene decirlo así de claro: al umbral de 0,05 esto detecta precios que se
+quedaron viejos, no casas que valoran distinto.
+
+### El umbral de la señal sale del reparto de discrepancias
+
+Medido sobre 6.286 comparaciones en ocho partidos:
+
+| Percentil | Discrepancia |
+|---|---|
+| p50 | 0,0034 |
+| p90 | 0,0144 |
+| p95 | 0,0388 |
+| p99 | 0,0999 |
+
+**0,05** queda 3,5 veces por encima del ruido de fondo (p90) y emite en el 3,9 %
+de las evaluaciones: bastante para ser útil, poco para ser ruido. Da unas 46
+señales por partido, concentradas en ráfagas tras los goles.
+
 ---
 
 ## 3. Motor de procesamiento

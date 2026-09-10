@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agr-23/gcperros/actions/workflows/ci.yml/badge.svg)](https://github.com/agr-23/gcperros/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
-[![Pruebas](https://img.shields.io/badge/pruebas-431-brightgreen)](tests/)
+[![Pruebas](https://img.shields.io/badge/pruebas-455-brightgreen)](tests/)
 [![Cobertura](https://img.shields.io/badge/cobertura-97%25-brightgreen)](pyproject.toml)
 
 Ingerimos dos flujos de eventos —las acciones de un partido de fútbol y las
@@ -108,6 +108,16 @@ explicado total_xg de HOME
 gcperros-load-raw --dry-run --stream match --in partido.jsonl
 ```
 
+**8. La señal.** Contrasta el modelo propio contra las cuotas vigentes y avisa
+cuando se separan más del umbral declarado.
+
+```bash
+gcperros-signals --seed 20260826 --home RMA --away BAR
+```
+```
+señales=46 umbral=0.05 mayor_separacion=0.297 evaluadas=93 cuotas
+```
+
 ---
 
 ## Cómo está montado
@@ -194,7 +204,7 @@ sostiene.
 | HU-16 | H-009 | Contrato formal y repositorio de inválidos | [`governance/validation.py`](src/gcperros/governance/validation.py) | [`test_validation.py`](tests/test_validation.py) | ✅ |
 | HU-17 | H-010 | Reglas de calidad sobre lo ingerido | [`governance/quality.py`](src/gcperros/governance/quality.py) | [`test_quality.py`](tests/test_quality.py) | ✅ |
 | HU-18 | H-011 | Trazabilidad de los indicadores | [`governance/traceability.py`](src/gcperros/governance/traceability.py) | [`test_traceability.py`](tests/test_traceability.py) | ✅ |
-| HU-19 | — | Señal de discrepancia con el mercado | — | — | ⏳ Sprint 2 |
+| HU-19 | — | Señal de discrepancia con el mercado | [`engine/signals.py`](src/gcperros/engine/signals.py) | [`test_signals.py`](tests/test_signals.py) | ✅ |
 | HU-20 | — | Posesión acumulada y por ventana móvil | [`core/possession.py`](src/gcperros/core/possession.py) | [`test_possession.py`](tests/test_possession.py) | ✅ |
 
 El tablero numera las mismas historias con un desfase de siete (`H-00N` es
@@ -206,7 +216,7 @@ nadie tenga que deducirla comparando títulos.
 
 ## Cómo sabemos que funciona
 
-**431 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
+**455 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
 qué vigila cada familia:
 
 | Familia | Qué protege |
@@ -263,9 +273,6 @@ Preferimos decirlo aquí a que se descubra leyendo:
 - **Nada está desplegado en GCP.** El Terraform está escrito y validado en CI,
   pero nunca se ha ejecutado `apply`: hace falta un proyecto con facturación, y
   el plan del proyecto contempla usar créditos educativos.
-- **HU-19** (la señal de discrepancia entre nuestro modelo y el mercado) es del
-  Sprint 2. La matemática ya está lista en
-  [`core/odds.py`](src/gcperros/core/odds.py); falta el emisor de señales.
 - **Una tensión sin resolver.** El margen de la marca de agua que cumple los
   umbrales de divergencia (10 s) choca con el SLA de latencia p95 < 2 s que
   declaramos. No se pueden cumplir los dos con este diseño. Está medido y
