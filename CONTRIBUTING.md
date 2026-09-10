@@ -29,6 +29,14 @@ Lo mismo que corre la CI, en local:
 Las comprobaciones de Terraform (`terraform fmt -check`, `terraform validate`)
 corren solo en CI, para no exigir el binario instalado a todo el equipo.
 
+La CI revisa además, en un trabajo aparte, si alguna dependencia arrastra una
+vulnerabilidad conocida (`pip-audit`). No está en el extra de desarrollo porque
+arrastra bastante equipaje para lo poco que se usa; para reproducirlo en local
+basta `pipx run pip-audit --desc`. Ese trabajo **no bloquea la fusión** a
+propósito: una vulnerabilidad en una dependencia de desarrollo no la arregla
+quien abre el pull request, y bloquear por algo que el autor no puede resolver
+convierte el aviso en ruido que se acaba ignorando.
+
 La CI además ejecuta las pruebas en **Windows y Linux**: el proyecto promete
 ficheros idénticos byte a byte en cualquier sistema operativo, y sin comprobarlo
 en ambos esa promesa sería una suposición.
