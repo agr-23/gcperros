@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agr-23/gcperros/actions/workflows/ci.yml/badge.svg)](https://github.com/agr-23/gcperros/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
-[![Pruebas](https://img.shields.io/badge/pruebas-412-brightgreen)](tests/)
+[![Pruebas](https://img.shields.io/badge/pruebas-431-brightgreen)](tests/)
 [![Cobertura](https://img.shields.io/badge/cobertura-97%25-brightgreen)](pyproject.toml)
 
 Ingerimos dos flujos de eventos —las acciones de un partido de fútbol y las
@@ -195,6 +195,7 @@ sostiene.
 | HU-17 | H-010 | Reglas de calidad sobre lo ingerido | [`governance/quality.py`](src/gcperros/governance/quality.py) | [`test_quality.py`](tests/test_quality.py) | ✅ |
 | HU-18 | H-011 | Trazabilidad de los indicadores | [`governance/traceability.py`](src/gcperros/governance/traceability.py) | [`test_traceability.py`](tests/test_traceability.py) | ✅ |
 | HU-19 | — | Señal de discrepancia con el mercado | — | — | ⏳ Sprint 2 |
+| HU-20 | — | Posesión acumulada y por ventana móvil | [`core/possession.py`](src/gcperros/core/possession.py) | [`test_possession.py`](tests/test_possession.py) | ✅ |
 
 El tablero numera las mismas historias con un desfase de siete (`H-00N` es
 `HU-(N+7)`). El código y los commits usan `HU-N`, que es la numeración con la que
@@ -205,7 +206,7 @@ nadie tenga que deducirla comparando títulos.
 
 ## Cómo sabemos que funciona
 
-**412 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
+**431 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
 qué vigila cada familia:
 
 | Familia | Qué protege |

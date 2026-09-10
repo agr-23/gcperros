@@ -180,6 +180,47 @@ Queda documentado en lugar de disimulado. La salida —publicar estado provision
 y corregirlo al cerrar la ventana— corresponde al sprint que caracteriza la
 latencia bajo carga (OE-3).
 
+### La posesión se mide en tiempo, no en veces
+
+Hasta la HU-20 el proyecto contaba *cuántas veces* cada equipo recuperaba el
+balón. Esa cifra no es la posesión de una retransmisión: un equipo puede
+recuperar el balón el doble de veces que el rival y tener la mitad de posesión.
+Ahora se mide como fracción del tiempo de juego.
+
+### El umbral de balón parado sale de la distribución, no de la intuición
+
+La posesión se acumula entre eventos consecutivos. Un hueco largo significa que
+el juego estaba detenido, y ese tiempo no es de nadie: sin la regla, el equipo
+que tuviera el balón al final del primer tiempo se llevaría los quince minutos
+del descanso.
+
+El reparto de huecos entre eventos, sobre doce partidos (n = 14.623), tiene una
+banda vacía justo donde hace falta:
+
+| Hueco | Huecos | Qué es |
+|---|---|---|
+| menos de 8 s | 13.725 | Juego: la duración de un pase y su ruido |
+| entre 8 y 14 s | **3** | Nada |
+| 14 s o más | 895 | Balón parado: saque de banda, falta, gol |
+
+**Diez segundos** cae en mitad de esa banda, así que mover el umbral unos
+segundos no cambia el resultado. Con él se atribuyen unos 65 min de juego por
+partido; la referencia real está entre 55 y 60. La diferencia no viene del
+umbral sino del generador (HU-8), cuyo modelo de balón parado es más ligero que
+la realidad. Queda anotado como limitación en lugar de ajustar el corte hasta
+que la cifra cuadre.
+
+### La ventana la cierra la marca de agua, no el evento siguiente
+
+Es la promesa de la HU-12 elevada a un agregado: cuando el reloj de confianza
+pasa el borde derecho de una ventana, ya no puede llegar nada que pertenezca a
+ella, así que su cifra es definitiva y **no se reabre**. Un rezagado que caería
+dentro fue descartado antes de llegar al acumulador.
+
+Las ventanas se emiten contiguas, incluidas las vacías. Una ventana a cero no es
+un hueco en la serie: dice que en esos cinco minutos no se jugó, que es
+justamente lo que pasa durante el descanso.
+
 ### El rezagado se cuenta, no se pierde
 
 Un evento que llega con su ventana cerrada se registra como descartado por
