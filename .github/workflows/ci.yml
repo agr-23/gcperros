@@ -150,3 +150,9 @@ jobs:
       - run: python -m pip install commitizen
       - name: Validar los mensajes de la rama
         run: cz check --rev-range origin/${{ github.base_ref }}..HEAD
+      # El gancho local pone el gitmoji solo, pero solo corre en la maquina de
+      # quien haya hecho `pre-commit install`. Esto lo comprueba para todos.
+      - name: Verificar el gitmoji de cada asunto
+        run: |
+          git log --format=%s origin/${{ github.base_ref }}..HEAD \
+            | python scripts/gitmoji.py --check

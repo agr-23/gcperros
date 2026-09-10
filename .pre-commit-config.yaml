@@ -7,7 +7,7 @@
 # binario de terraform en la máquina de cada integrante y romperían el commit
 # de quien no lo tenga instalado. Corren en integración continua, donde el
 # entorno sí está garantizado.
-default_install_hook_types: [pre-commit, commit-msg]
+default_install_hook_types: [pre-commit, prepare-commit-msg, commit-msg]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -39,6 +39,18 @@ repos:
     rev: v8.30.0
     hooks:
       - id: gitleaks
+
+  # El gitmoji se deriva del tipo del commit y se pone solo, antes de que se
+  # abra el editor. Nadie lo teclea: el tipo ya dice cuál es, y pedir que se
+  # escriba a mano seria pedir que se repita a mano algo ya dicho.
+  - repo: local
+    hooks:
+      - id: gitmoji
+        name: Poner el gitmoji que corresponde al tipo
+        entry: python scripts/gitmoji.py
+        language: system
+        stages: [prepare-commit-msg]
+        always_run: true
 
   # Conventional Commits. El historial es parte de la trazabilidad que pide la
   # gobernanza: un mensaje con tipo y alcance permite reconstruir qué cambió y

@@ -176,7 +176,23 @@ exclude_also = [
 ###############################################################################
 
 [tool.commitizen]
-name = "cz_conventional_commits"
+# `cz_customize` en lugar de `cz_conventional_commits` por un motivo concreto:
+# el segundo lleva su patron a fuego y rechaza el gitmoji, y un `schema_pattern`
+# declarado aqui arriba lo ignora. Se comprobo antes de cambiarlo.
+name = "cz_customize"
 version = "0.1.0"
 version_files = ["pyproject.toml:^version"]
 tag_format = "v$version"
+
+[tool.commitizen.customize]
+schema = "<gitmoji> <tipo>(<alcance>): <asunto>"
+
+# El gitmoji va **opcional** a proposito: los commits anteriores a esta
+# convencion tienen que seguir validando. Reescribir historia ya publicada para
+# ponerles un icono seria peor que no tener el icono.
+schema_pattern = "^(?:[\\U0001F300-\\U0001FAFF\\u2600-\\u27BF]\\uFE0F? )?(build|ci|chore|docs|feat|fix|perf|refactor|style|test|revert|bump)(\\([^()]+\\))?!?: .+"
+
+# Las mismas reglas de versionado que traia `cz_conventional_commits`, pero
+# tolerando el icono delante. Verificado con `cz bump --dry-run`.
+bump_pattern = "^(?:[\\U0001F300-\\U0001FAFF\\u2600-\\u27BF]\\uFE0F? )?(feat|fix|perf|refactor)(\\([^()]+\\))?(!)?:"
+bump_map = { "^.+!$" = "MAJOR", "feat" = "MINOR", "fix" = "PATCH", "perf" = "PATCH", "refactor" = "PATCH" }
