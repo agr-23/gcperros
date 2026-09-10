@@ -49,6 +49,7 @@ gcperros-validate = "gcperros.governance.cli:main"
 gcperros-quality = "gcperros.governance.cli:quality_main"
 gcperros-trace = "gcperros.governance.cli:trace_main"
 gcperros-load-raw = "gcperros.loading.cli:main"
+gcperros-signals = "gcperros.engine.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gcperros"]

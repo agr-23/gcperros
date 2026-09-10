@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from gcperros.engine import cli as engine_cli
 from gcperros.generators import cli as generators_cli
 from gcperros.loading import cli as loading_cli
 from gcperros.publishing import cli as publishing_cli
@@ -137,3 +138,58 @@ def test_raw_loader_loop_rejects_both_streams_at_once() -> None:
 def test_raw_loading_for_real_demands_a_project() -> None:
     with pytest.raises(SystemExit, match="--project"):
         loading_cli.main(["--stream", "match"])
+
+
+###############################################################################
+# Señal de discrepancia (HU-19)
+###############################################################################
+
+
+def test_signals_cli_writes_one_json_object_per_signal(tmp_path: Path) -> None:
+    target = tmp_path / "senales.jsonl"
+    assert engine_cli.main([*SEED, "--home", "RMA", "--away", "BAR", "--out", str(target)]) == 0
+
+    payloads = [json.loads(line) for line in target.read_text(encoding="utf-8").splitlines()]
+    assert payloads
+    for payload in payloads:
+        # La historia pide ambas cifras y el instante en cada señal.
+        assert {"model_probability", "market_probability", "detected_at"} <= set(payload)
+
+
+def test_a_tighter_threshold_yields_fewer_signals(tmp_path: Path) -> None:
+    engine_cli.main([*SEED, "--out", str(tmp_path / "a.jsonl")])
+    holgado = len((tmp_path / "a.jsonl").read_text(encoding="utf-8").splitlines())
+
+    engine_cli.main([*SEED, "--threshold", "0.25", "--out", str(tmp_path / "b.jsonl")])
+    exigente = len((tmp_path / "b.jsonl").read_text(encoding="utf-8").splitlines())
+
+    assert exigente < holgado
+
+
+def test_the_signal_summary_goes_to_stderr(capsys: pytest.CaptureFixture[str]) -> None:
+    engine_cli.main([*SEED])
+    captured = capsys.readouterr()
+
+    assert "señales=" in captured.err
+    assert "señales=" not in captured.out
+
+
+def test_signals_cli_needs_a_seed_or_both_files() -> None:
+    with pytest.raises(SystemExit):
+        engine_cli.main([])
+
+    with pytest.raises(SystemExit):
+        engine_cli.main(["--match", "solo-uno.jsonl"])
+
+
+def test_signals_cli_reads_the_streams_from_disk(tmp_path: Path) -> None:
+    """El mismo camino que usaría un consumidor con los ficheros ya persistidos."""
+    partido, cuotas = tmp_path / "p.jsonl", tmp_path / "c.jsonl"
+    generators_cli.main([*SEED, "--home", "RMA", "--away", "BAR", "--out", str(partido)])
+    generators_cli.odds_main([*SEED, "--home", "RMA", "--away", "BAR", "--out", str(cuotas)])
+
+    salida = tmp_path / "s.jsonl"
+    assert (
+        engine_cli.main(["--match", str(partido), "--odds", str(cuotas), "--out", str(salida)]) == 0
+    )
+    assert salida.read_text(encoding="utf-8").splitlines()

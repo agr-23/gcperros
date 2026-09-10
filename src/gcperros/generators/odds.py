@@ -38,6 +38,7 @@ from gcperros.core.contracts import (
     OddsUpdate,
     new_odds_event_id,
 )
+from gcperros.core.matchstate import ScoreLine, build_clock, kickoff_teams
 from gcperros.core.odds import (
     MatchState,
     match_result_probabilities,
@@ -76,12 +77,6 @@ SIGNIFICANT_EVENTS = frozenset({"goal", "red_card"})
 #: pegados a los topes (1,01 contra 200), que ninguna casa ofrece: en un mercado
 #: decidido no hay margen que cobrar, así que se cierra.
 SETTLED_PROBABILITY = 0.995
-
-#: Identificador del segundo tiempo dentro de ``attrs``, tal como lo emite el
-#: generador de partidos. Se replica aquí en vez de importarlo del otro módulo
-#: para no acoplar el consumidor del flujo a la implementación del productor:
-#: es un valor del contrato, no de la simulación.
-SECOND_HALF_PERIOD = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,92 +124,12 @@ class _Moment:
 
 
 @dataclass(slots=True)
-class _Clock:
-    """Traduce tiempo de pared a minuto de partido.
-
-    El reloj de pared incluye el descanso, así que no se puede dividir entre
-    sesenta y quedarse tranquilo: entre el minuto 45 y el 46 pasan quince
-    minutos en los que el partido no avanza.
-    """
-
-    first_half_start: datetime
-    second_half_start: datetime | None
-
-    def minute(self, moment: datetime) -> float:
-        """Minuto de partido correspondiente a un instante de reloj de pared."""
-        if self.second_half_start is not None and moment >= self.second_half_start:
-            return 45.0 + (moment - self.second_half_start).total_seconds() / 60.0
-        return (moment - self.first_half_start).total_seconds() / 60.0
-
-
-@dataclass(slots=True)
-class _ScoreLine:
-    """Marcador y expulsiones acumuladas hasta un instante."""
-
-    home_team: str
-    away_team: str
-    goals_home: int = 0
-    goals_away: int = 0
-    reds_home: int = 0
-    reds_away: int = 0
-
-    def apply(self, event: MatchEvent) -> None:
-        """Incorpora un evento relevante al marcador."""
-        is_home = event.team == self.home_team
-        if event.event_type == "goal":
-            if is_home:
-                self.goals_home += 1
-            else:
-                self.goals_away += 1
-        elif event.event_type == "red_card":
-            if is_home:
-                self.reds_home += 1
-            else:
-                self.reds_away += 1
-
-    def state(self, minute: float) -> MatchState:
-        """Proyecta el marcador al estado que consume el modelo de cuotas."""
-        return MatchState(
-            minute=minute,
-            goals_home=self.goals_home,
-            goals_away=self.goals_away,
-            red_cards_home=self.reds_home,
-            red_cards_away=self.reds_away,
-        )
-
-
-@dataclass(slots=True)
 class _Book:
     """Último precio publicado por un operador en un mercado."""
 
     odds: dict[str, float] = field(default_factory=dict)
     published_at: datetime | None = None
     settled: bool = False
-
-
-def _kickoff_teams(events: list[MatchEvent]) -> tuple[str, str]:
-    """Identifica local y visitante leyendo el saque inicial del primer tiempo.
-
-    Se derivan del propio flujo y no de la configuración del partido porque el
-    generador de cuotas es, conceptualmente, un consumidor del topic: en
-    producción recibirá eventos por el broker sin acceso a la configuración con
-    la que se simuló el encuentro.
-    """
-    for event in events:
-        if event.event_type == "possession_change" and event.attrs.get("reason") == "kickoff":
-            home = event.attrs.get("to_team")
-            away = event.attrs.get("from_team")
-            if isinstance(home, str) and isinstance(away, str):
-                return home, away
-    raise ValueError("el flujo no contiene un saque inicial del que deducir los equipos")
-
-
-def _build_clock(events: list[MatchEvent]) -> _Clock:
-    second_half = next(
-        (event.event_time for event in events if event.attrs.get("period") == SECOND_HALF_PERIOD),
-        None,
-    )
-    return _Clock(first_half_start=events[0].event_time, second_half_start=second_half)
 
 
 def _relative_move(previous: dict[str, float], current: dict[str, float]) -> float:
@@ -232,7 +147,7 @@ class _OddsSimulator:
         self._events = events
         self._operators = operators
         self._match_id = events[0].match_id
-        self._clock = _build_clock(events)
+        self._clock = build_clock(events)
         self._sequence = 0
         self._updates: list[OddsUpdate] = []
         self._books: dict[tuple[str, Market], _Book] = {
@@ -308,8 +223,8 @@ class _OddsSimulator:
     def run(self) -> list[OddsUpdate]:
         """Recorre el partido y devuelve el flujo de cuotas."""
         significant = self._significant()
-        home_team, away_team = _kickoff_teams(self._events)
-        score = _ScoreLine(home_team=home_team, away_team=away_team)
+        home_team, away_team = kickoff_teams(self._events)
+        score = ScoreLine(home_team=home_team, away_team=away_team)
         applied = 0
 
         for moment in self._moments():
