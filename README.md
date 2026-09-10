@@ -36,10 +36,11 @@ queríamos poder desarrollar y demostrar el pipeline completo mientras se
 resolvía el acceso a la nube.
 
 ```bash
-python -m venv .venv
-source .venv/Scripts/activate      # Linux/macOS: source .venv/bin/activate
-pip install -e ".[dev]"
+make setup
 ```
+
+Eso crea el entorno, instala las dependencias y engancha `pre-commit`. `make` a
+secas lista el resto de atajos.
 
 **1. Generar un partido.** La misma semilla produce siempre el mismo partido,
 byte por byte.
