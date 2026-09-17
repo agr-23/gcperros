@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agr-23/gcperros/actions/workflows/ci.yml/badge.svg)](https://github.com/agr-23/gcperros/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
-[![Pruebas](https://img.shields.io/badge/pruebas-455-brightgreen)](tests/)
+[![Pruebas](https://img.shields.io/badge/pruebas-511-brightgreen)](tests/)
 [![Cobertura](https://img.shields.io/badge/cobertura-97%25-brightgreen)](pyproject.toml)
 
 Ingerimos dos flujos de eventos —las acciones de un partido de fútbol y las
