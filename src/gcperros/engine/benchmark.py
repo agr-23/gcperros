@@ -11,17 +11,61 @@ fija y el consumidor atiende de uno en uno. Así una tasa de 100.000 eventos por
 segundo se caracteriza sin tener que generar 100.000 eventos por segundo, y
 los costes son reales en vez de supuestos.
 
-Este módulo trae el segundo paso, que es aritmética y se prueba sola; la
-medición con el motor real llega en la pieza siguiente.
+Sin broker desplegado, lo medido es el tramo en proceso: de la emisión a que el
+motor consumió la entrega. La espera por la marca de agua es otro tramo, en
+tiempo del flujo, y la mide ``engine.latency``; la red de Pub/Sub queda fuera
+hasta que exista el proyecto de GCP.
 """
 
 from __future__ import annotations
 
 import statistics
+import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 
+from gcperros.core.contracts import MatchEvent
 from gcperros.engine.latency import percentile
+from gcperros.engine.pipeline import MatchEngine
+
+#: Tasas de emisión del barrido por defecto, en eventos por segundo. Un partido
+#: emite del orden de 0,2; el barrido sube hasta donde una máquina corriente
+#: se satura, para que la tabla enseñe el punto de corte y no sólo la holgura.
+DEFAULT_RATES: tuple[float, ...] = (1.0, 100.0, 10_000.0, 50_000.0, 100_000.0, 200_000.0)
+
+#: Veces que se mide el coste de cada evento. Se toma la mediana, que aguanta
+#: bien un pico aislado del sistema operativo.
+DEFAULT_REPEATS = 3
+
+
+def measure_costs(
+    events: list[MatchEvent],
+    engine_factory: Callable[[], MatchEngine] = MatchEngine,
+    repeats: int = DEFAULT_REPEATS,
+) -> list[float]:
+    """Coste en segundos de consumir cada evento, medido con el motor real.
+
+    Raises:
+        ValueError: Si no hay eventos o no se pide al menos una repetición.
+    """
+    if not events:
+        raise ValueError("no hay eventos que medir")
+    if repeats < 1:
+        raise ValueError("hace falta al menos una repetición")
+
+    runs: list[list[float]] = []
+    for _ in range(repeats):
+        engine = engine_factory()
+        costs: list[float] = []
+        for event in events:
+            started = time.perf_counter()
+            engine.process(event)
+            costs.append(time.perf_counter() - started)
+        engine.flush()
+        runs.append(costs)
+
+    return [statistics.median(sample) for sample in zip(*runs, strict=True)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,4 +127,44 @@ def simulate_queue(costs: list[float], rate_events_per_s: float) -> RateResult:
         max_s=max(latencies),
         max_backlog=max_backlog,
         final_backlog=backlog,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class BenchmarkReport:
+    """El barrido completo, con el punto de saturación señalado."""
+
+    match_id: str
+    events: int
+    mean_cost_s: float
+    results: tuple[RateResult, ...]
+
+    @property
+    def capacity_events_per_s(self) -> float:
+        """Tasa a la que la utilización llega a 1: el punto de saturación."""
+        return 1.0 / self.mean_cost_s
+
+    @property
+    def saturation_rate(self) -> float | None:
+        """Primera tasa del barrido que saturó, o ninguna si todas se sostuvieron."""
+        return next((r.rate_events_per_s for r in self.results if r.saturated), None)
+
+
+def run_benchmark(
+    events: list[MatchEvent],
+    rates: tuple[float, ...] = DEFAULT_RATES,
+    engine_factory: Callable[[], MatchEngine] = MatchEngine,
+    repeats: int = DEFAULT_REPEATS,
+) -> BenchmarkReport:
+    """Mide los costes una vez y barre las tasas con ellos.
+
+    Los costes dependen de la máquina; la forma de la tabla, no: la utilización
+    crece linealmente con la tasa y la cola se dispara al cruzar 1.
+    """
+    costs = measure_costs(events, engine_factory, repeats)
+    return BenchmarkReport(
+        match_id=events[0].match_id,
+        events=len(events),
+        mean_cost_s=statistics.mean(costs),
+        results=tuple(simulate_queue(costs, rate) for rate in rates),
     )

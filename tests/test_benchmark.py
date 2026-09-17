@@ -1,13 +1,28 @@
-"""El banco de carga: la cola simulada con costes conocidos (#18)."""
+"""El banco de carga: costes medidos, cola simulada y punto de saturación (#18)."""
 
 from __future__ import annotations
 
 import pytest
 
-from gcperros.engine.benchmark import simulate_queue
+from gcperros.core.contracts import MatchEvent
+from gcperros.engine.benchmark import (
+    BenchmarkReport,
+    RateResult,
+    measure_costs,
+    run_benchmark,
+    simulate_queue,
+)
+from gcperros.generators.match import MatchConfig, simulate_match
+
+CONFIG = MatchConfig(match_id="match-0018", home_team="RMA", away_team="BAR")
 
 #: Un milisegundo por evento: capacidad de 1.000 eventos por segundo.
 FLAT_COSTS = [0.001] * 200
+
+
+@pytest.fixture(scope="module")
+def clean() -> list[MatchEvent]:
+    return simulate_match(20260826, CONFIG)
 
 
 ###############################################################################
@@ -55,3 +70,52 @@ def test_the_queue_rejects_nothing_to_simulate_or_a_bad_rate() -> None:
         simulate_queue([], rate_events_per_s=1.0)
     with pytest.raises(ValueError, match="positiva"):
         simulate_queue(FLAT_COSTS, rate_events_per_s=0.0)
+
+
+###############################################################################
+# Los costes medidos con el motor real
+###############################################################################
+
+
+def test_every_event_gets_a_cost(clean: list[MatchEvent]) -> None:
+    costs = measure_costs(clean[:100], repeats=2)
+
+    assert len(costs) == 100
+    assert all(cost >= 0.0 for cost in costs)
+
+
+def test_measuring_rejects_an_empty_stream_or_no_repeats(clean: list[MatchEvent]) -> None:
+    with pytest.raises(ValueError, match="no hay eventos"):
+        measure_costs([])
+    with pytest.raises(ValueError, match="repetici"):
+        measure_costs(clean[:5], repeats=0)
+
+
+###############################################################################
+# El barrido
+###############################################################################
+
+
+def test_the_sweep_locates_the_saturation_point(clean: list[MatchEvent]) -> None:
+    report = run_benchmark(clean, rates=(1.0, 1e9), repeats=1)
+
+    assert report.events == len(clean)
+    assert report.capacity_events_per_s == pytest.approx(1.0 / report.mean_cost_s)
+    assert [r.saturated for r in report.results] == [False, True]
+    assert report.saturation_rate == 1e9
+
+
+def test_utilization_grows_with_the_rate(clean: list[MatchEvent]) -> None:
+    rates = (10.0, 100.0, 1_000.0)
+    report = run_benchmark(clean[:200], rates=rates, repeats=1)
+
+    utilizations = [r.utilization for r in report.results]
+    assert utilizations == sorted(utilizations)
+    assert [r.rate_events_per_s for r in report.results] == list(rates)
+
+
+def test_no_saturation_is_reported_as_none() -> None:
+    steady = RateResult(1.0, 0.5, 0.0, 0.0, 0.0, 1, 1)
+    report = BenchmarkReport("m", 1, 0.5, (steady,))
+
+    assert report.saturation_rate is None
