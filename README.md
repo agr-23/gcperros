@@ -131,6 +131,18 @@ desorden-medio          2   0.9983  0.0059  0.0000  pasa
 retardo-extremo       185   0.8454  0.0070  0.2019  FALLA total_xg
 ```
 
+**10. ¿Hasta dónde aguanta?** Mide lo que cuesta consumir cada evento y barre
+tasas de emisión hasta que la cola crece sin freno.
+
+```bash
+gcperros-benchmark --seed 20260826
+```
+```
+ tasa ev/s   util.    p50 ms    p95 ms  backlog  veredicto
+     50000  0.5869     0.012     0.031        3  sostiene
+    100000  1.1739     1.038     1.992      181  satura
+```
+
 ---
 
 ## Cómo está montado
@@ -219,6 +231,8 @@ sostiene.
 | HU-18 | H-011 | Trazabilidad de los indicadores | [`governance/traceability.py`](src/gcperros/governance/traceability.py) | [`test_traceability.py`](tests/test_traceability.py) | ✅ |
 | HU-19 | — | Señal de discrepancia con el mercado | [`engine/signals.py`](src/gcperros/engine/signals.py) | [`test_signals.py`](tests/test_signals.py) | ✅ |
 | HU-20 | — | Posesión acumulada y por ventana móvil | [`core/possession.py`](src/gcperros/core/possession.py) | [`test_possession.py`](tests/test_possession.py) | ✅ |
+| #20 · [#17](https://github.com/agr-23/gcperros/issues/17) | — | Validación del streaming contra el batch | [`engine/harness.py`](src/gcperros/engine/harness.py) | [`test_harness.py`](tests/test_harness.py) | ✅ |
+| #21 · [#18](https://github.com/agr-23/gcperros/issues/18) | — | Latencia y saturación bajo carga | [`engine/benchmark.py`](src/gcperros/engine/benchmark.py) | [`test_benchmark.py`](tests/test_benchmark.py) | ✅ |
 
 El tablero numera las mismas historias con un desfase de siete (`H-00N` es
 `HU-(N+7)`). El código y los commits usan `HU-N`, que es la numeración con la que
@@ -229,7 +243,7 @@ nadie tenga que deducirla comparando títulos.
 
 ## Cómo sabemos que funciona
 
-**455 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
+**511 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
 qué vigila cada familia:
 
 | Familia | Qué protege |
@@ -286,12 +300,13 @@ Preferimos decirlo aquí a que se descubra leyendo:
 - **Nada está desplegado en GCP.** El Terraform está escrito y validado en CI,
   pero nunca se ha ejecutado `apply`: hace falta un proyecto con facturación, y
   el plan del proyecto contempla usar créditos educativos.
-- **Una tensión sin resolver.** El margen de la marca de agua que cumple los
-  umbrales de divergencia (10 s) choca con el SLA de latencia p95 < 2 s que
-  declaramos. No se pueden cumplir los dos con este diseño. Está medido y
-  documentado en [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md),
-  sección 3, y resolverlo corresponde al sprint que caracteriza la latencia bajo
-  carga.
+- **Una tensión medida y sin resolver.** El margen de la marca de agua que
+  cumple los umbrales de divergencia (10 s) da un p95 de latencia de 31 s,
+  contra el SLA de 2 s que declaramos: la marca de agua sólo avanza cuando llega
+  algo, y en una pausa del juego no llega nadie. Las cifras y las dos salidas
+  —un latido para la marca de agua y estado provisional corregido al cerrar la
+  ventana— están en [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md),
+  sección 3. Ninguna de las dos está implementada.
 
 ---
 
