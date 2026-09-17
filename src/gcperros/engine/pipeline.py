@@ -17,6 +17,7 @@ diseño sin leer el código que consume del broker.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 from gcperros.core.contracts import MatchEvent
@@ -29,6 +30,7 @@ from gcperros.core.possession import (
 )
 from gcperros.core.stats import MatchSummary
 from gcperros.engine.dedup import DEFAULT_CAPACITY, Deduplicator, DedupStats
+from gcperros.engine.latency import LatencyRecorder, LatencyStats
 from gcperros.engine.state import LiveMatchState
 from gcperros.engine.watermark import (
     DEFAULT_ALLOWED_LATENESS_S,
@@ -60,12 +62,21 @@ class EngineResult:
     watermark: WatermarkStats
     possession: PossessionSnapshot
     possession_windows: tuple[PossessionWindow, ...]
+    latency: LatencyStats
 
 
 class MatchEngine:
     """Consume eventos de un partido y mantiene su estado vivo."""
 
-    __slots__ = ("_closed_windows", "_dedup", "_possession", "_reorderer", "_state")
+    __slots__ = (
+        "_clock",
+        "_closed_windows",
+        "_dedup",
+        "_latency",
+        "_possession",
+        "_reorderer",
+        "_state",
+    )
 
     def __init__(
         self,
@@ -83,6 +94,10 @@ class MatchEngine:
             max_in_play_gap_s=max_in_play_gap_s,
         )
         self._closed_windows: list[PossessionWindow] = []
+        self._latency = LatencyRecorder()
+        # Reloj del flujo: el último instante de llegada conocido. Nunca
+        # retrocede, por la misma razón que la marca de agua.
+        self._clock: datetime | None = None
 
     @property
     def state(self) -> LiveMatchState:
@@ -110,27 +125,43 @@ class MatchEngine:
         return tuple(self._closed_windows)
 
     @property
+    def latency(self) -> LatencyStats:
+        """Latencia de lo aplicado hasta ahora, en tiempo del flujo (#18)."""
+        return self._latency.stats()
+
+    @property
     def pending(self) -> int:
         """Eventos retenidos a la espera de que avance la marca de agua."""
         return self._reorderer.buffered
 
-    def process(self, event: MatchEvent) -> Outcome:
+    def process(self, event: MatchEvent, arrived_at: datetime | None = None) -> Outcome:
         """Procesa una entrega del broker.
 
         Args:
             event: Evento tal como lo entregó Pub/Sub: puede ser una repetición
                 y puede venir fuera de orden.
+            arrived_at: Cuándo lo entregó el broker. Sin él, se toma el propio
+                ``event_time`` como llegada, y la latencia medida es sólo la
+                que añade el motor al retener el evento.
 
         Returns:
             Qué se hizo con él. ``ACCEPTED`` no significa «ya aplicado»: el
             evento espera en el buffer hasta que su ventana se cierre.
         """
+        # Cualquier entrega, incluso una repetida, dice que ese instante ya
+        # llegó: el reloj avanza antes de decidir qué hacer con el evento.
+        now = arrived_at if arrived_at is not None else event.event_time
+        clock = self._clock if self._clock is not None and self._clock > now else now
+        self._clock = clock
+
         if not self._dedup.accept(event.event_id):
             return Outcome.DUPLICATE
 
         accepted, released = self._reorderer.push(event)
+        if accepted:
+            self._latency.arrived(event, now)
         for ready in released:
-            self._apply(ready)
+            self._apply(ready, clock)
 
         # Las ventanas las cierra la marca de agua, no la llegada de un evento
         # posterior: es la misma promesa de la HU-12 elevada a un agregado.
@@ -140,9 +171,10 @@ class MatchEngine:
 
         return Outcome.ACCEPTED if accepted else Outcome.DROPPED_LATE
 
-    def _apply(self, event: MatchEvent) -> None:
+    def _apply(self, event: MatchEvent, at: datetime) -> None:
         self._state.apply(event)
         self._possession.apply(event)
+        self._latency.applied(event, at)
 
     def flush(self) -> None:
         """Aplica lo que quedaba retenido y cierra las ventanas que faltaban.
@@ -151,9 +183,12 @@ class MatchEngine:
         ventana se da por terminada aunque la marca de agua no haya alcanzado su
         borde derecho: retenerla sólo la perdería.
         """
+        if self._clock is None:
+            return  # no entró nada: no hay buffer que vaciar ni ventana que cerrar
+
         last: MatchEvent | None = None
         for event in self._reorderer.flush():
-            self._apply(event)
+            self._apply(event, self._clock)
             last = event
 
         final = last.event_time if last is not None else self._reorderer.watermark
@@ -179,4 +214,5 @@ class MatchEngine:
             watermark=self._reorderer.stats,
             possession=self._possession.snapshot(),
             possession_windows=tuple(self._closed_windows),
+            latency=self._latency.stats(),
         )
