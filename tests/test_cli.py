@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from gcperros.engine import cli as engine_cli
+from gcperros.engine import validate_cli
 from gcperros.generators import cli as generators_cli
 from gcperros.loading import cli as loading_cli
 from gcperros.publishing import cli as publishing_cli
@@ -193,3 +194,43 @@ def test_signals_cli_reads_the_streams_from_disk(tmp_path: Path) -> None:
         engine_cli.main(["--match", str(partido), "--odds", str(cuotas), "--out", str(salida)]) == 0
     )
     assert salida.read_text(encoding="utf-8").splitlines()
+
+
+###############################################################################
+# Validación streaming contra batch (#17)
+###############################################################################
+
+
+def test_validate_streaming_passes_the_committed_scenarios() -> None:
+    assert validate_cli.main([*SEED, "--strict"]) == 0
+
+
+def test_validate_streaming_strict_fails_on_stress() -> None:
+    """Los escenarios de estrés existen para romperse: con --strict lo dicen con el código."""
+    assert validate_cli.main([*SEED, "--scenarios", "stress", "--strict"]) == 1
+    assert validate_cli.main([*SEED, "--scenarios", "stress"]) == 0
+
+
+def test_validate_streaming_writes_a_json_report(tmp_path: Path) -> None:
+    report = tmp_path / "informe.json"
+    validate_cli.main([*SEED, "--scenarios", "all", "--report", str(report)])
+
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    assert payload["passed"] is False
+    assert {s["name"] for s in payload["scenarios"]} >= {"limpio", "retardo-extremo"}
+
+
+def test_validate_streaming_table_is_plain_ascii(capsys: pytest.CaptureFixture[str]) -> None:
+    """Una consola de Windows con cp1252 no puede con símbolos fuera de ASCII."""
+    validate_cli.main([*SEED])
+    captured = capsys.readouterr()
+
+    assert "escenario" in captured.out
+    captured.out.encode("ascii")
+
+
+def test_validate_streaming_needs_exactly_one_source() -> None:
+    with pytest.raises(SystemExit):
+        validate_cli.main([])
+    with pytest.raises(SystemExit):
+        validate_cli.main([*SEED, "--match", "x.jsonl"])
