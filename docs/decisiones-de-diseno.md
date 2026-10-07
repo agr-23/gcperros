@@ -215,15 +215,64 @@ El proyecto declara divergencia máxima del 1 % en posesión, 0,05 en xG y
 oportunidad mínima del 95 %. **Diez segundos es el margen más ajustado que cumple
 los tres.**
 
-### Tensión abierta: el margen contra el SLA de latencia
+### La tensión con el SLA, medida: el margen es un suelo, no la espera
 
 El margen de 10 s **choca con el SLA declarado de latencia extremo a extremo por
-debajo de 2 s en p95**: un evento retenido espera del orden del propio margen
-antes de aplicarse. Los dos objetivos no se cumplen a la vez con este diseño.
+debajo de 2 s en p95**. Este documento decía que un evento retenido «espera del
+orden del propio margen». Medido, es bastante peor. Sobre ocho partidos, flujo
+limpio, en tiempo del flujo (lo que mide `EngineResult.latency`):
 
-Queda documentado en lugar de disimulado. La salida —publicar estado provisional
-y corregirlo al cerrar la ventana— corresponde al sprint que caracteriza la
-latencia bajo carga (OE-3).
+| Margen | p50 | p95 | Máximo |
+|---|---|---|---|
+| 2 s | 4,3 s | 23,4 s | 909 s |
+| 5 s | 7,2 s | 26,2 s | 911 s |
+| **10 s** | **12,4 s** | **31,0 s** | **917 s** |
+| 20 s | 22,7 s | 41,8 s | 926 s |
+
+Un evento no sale del buffer cuando pasa el margen: sale cuando **llega otro**
+más de un margen posterior a él, porque la marca de agua sólo avanza con las
+llegadas. En una pausa del juego no llega nadie, y el p95 triplica el margen.
+El máximo es el descanso: el último evento del primer tiempo espera los quince
+minutos enteros. Frente al SLA, la distancia es de 15 veces, no de 5.
+
+Lo que se sigue de ahí, y que se decide aparte porque cambia el diseño:
+
+- **La marca de agua necesita un latido.** Tiene que avanzar también con el
+  reloj de pared, no sólo con las llegadas; si no, cualquier pausa retiene lo
+  último que pasó hasta que el juego se reanuda.
+- **Publicar estado provisional al llegar y corregirlo al cerrar la ventana.**
+  Es la única forma de cumplir 2 s en p95 conservando un margen de 10 s, y
+  obliga a que el consumidor tolere correcciones.
+
+### Hasta dónde aguanta el motor: unos 85.000 eventos por segundo
+
+Se mide en dos pasos: primero **el coste real** de consumir cada evento, en
+reloj de pared y con el motor de verdad; después se **simula una cola** con esos
+costes, con un productor a tasa fija y un consumidor que atiende de uno en uno.
+Así una tasa de 100.000 eventos por segundo se caracteriza sin tener que
+generarlos, y los costes son medidos en vez de supuestos. Es lo que hace
+`gcperros-benchmark`:
+
+| Tasa (ev/s) | Utilización | p95 | Backlog máx. | ¿Sostiene? |
+|---|---|---|---|---|
+| 1 | 0,0000 | 0,03 ms | 1 | sí |
+| 100 | 0,0012 | 0,03 ms | 1 | sí |
+| 10.000 | 0,12 | 0,03 ms | 1 | sí |
+| 50.000 | 0,59 | 0,03 ms | 3 | sí |
+| 100.000 | 1,17 | 2,0 ms | 181 | **no** |
+| 200.000 | 2,35 | 7,7 ms | 686 | **no** |
+
+Coste medio de 12 µs por evento en un portátil corriente: la utilización llega
+a 1 en torno a **85.000 eventos por segundo**, y a partir de ahí el backlog
+crece mientras dure la emisión. **Un partido emite 0,2 eventos por segundo.**
+El motor no es el cuello de botella, con tres órdenes de magnitud de holgura.
+
+Dos límites de la medida, dichos de antemano. Los números absolutos dependen de
+la máquina; la forma de la tabla no: la utilización crece linealmente con la
+tasa y el backlog se dispara al cruzar 1. Y sin broker desplegado se mide el
+tramo en proceso, de la emisión a que el motor consumió la entrega: la red de
+Pub/Sub queda fuera hasta que exista el proyecto de GCP, y ahí es donde hay que
+buscar el cuello de botella real.
 
 ### La posesión se mide en tiempo, no en veces
 
