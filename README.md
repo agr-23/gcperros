@@ -119,6 +119,18 @@ gcperros-signals --seed 20260826 --home RMA --away BAR
 señales=46 umbral=0.05 mayor_separacion=0.297 evaluadas=93 cuotas
 ```
 
+**9. ¿Sigue siendo correcto el streaming?** Degrada el partido como lo haría el
+broker y compara el motor contra el batch. Con `--strict` sirve de puerta en CI.
+
+```bash
+gcperros-validate-streaming --seed 20260826 --scenarios all
+```
+```
+escenario         tardios  oportun.   d.pos    d.xG  veredicto
+desorden-medio          2   0.9983  0.0059  0.0000  pasa
+retardo-extremo       185   0.8454  0.0070  0.2019  FALLA total_xg
+```
+
 ---
 
 ## Cómo está montado
