@@ -36,25 +36,25 @@ def test_fact_tables_explicitly_distinguish_event_time_from_ingestion_time() -> 
 
 def test_aggregate_queries_by_matchday_market_and_time_window_run_without_friction() -> None:
     """HU-22: consultas analíticas por jornada, mercado y ventana temporal."""
-    dim_match = {
-        "match-001": {"matchday": 1, "season": "2026-2027"},
-        "match-002": {"matchday": 1, "season": "2026-2027"},
+    dim_match: dict[str, int] = {
+        "match-001": 1,
+        "match-002": 1,
     }
-    signals: list[dict[str, Any]] = [
-        {"match_id": "match-001", "market": "1x2", "window": "00-15", "magnitude": 0.08},
-        {"match_id": "match-001", "market": "1x2", "window": "15-30", "magnitude": 0.06},
-        {"match_id": "match-002", "market": "over_under_2_5", "window": "00-15", "magnitude": 0.07},
+    signals: list[tuple[str, str, str, float]] = [
+        ("match-001", "1x2", "00-15", 0.08),
+        ("match-001", "1x2", "15-30", 0.06),
+        ("match-002", "over_under_2_5", "00-15", 0.07),
     ]
 
     by_matchday: dict[int, int] = {}
     by_market: dict[str, list[float]] = {}
     by_window: dict[str, int] = {}
 
-    for row in signals:
-        mday = dim_match[row["match_id"]]["matchday"]
+    for match_id, market, window, magnitude in signals:
+        mday = dim_match[match_id]
         by_matchday[mday] = by_matchday.get(mday, 0) + 1
-        by_market.setdefault(row["market"], []).append(row["magnitude"])
-        by_window[row["window"]] = by_window.get(row["window"], 0) + 1
+        by_market.setdefault(market, []).append(magnitude)
+        by_window[window] = by_window.get(window, 0) + 1
 
     assert by_matchday[1] == 3
     assert len(by_market["1x2"]) == 2
