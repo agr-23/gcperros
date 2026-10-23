@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 import uvicorn
 
@@ -40,6 +41,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_SPEED,
         help="Minutos de partido por minuto real.",
     )
+    parser.add_argument(
+        "--reports",
+        type=Path,
+        help="Carpeta con los informes JSON de validacion, carga y calidad.",
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     return parser
@@ -64,7 +70,8 @@ def main(argv: list[str] | None = None) -> int:
         f"estado=http://{args.host}:{args.port}/api/matches/{source.match_id}/state",
         file=sys.stderr,
     )
-    uvicorn.run(create_app(source), host=args.host, port=args.port, log_level="warning")
+    app = create_app(source, reports_dir=args.reports)
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     return 0
 
 
