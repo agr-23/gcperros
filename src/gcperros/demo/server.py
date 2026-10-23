@@ -41,6 +41,16 @@ DEFAULT_POLL_S = 0.5
 #: La página de la demostración. Va dentro del paquete para que la instale pip.
 STATIC_DIR = Path(__file__).parent / "static"
 
+#: Informes que la pantalla «Por qué confiar» sabe leer, y el fichero de cada
+#: uno. Son los que escriben las CLI con ``--report``. Lista cerrada a propósito:
+#: el nombre que llega en la URL nunca se convierte en ruta, así que no hay forma
+#: de pedir un fichero fuera de la carpeta.
+REPORTS = {
+    "validacion": "validacion.json",
+    "carga": "carga.json",
+    "calidad": "calidad.json",
+}
+
 
 class LiveSource:
     """Lleva la repetición al segundo de partido que toca según el reloj de pared."""
@@ -111,11 +121,14 @@ def create_app(
     source: LiveSource,
     poll_s: float = DEFAULT_POLL_S,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    reports_dir: Path | None = None,
 ) -> FastAPI:
     """Construye la aplicación sobre una fuente de estado vivo.
 
     ``sleep`` se inyecta para que las pruebas recorran un partido entero sin
-    esperar a que pase de verdad.
+    esperar a que pase de verdad. ``reports_dir`` es la carpeta de la que se
+    leen los informes; sin ella, la demo funciona igual y los informes constan
+    como no generados.
     """
     app = FastAPI(title="GCPerros · demostración", docs_url="/api/docs", redoc_url=None)
 
@@ -143,6 +156,26 @@ def create_app(
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache"},
         )
+
+    def _report_path(name: str) -> Path | None:
+        if reports_dir is None or name not in REPORTS:
+            return None
+        path = reports_dir / REPORTS[name]
+        return path if path.is_file() else None
+
+    @app.get("/api/reports")
+    def reports() -> dict[str, bool]:
+        """Qué informes hay generados, para que la página diga cuáles faltan."""
+        return {name: _report_path(name) is not None for name in REPORTS}
+
+    @app.get("/api/reports/{name}", response_model=None)
+    def report(name: str) -> JsonValue:
+        """Un informe tal como lo escribió su CLI, sin reinterpretarlo."""
+        path = _report_path(name)
+        if path is None:
+            raise HTTPException(status_code=404, detail=f"no hay informe {name}")
+        loaded: JsonValue = json.loads(path.read_text(encoding="utf-8"))
+        return loaded
 
     # La página, al final: así las rutas de /api tienen prioridad sobre ella.
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="page")
