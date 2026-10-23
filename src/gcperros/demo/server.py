@@ -7,14 +7,21 @@ peticiones no hay nada que calcular, y así el servidor no necesita hilos.
 
 La respuesta es el contrato de Firestore más reloj y posesión
 (``demo.snapshot``). Es lo único que el front conoce del sistema.
+
+El canal en vivo es Server-Sent Events y no WebSocket: el estado sólo viaja
+del servidor a la página, el navegador reconecta solo y no hace falta más que
+HTTP. Es lo mismo que haría un listener de Firestore: empujar cada cambio.
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
 import time
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 
 from gcperros.core.contracts import JsonValue
 from gcperros.demo.replay import MatchReplay
@@ -23,6 +30,10 @@ from gcperros.demo.snapshot import LiveSnapshot, take_snapshot
 #: Minutos de partido por minuto real. A 30, el partido entero dura unos tres
 #: minutos y medio con el descanso: bastante para seguirlo, poco para aburrir.
 DEFAULT_SPEED = 30.0
+
+#: Segundos reales entre dos envíos del canal en vivo. A velocidad 30 son
+#: quince segundos de partido: la página se mueve sin saturar al navegador.
+DEFAULT_POLL_S = 0.5
 
 
 class LiveSource:
@@ -59,8 +70,35 @@ class LiveSource:
         return take_snapshot(self._replay)
 
 
-def create_app(source: LiveSource) -> FastAPI:
-    """Construye la aplicación sobre una fuente de estado vivo."""
+async def stream_snapshots(
+    source: LiveSource,
+    poll_s: float = DEFAULT_POLL_S,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> AsyncIterator[str]:
+    """Emite el estado cada ``poll_s`` segundos, en formato SSE, hasta el pitido final.
+
+    El último mensaje es el del partido terminado: después el canal se cierra,
+    en vez de repetir para siempre un estado que ya no va a cambiar.
+    """
+    while True:
+        snapshot = source.current()
+        payload = json.dumps(snapshot.to_json(), ensure_ascii=False, sort_keys=True)
+        yield f"data: {payload}\n\n"
+        if snapshot.clock.phase == "final":
+            return
+        await sleep(poll_s)
+
+
+def create_app(
+    source: LiveSource,
+    poll_s: float = DEFAULT_POLL_S,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> FastAPI:
+    """Construye la aplicación sobre una fuente de estado vivo.
+
+    ``sleep`` se inyecta para que las pruebas recorran un partido entero sin
+    esperar a que pase de verdad.
+    """
     app = FastAPI(title="GCPerros · demostración", docs_url="/api/docs", redoc_url=None)
 
     @app.get("/api/matches")
@@ -76,5 +114,16 @@ def create_app(source: LiveSource) -> FastAPI:
         if match_id != source.match_id:
             raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
         return source.current().to_json()
+
+    @app.get("/api/matches/{match_id}/stream")
+    def stream(match_id: str) -> StreamingResponse:
+        """El estado en vivo, empujado al navegador por Server-Sent Events."""
+        if match_id != source.match_id:
+            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
+        return StreamingResponse(
+            stream_snapshots(source, poll_s, sleep),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache"},
+        )
 
     return app
