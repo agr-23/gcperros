@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GCPerros · Bajo el capó</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="bar">
+    <span class="brand">GCPerros</span>
+    <nav class="nav"><a href="/">En vivo</a><a href="confianza.html">Por qué confiar</a><a href="bajo-el-capo.html" aria-current="page">Bajo el capó</a></nav>
+  </header>
+
+  <main class="wrap">
+    <section class="panel" aria-label="Recorrido de un evento">
+      <h2>El recorrido de un evento</h2>
+      <ol class="flow">
+        <li><h3>Producir</h3>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/generators/match.py"><b>Partido</b>posesiones, pases, remates; misma semilla, mismo partido</a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/generators/odds.py"><b>Cuotas</b>tres operadores que reaccionan con retraso</a>
+        </li>
+        <li><h3>Transportar</h3>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/pubsub.tf"><b>Pub/Sub</b><code>match-events</code> y <code>odds-updates</code>, cada uno con su dead letter</a>
+        </li>
+        <li><h3>Procesar</h3>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/engine/pipeline.py"><b>Motor</b>deduplicar → reordenar por marca de agua → aplicar</a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/engine/signals.py"><b>Señales</b>modelo propio frente al precio vigente</a>
+        </li>
+        <li><h3>Guardar</h3>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/firestore.tf"><b>Firestore</b><code>live_matches</code>: un documento vivo por partido</a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/bigquery.tf"><b>BigQuery Raw</b><code>gcperros_raw</code>: cada mensaje, crudo, sin interpretar</a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/analytics.tf"><b>BigQuery analítico</b><code>gcperros_analytics</code>: modelo estrella</a>
+        </li>
+      </ol>
+      <p class="aside">Lo que ves en «En vivo» es el documento de Firestore tal cual, más reloj y posesión. La página no conoce el motor: el día que esto se despliegue, cambia la fuente y la página no.</p>
+    </section>
+
+    <section class="panel" aria-label="Dos bases de datos">
+      <h2>Dos bases, dos trabajos</h2>
+      <dl class="pairs">
+        <dt>Firestore</dt>
+        <dd>Para mirar <em>ahora</em>. Un documento por partido, ya calculado: el panel lo escucha en vez de consultarlo.</dd>
+        <dt>BigQuery</dt>
+        <dd>Para preguntar <em>qué pasó</em>. La capa Raw guarda cada mensaje sin interpretar y el motor no la lee nunca: es el archivo del que se recalcula todo.</dd>
+      </dl>
+    </section>
+
+    <section class="panel" aria-label="Modelo estrella">
+      <h2>Modelo estrella de la capa analítica</h2>
+      <div class="table-wrap"><table class="trust-table">
+        <tr><th>Tabla</th><th>Tipo</th><th>Partición</th><th>Agrupada por</th></tr>
+        <tr><td>fact_match_events</td><td>hechos</td><td>día de event_time</td><td>match_id, event_type</td></tr>
+        <tr><td>fact_market_signals</td><td>hechos</td><td>día de event_time</td><td>match_id, market</td></tr>
+        <tr><td>dim_match</td><td>dimensión</td><td>—</td><td>—</td></tr>
+        <tr><td>dim_market</td><td>dimensión</td><td>—</td><td>—</td></tr>
+        <tr><td>dim_operator</td><td>dimensión</td><td>—</td><td>—</td></tr>
+      </table></div>
+      <p class="aside">Una consulta de un partido en un día lee una partición de cada diez y, dentro, sólo los bloques de ese partido. Con el modelo de costes de la HU-23, eso es alrededor de un <b>2 %</b> de los datos de una lectura completa.</p>
+      <p class="note">Es una <b>estimación</b>, no una medición: nada está desplegado todavía y no hay un plan de ejecución real de BigQuery detrás. Se medirá cuando exista el proyecto de GCP.</p>
+    </section>
+
+    <section class="panel" aria-label="Infraestructura">
+      <h2>Lo que se despliega</h2>
+      <ul class="infra">
+        <li>2 topics de Pub/Sub, cada uno con su suscripción y su dead letter</li>
+        <li>2 datasets de BigQuery, Raw y analítico, con sus tablas</li>
+        <li>1 base de Firestore en modo nativo</li>
+        <li>4 cuentas de servicio con permisos mínimos, sin llaves descargadas</li>
+        <li>Artifact Registry para la imagen del motor; el servicio de Cloud Run se declarará al desplegarlo</li>
+      </ul>
+      <p class="aside">Todo declarado en Terraform y validado en cada cambio por la integración continua. Todavía no se ha ejecutado <code>terraform apply</code>: hace falta un proyecto con facturación.</p>
+    </section>
+  </main>
+</body>
+</html>
