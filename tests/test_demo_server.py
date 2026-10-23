@@ -94,7 +94,11 @@ def test_the_cli_serves_the_match_of_the_seed(monkeypatch: pytest.MonkeyPatch) -
     assert (served["host"], served["port"]) == ("127.0.0.1", 8123)
     app = served["app"]
     assert isinstance(app, FastAPI)
-    assert TestClient(app).get("/api/matches").json() == ["demo-7"]
+    client = TestClient(app)
+    assert client.get("/api/matches").json() == ["demo-7"]
+    # La CLI monta el mercado: el estado trae cuotas de los tres operadores.
+    state = client.get("/api/matches/demo-7/state").json()
+    assert sorted(state["market"]["operators"]) == ["OP-A", "OP-B", "OP-C"]
 
 
 def test_the_cli_rejects_a_stopped_clock(capsys: pytest.CaptureFixture[str]) -> None:

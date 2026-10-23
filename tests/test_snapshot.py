@@ -6,9 +6,11 @@ import pytest
 
 from gcperros.core.contracts import MatchEvent
 from gcperros.core.stats import summarize_events
+from gcperros.demo.market import MarketTape
 from gcperros.demo.replay import MatchReplay
 from gcperros.demo.snapshot import take_snapshot
 from gcperros.generators.match import MatchConfig, simulate_match
+from gcperros.generators.odds import simulate_odds
 
 CONFIG = MatchConfig(match_id="match-0030", home_team="RMA", away_team="BAR")
 
@@ -66,3 +68,17 @@ def test_at_the_final_whistle_the_score_is_the_batch_score(match: list[MatchEven
     goals = {team: values["goals"] for team, values in snapshot.document.indicators.items()}
     assert goals == summarize_events(match).goals
     assert snapshot.to_json()["pending"] == 0
+
+
+def test_the_market_travels_as_a_fourth_key(match: list[MatchEvent]) -> None:
+    replay = MatchReplay(match)
+    tape = MarketTape(match, simulate_odds(20260826, match))
+    replay.advance_to(70 * 60)
+    tape.advance_to(replay.now)
+    payload = take_snapshot(replay, tape.view(recent=3)).to_json()
+    market = payload["market"]
+
+    assert isinstance(market, dict)
+    assert set(market) == {"model", "operators", "total_signals", "signals"}
+    assert isinstance(market["signals"], list) and len(market["signals"]) == 3
+    assert "market" not in take_snapshot(replay).to_json()

@@ -26,6 +26,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from gcperros.core.contracts import JsonValue
+from gcperros.demo.market import MarketTape
 from gcperros.demo.replay import MatchReplay
 from gcperros.demo.snapshot import LiveSnapshot, take_snapshot
 
@@ -44,15 +45,18 @@ STATIC_DIR = Path(__file__).parent / "static"
 class LiveSource:
     """Lleva la repetición al segundo de partido que toca según el reloj de pared."""
 
-    __slots__ = ("_clock", "_replay", "_speed", "_started")
+    __slots__ = ("_clock", "_market", "_replay", "_speed", "_started")
 
     def __init__(
         self,
         replay: MatchReplay,
         speed: float = DEFAULT_SPEED,
         clock: Callable[[], float] = time.monotonic,
+        market: MarketTape | None = None,
     ) -> None:
         """Deja el partido listo para empezar con la primera consulta.
+
+        Con ``market``, las cuotas y las señales avanzan al mismo reloj.
 
         Raises:
             ValueError: Si la velocidad no es positiva.
@@ -62,6 +66,7 @@ class LiveSource:
         self._replay = replay
         self._speed = speed
         self._clock = clock
+        self._market = market
         # El partido empieza cuando alguien lo mira, no al lanzar el servidor:
         # si no, quien tarda un minuto en abrir la página se pierde media parte.
         self._started: float | None = None
@@ -77,7 +82,10 @@ class LiveSource:
         if self._started is None:
             self._started = now
         self._replay.advance_to((now - self._started) * self._speed)
-        return take_snapshot(self._replay)
+        if self._market is None:
+            return take_snapshot(self._replay)
+        self._market.advance_to(self._replay.now)
+        return take_snapshot(self._replay, self._market.view())
 
 
 async def stream_snapshots(
