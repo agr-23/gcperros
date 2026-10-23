@@ -46,23 +46,29 @@ function drawXg(teams) {
   });
 }
 
+// El tercer campo es el indicador que se puede trazar (trace.js). El acierto
+// en el pase es un cociente, no un recuento: no tiene un linaje propio.
 const ROWS = [
-  ["Remates", (s) => s.shots],
-  ["xG", (s) => s.total_xg.toFixed(2)],
-  ["Pases", (s) => s.passes],
+  ["Remates", (s) => s.shots, "shots"],
+  ["xG", (s) => s.total_xg.toFixed(2), "total_xg"],
+  ["Pases", (s) => s.passes, "passes"],
   ["Acierto en el pase", (s) => (s.passes ? `${Math.round((100 * s.completed_passes) / s.passes)}%` : "—")],
-  ["Faltas", (s) => s.fouls],
-  ["Rojas", (s) => s.red_cards],
+  ["Faltas", (s) => s.fouls, "fouls"],
+  ["Rojas", (s) => s.red_cards, "red_cards"],
 ];
 
 function drawStats(teams, indicators) {
   const body = document.getElementById("stats-body");
   body.replaceChildren(
-    ...ROWS.map(([label, value]) => {
+    ...ROWS.map(([label, value, indicator]) => {
       const row = document.createElement("tr");
       const cells = [teams[0], null, teams[1]].map((team) => {
         const cell = document.createElement(team === null ? "th" : "td");
         cell.textContent = team === null ? label : value(indicators[team]);
+        if (team !== null && indicator) {
+          Object.assign(cell.dataset, { indicator, team });
+          cell.tabIndex = 0;
+        }
         return cell;
       });
       row.append(...cells);
