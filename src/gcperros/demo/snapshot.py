@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from gcperros.core.contracts import JsonValue
+from gcperros.demo.market import MarketView
 from gcperros.demo.replay import MatchReplay, ReplayClock
 from gcperros.firestore.document import LiveMatchDocument
 
@@ -32,9 +33,13 @@ class LiveSnapshot:
     running_share: dict[str, float]
     window_share: dict[str, float]
     pending: int
+    market: MarketView | None = None
 
     def to_json(self) -> dict[str, JsonValue]:
-        """Lo que recibe el front: el documento tal cual, con tres claves más."""
+        """Lo que recibe el front: el documento tal cual, con tres claves más.
+
+        Y una cuarta, ``market``, cuando la demostración lleva cuotas.
+        """
         payload = self.document.to_firestore_document()
         payload["clock"] = {
             "elapsed_s": self.clock.elapsed_s,
@@ -47,10 +52,32 @@ class LiveSnapshot:
             "window_share": dict(self.window_share),
         }
         payload["pending"] = self.pending
+        if self.market is not None:
+            payload["market"] = _market_json(self.market)
         return payload
 
 
-def take_snapshot(replay: MatchReplay) -> LiveSnapshot:
+def _market_json(view: MarketView) -> dict[str, JsonValue]:
+    return {
+        "model": dict(view.model),
+        "operators": {operator: dict(book) for operator, book in view.operators.items()},
+        "total_signals": view.total_signals,
+        "signals": [
+            {
+                "minute": signal.minute,
+                "operator": signal.operator,
+                "market": signal.market,
+                "outcome": signal.outcome,
+                "model_probability": signal.model_probability,
+                "market_probability": signal.market_probability,
+                "divergence": signal.divergence,
+            }
+            for signal in view.recent_signals
+        ],
+    }
+
+
+def take_snapshot(replay: MatchReplay, market: MarketView | None = None) -> LiveSnapshot:
     """Proyecta el estado de la repetición en el instante actual.
 
     Sólo cuenta lo que el motor **ya aplicó**: lo retenido por la marca de agua
@@ -70,4 +97,5 @@ def take_snapshot(replay: MatchReplay) -> LiveSnapshot:
         running_share=_share(possession.running_seconds),
         window_share=_share(possession.open_window_seconds),
         pending=engine.pending,
+        market=market,
     )
