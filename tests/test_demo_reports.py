@@ -61,3 +61,14 @@ def test_the_cli_passes_the_folder_on(tmp_path: Path, monkeypatch: pytest.Monkey
 
     assert cli.main(["--reports", str(tmp_path)]) == 0
     assert TestClient(served[0]).get("/api/reports/carga").json() == {"saturation_rate": 100000}
+
+
+def test_the_trust_page_is_linked_from_the_live_page() -> None:
+    client = _client(None)
+    page = client.get("/confianza.html")
+
+    assert page.status_code == 200
+    assert "<title>GCPerros · Por qué confiar</title>" in page.text
+    assert 'href="confianza.html"' in client.get("/").text
+    script = client.get("/confianza.js").text
+    assert "/api/reports" in script and "innerHTML" not in script
