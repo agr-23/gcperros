@@ -29,6 +29,14 @@ body {
   padding: 12px 16px; border-bottom: 1px solid var(--line);
 }
 .brand { font-weight: 800; letter-spacing: 0.02em; }
+.nav { display: flex; gap: 4px; }
+.nav a {
+  color: var(--muted); text-decoration: none; font-size: 0.9rem;
+  padding: 4px 10px; border-radius: 6px;
+}
+.nav a:hover { color: var(--ink); }
+.nav a[aria-current="page"] { color: var(--ink); background: var(--panel); }
+.nav a:focus-visible { outline: 2px solid var(--home); outline-offset: 2px; }
 .match { color: var(--muted); font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; }
 .link { margin-left: auto; font-size: 0.8rem; color: var(--muted); }
 .link::before { content: "●"; margin-right: 6px; }
@@ -118,6 +126,22 @@ body {
 .stats td:first-child { text-align: right; color: var(--home); }
 .stats td:last-child { color: var(--away); }
 .stats th { font-weight: 400; color: var(--muted); font-size: 0.85rem; text-align: center; }
+
+.trust .claim { margin: -4px 0 12px; font-size: 1.05rem; max-width: 62ch; }
+.trust .headline { margin: 0 0 10px; font-weight: 700; }
+.trust .headline.ok { color: var(--ok); }
+.trust .headline.ko, .trust .missing { color: var(--warn); }
+.trust .aside, .trust .source, .trust .note { color: var(--muted); font-size: 0.85rem; max-width: 70ch; }
+.trust .note { border-left: 3px solid var(--away); padding-left: 10px; color: var(--ink); }
+.trust code { font: 0.85em ui-monospace, Consolas, monospace; }
+.table-wrap { overflow-x: auto; }
+.trust-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.trust-table th, .trust-table td { padding: 6px 8px; text-align: right; border-top: 1px solid var(--line); white-space: nowrap; }
+.trust-table th { color: var(--muted); font-weight: 500; font-size: 0.8rem; border-top: 0; }
+.trust-table th:first-child, .trust-table td:first-child { text-align: left; }
+.trust-table td { font-family: ui-monospace, Consolas, monospace; font-size: 0.9rem; }
+.trust-table td.ok { color: var(--ok); font-weight: 700; }
+.trust-table td.ko { color: var(--warn); font-weight: 700; }
 
 .held { margin: 0; color: var(--muted); font-size: 0.85rem; cursor: help; }
 .held b { color: var(--ink); font-variant-numeric: tabular-nums; }

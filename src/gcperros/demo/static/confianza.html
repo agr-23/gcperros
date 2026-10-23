@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GCPerros · Por qué confiar</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="bar">
+    <span class="brand">GCPerros</span>
+    <nav class="nav"><a href="/">En vivo</a><a href="confianza.html" aria-current="page">Por qué confiar</a></nav>
+  </header>
+
+  <main class="wrap">
+    <section class="panel trust" id="validacion" aria-label="Correcto">
+      <h2>Correcto</h2>
+      <p class="claim">El motor en vivo da lo mismo que recalcular el partido entero, aunque la red duplique y desordene los mensajes.</p>
+      <div class="body"></div>
+      <p class="source">Fuente: <code>gcperros-validate-streaming --report validacion.json</code></p>
+    </section>
+
+    <section class="panel trust" id="carga" aria-label="Rápido">
+      <h2>Rápido</h2>
+      <p class="claim">Cuántos eventos por segundo aguanta el motor antes de que se le acumulen.</p>
+      <div class="body"></div>
+      <p class="note">
+        Lo que todavía no cumplimos, dicho aquí y no en letra pequeña: para ordenar bien los eventos,
+        el motor espera a que llegue uno más de 10 s posterior. En las pausas del juego no llega nadie,
+        y el p95 de espera es de 31 s frente a los 2 s que declaramos. Las dos salidas están escritas
+        en el documento de decisiones, sección 3.
+      </p>
+      <p class="source">Fuente: <code>gcperros-benchmark --report carga.json</code></p>
+    </section>
+
+    <section class="panel trust" id="calidad" aria-label="Limpio">
+      <h2>Limpio</h2>
+      <p class="claim">Cada ingestión se mide contra umbrales declarados, con numerador y denominador.</p>
+      <div class="body"></div>
+      <p class="source">Fuente: <code>gcperros-quality --report calidad.json</code></p>
+    </section>
+  </main>
+
+  <script src="confianza.js"></script>
+</body>
+</html>
