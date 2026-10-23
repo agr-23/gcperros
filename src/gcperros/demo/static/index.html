@@ -18,7 +18,7 @@
     <section class="board" aria-label="Marcador">
       <div class="team home"><span class="name" id="home-name">Local</span></div>
       <div class="score">
-        <span id="home-goals">0</span><span class="dash">–</span><span id="away-goals">0</span>
+        <span id="home-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale?">0</span><span class="dash">–</span><span id="away-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale?">0</span>
         <span class="clock"><span id="minute">0'</span> · <span id="phase">previa</span></span>
       </div>
       <div class="team away"><span class="name" id="away-name">Visitante</span></div>
@@ -71,8 +71,14 @@
     </p>
   </main>
 
+  <dialog id="trace" class="trace" aria-label="De dónde sale este número">
+    <div class="trace-body"></div>
+    <form method="dialog"><button class="trace-close">Cerrar</button></form>
+  </dialog>
+
   <script src="charts.js"></script>
   <script src="market.js"></script>
+  <script src="trace.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

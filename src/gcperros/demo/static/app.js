@@ -32,6 +32,8 @@ function render(state) {
   $("away-name").textContent = away || "Visitante";
   $("home-goals").textContent = goals(home);
   $("away-goals").textContent = goals(away);
+  $("home-goals").dataset.team = home;
+  $("away-goals").dataset.team = away;
   $("minute").textContent = `${state.clock.minute}'`;
   $("phase").textContent = PHASES[state.clock.phase] ?? state.clock.phase;
   $("pending").textContent = state.pending;

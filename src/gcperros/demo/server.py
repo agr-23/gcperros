@@ -29,6 +29,7 @@ from gcperros.core.contracts import JsonValue
 from gcperros.demo.market import MarketTape
 from gcperros.demo.replay import MatchReplay
 from gcperros.demo.snapshot import LiveSnapshot, take_snapshot
+from gcperros.demo.trace import Trace, trace_indicator
 
 #: Minutos de partido por minuto real. A 30, el partido entero dura unos tres
 #: minutos y medio con el descanso: bastante para seguirlo, poco para aburrir.
@@ -97,6 +98,13 @@ class LiveSource:
         self._market.advance_to(self._replay.now)
         return take_snapshot(self._replay, self._market.view())
 
+    def trace(self, indicator: str, scope: str) -> Trace:
+        """De dónde sale un indicador en el estado que la página ya está viendo.
+
+        No avanza el reloj: explica el número que se pulsó, no uno posterior.
+        """
+        return trace_indicator(self._replay, indicator, scope)
+
 
 async def stream_snapshots(
     source: LiveSource,
@@ -156,6 +164,18 @@ def create_app(
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache"},
         )
+
+    @app.get("/api/matches/{match_id}/trace/{indicator}/{scope}", response_model=None)
+    def trace(match_id: str, indicator: str, scope: str) -> dict[str, JsonValue]:
+        """Los eventos que formaron un número del marcador, con su huella verificada."""
+        if match_id != source.match_id:
+            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
+        try:
+            return source.trace(indicator, scope).to_json()
+        except (KeyError, AttributeError) as error:
+            raise HTTPException(
+                status_code=404, detail=f"no se mide {indicator} en {scope}"
+            ) from error
 
     def _report_path(name: str) -> Path | None:
         if reports_dir is None or name not in REPORTS:
