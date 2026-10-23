@@ -72,3 +72,16 @@ def test_the_trust_page_is_linked_from_the_live_page() -> None:
     assert 'href="confianza.html"' in client.get("/").text
     script = client.get("/confianza.js").text
     assert "/api/reports" in script and "innerHTML" not in script
+
+
+def test_under_the_hood_is_linked_and_honest_about_estimates() -> None:
+    client = _client(None)
+    page = client.get("/bajo-el-capo.html")
+
+    assert page.status_code == 200
+    assert "<title>GCPerros · Bajo el capó</title>" in page.text
+    for linked_from in ("/", "/confianza.html"):
+        assert 'href="bajo-el-capo.html"' in client.get(linked_from).text
+    # Las cifras de particionamiento salen de un modelo de costes, no de BigQuery.
+    assert "estimación" in page.text
+    assert "<script" not in page.text
