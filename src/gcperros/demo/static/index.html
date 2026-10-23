@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GCPerros · En vivo</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="bar">
+    <span class="brand">GCPerros</span>
+    <span class="match" id="match-id">—</span>
+    <span class="link" id="link" data-state="connecting">conectando</span>
+  </header>
+
+  <main class="wrap">
+    <section class="board" aria-label="Marcador">
+      <div class="team home"><span class="name" id="home-name">Local</span></div>
+      <div class="score">
+        <span id="home-goals">0</span><span class="dash">–</span><span id="away-goals">0</span>
+        <span class="clock"><span id="minute">0'</span> · <span id="phase">previa</span></span>
+      </div>
+      <div class="team away"><span class="name" id="away-name">Visitante</span></div>
+    </section>
+
+    <section class="panel" aria-label="Posesión">
+      <h2>Posesión</h2>
+      <div class="row">
+        <span class="label">Partido</span>
+        <div class="split" id="running"><i class="home"></i><i class="away"></i></div>
+      </div>
+      <div class="row">
+        <span class="label">Últimos 5'</span>
+        <div class="split" id="window"><i class="home"></i><i class="away"></i></div>
+      </div>
+    </section>
+
+    <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
+      <b id="pending">0</b> eventos esperando a la marca de agua
+    </p>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

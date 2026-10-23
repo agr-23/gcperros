@@ -85,3 +85,16 @@ def test_an_unknown_match_has_no_stream() -> None:
     response = TestClient(create_app(source)).get("/api/matches/otro/stream")
 
     assert response.status_code == 404
+
+
+def test_the_page_is_served_and_only_knows_the_api() -> None:
+    client = TestClient(create_app(LiveSource(MatchReplay(EVENTS), clock=FakeClock())))
+    page = client.get("/")
+    script = client.get("/app.js")
+
+    assert page.status_code == 200
+    assert "<title>GCPerros · En vivo</title>" in page.text
+    assert "EventSource" in script.text
+    # Sin CDN ni fuentes externas: la demo tiene que funcionar sin internet.
+    assert "http" not in page.text + client.get("/app.css").text
+    assert client.get("/api/matches").json() == ["match-0031"]
