@@ -8,6 +8,9 @@
   --muted: #8d9bb3;
   --home: #4f8ff0;
   --away: #f0b23f;
+  --op-a: #9b8cf0;
+  --op-b: #5cc8c0;
+  --op-c: #e58fb6;
   --ok: #4fc08d;
   --warn: #f07a5f;
 }
@@ -75,6 +78,38 @@ body {
 .chart path { fill: none; stroke-width: 2.5; stroke-linejoin: round; }
 .chart path.home { stroke: var(--home); }
 .chart path.away { stroke: var(--away); }
+
+.chart path.model { stroke: var(--ink); stroke-width: 3; }
+.chart path.op-a { stroke: var(--op-a); stroke-width: 1.6; }
+.chart path.op-b { stroke: var(--op-b); stroke-width: 1.6; }
+.chart path.op-c { stroke: var(--op-c); stroke-width: 1.6; }
+.legend { margin: -4px 0 8px; color: var(--muted); font-size: 0.8rem; }
+.legend span { margin-right: 12px; font-weight: 600; }
+.legend span::before { content: "━ "; }
+.legend .model { color: var(--ink); }
+.legend .op-a { color: var(--op-a); }
+.legend .op-b { color: var(--op-b); }
+.legend .op-c { color: var(--op-c); }
+
+.book-wrap { overflow-x: auto; margin-top: 12px; }
+.book { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.book th, .book td { padding: 6px 8px; text-align: right; border-top: 1px solid var(--line); }
+.book thead th { border-top: 0; color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+.book tbody th { text-align: left; font-weight: 400; color: var(--muted); }
+.book td { font-family: ui-monospace, Consolas, monospace; }
+.book td.model { font-weight: 700; }
+.book td.stale { color: var(--warn); font-weight: 700; }
+
+.panel h2 b { color: var(--ink); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.hint { margin: -6px 0 10px; color: var(--muted); font-size: 0.85rem; }
+.signals { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }
+.signals li {
+  display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: baseline;
+  padding: 6px 10px; border-radius: 6px; background: var(--ground); border-left: 3px solid var(--warn);
+}
+.signals li.up { border-left-color: var(--ok); }
+.signals .when { font: 700 0.9rem ui-monospace, Consolas, monospace; }
+.signals .nums { color: var(--muted); font: 0.8rem ui-monospace, Consolas, monospace; }
 
 .stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .stats td, .stats th { padding: 7px 4px; border-top: 1px solid var(--line); }

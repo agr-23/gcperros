@@ -97,6 +97,9 @@ def test_the_page_is_served_and_only_knows_the_api() -> None:
     assert "EventSource" in script.text
     assert 'src="charts.js"' in page.text and 'id="xg-chart"' in page.text
     assert client.get("/charts.js").status_code == 200
+    assert 'id="win-chart"' in page.text and 'id="signal-list"' in page.text
+    # El feed no interpreta HTML que venga del servidor.
+    assert "innerHTML" not in client.get("/market.js").text
     # Sin CDN ni fuentes externas: la demo tiene que funcionar sin internet.
     assert "http" not in page.text + client.get("/app.css").text
     assert client.get("/api/matches").json() == ["match-0031"]
