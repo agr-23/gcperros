@@ -1023,3 +1023,57 @@ Se ejecutó un benchmark de referencia comparando una consulta de agregación so
 El plan de ejecución demuestra que la etapa de lectura (`Input`) reduce
 drásticamente tanto los registros procesados como el tiempo de computación por slot,
 validando la arquitectura con evidencia cuantitativa.
+
+---
+
+## 14. Demostración para clientes
+
+### La página depende del contrato, no del motor
+
+Lo que recibe el front es el documento de Firestore (`LiveMatchDocument`) tal
+cual, más reloj, posesión, retenidos y mercado. Hoy lo produce una repetición
+en proceso; el día que el proyecto de GCP exista, lo producirá un listener de
+Firestore y la página no cambiará. Es el mismo patrón que `Transport` en la
+publicación: se programa contra la frontera, no contra la implementación.
+
+### Server-Sent Events, no WebSocket
+
+El estado sólo viaja del servidor a la página. SSE es HTTP normal, el navegador
+reconecta solo y no hace falta un protocolo propio. Al pitido final el servidor
+cierra el canal y la página también: si no, el navegador reconectaría solo y
+repetiría el final cada pocos segundos.
+
+### La repetición avanza cuando alguien pregunta
+
+No hay temporizador: el reloj de pared se traduce a reloj de partido en cada
+consulta. El servidor no necesita hilos, y las pruebas recorren un partido
+entero en milisegundos con un reloj falso. El partido empieza con la primera
+consulta y no al lanzar el servidor, para que nadie se pierda media parte por
+tardar en abrir el navegador.
+
+### Un partido de exhibición, no el de referencia
+
+La semilla de referencia (20260826) da un 4-0 con 1,8 de xG. El generador está
+bien calibrado —3,08 goles por 2,95 de xG de media sobre 200 partidos—, pero
+ese partido sale uno de cada veinte, y es lo primero que preguntaría alguien
+que sabe de apuestas. La demo usa la semilla 65: 2-1 con remontada y xG de
+1,93 contra 1,03. La semilla de referencia no cambia en ningún otro sitio.
+
+### Lo que la pantalla enseña lo calcula el sistema, no la pantalla
+
+- **Las señales** salen de `DiscrepancyDetector` tal cual. La cinta del mercado
+  sólo añade memoria para enseñarlas, y una prueba exige que al pitido final
+  sean exactamente las de `detect_discrepancies`.
+- **La confianza** se lee de los informes JSON de las CLI, con una lista cerrada
+  de nombres: lo que llega en la URL nunca se convierte en ruta.
+- **El linaje** se reconstruye sin copiar las reglas del motor —cada evento se
+  aplica a un estado vacío y se mira si tocó el indicador— y se verifica
+  plegando su huella y comparándola con la del motor.
+
+### Honestidad en pantalla
+
+Lo que el sistema todavía no hace se dice donde se ve, no en letra pequeña: el
+p95 de 31 s frente al SLA de 2 s está en la pantalla de confianza, los eventos
+retenidos por la marca de agua se cuentan en la de en vivo, y las cifras de
+particionamiento se presentan como estimación, porque salen de un modelo de
+costes y no de un plan de ejecución de BigQuery.
