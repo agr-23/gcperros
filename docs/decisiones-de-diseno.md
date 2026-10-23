@@ -280,6 +280,36 @@ comparten `event_time`— así que se desempata por `event_id`, estable
 independientemente del orden de llegada. Los indicadores son recuentos y sumas,
 que conmutan, de modo que el desempate no altera el estado.
 
+### El harness dice dónde se rompe el diseño, no sólo que funciona
+
+`gcperros-validate-streaming` degrada un partido como lo haría el broker y
+contrasta el motor contra el batch con los umbrales del OE-2. Dos familias:
+los escenarios **comprometidos**, que la CI puede exigir con `--strict`, y los
+de **estrés**, que sólo se informan porque existen para fallar en algún punto.
+
+Medido sobre el partido de referencia con el margen de 10 s:
+
+| Escenario | Tardíos | Oportunidad | Δ posesión | Δ xG | Veredicto |
+|---|---|---|---|---|---|
+| desorden-medio (2 s) | 2 | 99,83 % | 0,006 | 0,000 | pasa |
+| hostil (dup. 15 % + 2 s) | 3 | 99,75 % | 0,005 | 0,000 | pasa |
+| retardo-fuerte (5 s) | 43 | 96,41 % | 0,007 | 0,022 | pasa |
+| **retardo-extremo (10 s)** | 185 | 84,54 % | 0,007 | **0,202** | **falla** |
+
+El diseño aguanta más de lo que se le pidió, y cuando se rompe lo hace por xG
+antes que por posesión: perder un remate pesa más que perder un pase.
+
+### «Exacto» significa que la contabilidad cierra
+
+El OE-2 exige que los eventos aplicados coincidan *exactamente* con los únicos
+emitidos. La HU-12 descarta tardíos y los cuenta, y el KPI de oportunidad admite
+hasta un 5 % de descartes. Un recuento literal fallaría siempre con desorden
+realista (dos eventos por partido).
+
+Los tres criterios sólo son coherentes si «exacto» se lee sobre la
+contabilidad: `aplicados + tardíos = únicos emitidos`. Lo que no admite margen
+es un evento **sin justificar**. Así está implementado en `core/divergence.py`.
+
 ---
 
 ## 4. Publicación
