@@ -16,6 +16,12 @@ from gcperros.demo.replay import MatchReplay
 from gcperros.demo.server import DEFAULT_SPEED, LiveSource, create_app
 from gcperros.generators.match import MatchConfig, simulate_match
 
+#: Partido de exhibición. La semilla de referencia del proyecto (20260826) da un
+#: 4-0 con 1,8 de xG, que ocurre en uno de cada veinte partidos y es lo primero
+#: que preguntaría alguien que sabe de apuestas. Esta da un 2-1 con remontada,
+#: goles en las dos partes, xG de 1,93 contra 1,03 y dos expulsiones.
+SHOWCASE_SEED = 65
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Construye el analizador de argumentos."""
@@ -23,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="gcperros-demo",
         description="Sirve un partido simulado en vivo para enseñarlo a un cliente.",
     )
-    parser.add_argument("--seed", type=int, default=20260826, help="Semilla del partido.")
+    parser.add_argument("--seed", type=int, default=SHOWCASE_SEED, help="Semilla del partido.")
     parser.add_argument("--home", default="RMA", help="Equipo local.")
     parser.add_argument("--away", default="BAR", help="Equipo visitante.")
     parser.add_argument(

@@ -49,6 +49,7 @@ def test_wall_time_becomes_match_time() -> None:
 
 def test_the_match_ends_and_stays_ended() -> None:
     client, clock = _client()
+    client.get("/api/matches/match-0030/state")
     clock.now += 3600.0
 
     first = client.get("/api/matches/match-0030/state").json()
@@ -66,6 +67,14 @@ def test_the_match_list_and_an_unknown_match() -> None:
     response = client.get("/api/matches/otro/state")
     assert response.status_code == 404
     assert "otro" in response.json()["detail"]
+
+
+def test_the_match_starts_when_someone_looks() -> None:
+    """Lanzar el servidor y abrir la página un minuto después no salta media parte."""
+    client, clock = _client(speed=30.0)
+    clock.now += 60.0
+
+    assert client.get("/api/matches/match-0030/state").json()["clock"]["phase"] == "previa"
 
 
 def test_speed_must_be_positive() -> None:

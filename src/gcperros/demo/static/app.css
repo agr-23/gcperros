@@ -68,6 +68,22 @@ body {
 .split .home { background: var(--home); flex-basis: 50%; }
 .split .away { background: var(--away); flex-basis: 50%; justify-content: flex-end; }
 
+.chart { overflow-x: auto; }
+.chart svg { width: 100%; min-width: 480px; height: auto; display: block; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font: 11px ui-monospace, Consolas, monospace; }
+.chart path { fill: none; stroke-width: 2.5; stroke-linejoin: round; }
+.chart path.home { stroke: var(--home); }
+.chart path.away { stroke: var(--away); }
+
+.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.stats td, .stats th { padding: 7px 4px; border-top: 1px solid var(--line); }
+.stats tr:first-child td, .stats tr:first-child th { border-top: 0; }
+.stats td { font: 600 1rem ui-monospace, Consolas, monospace; width: 30%; }
+.stats td:first-child { text-align: right; color: var(--home); }
+.stats td:last-child { color: var(--away); }
+.stats th { font-weight: 400; color: var(--muted); font-size: 0.85rem; text-align: center; }
+
 .held { margin: 0; color: var(--muted); font-size: 0.85rem; cursor: help; }
 .held b { color: var(--ink); font-variant-numeric: tabular-nums; }
 

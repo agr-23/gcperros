@@ -52,7 +52,7 @@ class LiveSource:
         speed: float = DEFAULT_SPEED,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        """Arranca el partido en el instante en que se crea la fuente.
+        """Deja el partido listo para empezar con la primera consulta.
 
         Raises:
             ValueError: Si la velocidad no es positiva.
@@ -62,7 +62,9 @@ class LiveSource:
         self._replay = replay
         self._speed = speed
         self._clock = clock
-        self._started = clock()
+        # El partido empieza cuando alguien lo mira, no al lanzar el servidor:
+        # si no, quien tarda un minuto en abrir la página se pierde media parte.
+        self._started: float | None = None
 
     @property
     def match_id(self) -> str:
@@ -71,7 +73,10 @@ class LiveSource:
 
     def current(self) -> LiveSnapshot:
         """El estado del partido ahora mismo, según cuánto tiempo real pasó."""
-        self._replay.advance_to((self._clock() - self._started) * self._speed)
+        now = self._clock()
+        if self._started is None:
+            self._started = now
+        self._replay.advance_to((now - self._started) * self._speed)
         return take_snapshot(self._replay)
 
 
