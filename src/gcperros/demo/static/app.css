@@ -167,6 +167,39 @@ body {
   padding: 6px 14px; font: inherit; cursor: pointer;
 }
 
+.flow {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px;
+}
+.flow > li { display: grid; gap: 8px; align-content: start; position: relative; }
+.flow > li + li::before {
+  content: "→"; position: absolute; left: -18px; top: 0; color: var(--muted);
+}
+.flow h3 {
+  margin: 0; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+.node {
+  display: block; padding: 10px 12px; border-radius: 8px;
+  background: var(--ground); border: 1px solid var(--line);
+  color: var(--muted); text-decoration: none; font-size: 0.82rem; line-height: 1.35;
+}
+.node b { display: block; margin-bottom: 2px; color: var(--ink); font-size: 0.95rem; }
+.node:hover, .node:focus-visible { border-color: var(--home); outline: none; }
+.node code, .pairs code, .infra code { font: 0.9em ui-monospace, Consolas, monospace; color: var(--ink); }
+.pairs { display: grid; grid-template-columns: 110px 1fr; gap: 10px 16px; margin: 0; }
+.pairs dt { font-weight: 700; }
+.pairs dd { margin: 0; color: var(--muted); max-width: 62ch; }
+.pairs em { color: var(--ink); font-style: normal; font-weight: 600; }
+.infra { margin: 0 0 10px; padding-left: 20px; }
+.infra li { margin: 4px 0; }
+.panel .aside, .panel .note { font-size: 0.85rem; max-width: 70ch; }
+.panel .aside { color: var(--muted); }
+.panel .note { border-left: 3px solid var(--away); padding-left: 10px; }
+@media (max-width: 760px) {
+  .flow { grid-template-columns: 1fr 1fr; }
+  .flow > li + li::before { content: none; }
+}
+
 .held { margin: 0; color: var(--muted); font-size: 0.85rem; cursor: help; }
 .held b { color: var(--ink); font-variant-numeric: tabular-nums; }
 
