@@ -143,6 +143,30 @@ body {
 .trust-table td.ok { color: var(--ok); font-weight: 700; }
 .trust-table td.ko { color: var(--warn); font-weight: 700; }
 
+[data-indicator] { cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 4px; }
+[data-indicator]:hover { color: var(--ink); text-decoration-color: var(--ink); }
+[data-indicator]:focus-visible { outline: 2px solid var(--home); outline-offset: 3px; border-radius: 4px; }
+.score [data-indicator] { text-decoration-thickness: 3px; text-underline-offset: 10px; }
+
+.trace {
+  width: min(560px, calc(100% - 32px)); border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel); color: var(--ink); padding: 20px;
+}
+.trace::backdrop { background: rgb(5 10 18 / 70%); }
+.trace p { margin: 0 0 10px; }
+.trace-title { font-weight: 800; font-size: 1.2rem; }
+.trace-ok { color: var(--ok); }
+.trace-ko { color: var(--warn); }
+.trace-meta { color: var(--muted); font: 0.8rem ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+.trace-events {
+  margin: 0 0 12px; padding: 0; list-style: none; max-height: 260px; overflow-y: auto;
+  columns: 2; font: 0.9rem ui-monospace, Consolas, monospace;
+}
+.trace-close {
+  background: var(--line); color: var(--ink); border: 0; border-radius: 6px;
+  padding: 6px 14px; font: inherit; cursor: pointer;
+}
+
 .held { margin: 0; color: var(--muted); font-size: 0.85rem; cursor: help; }
 .held b { color: var(--ink); font-variant-numeric: tabular-nums; }
 
