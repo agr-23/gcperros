@@ -135,14 +135,25 @@ class MatchReplay:
         current = max(
             (p for p, start in self._period_starts.items() if start <= self._now), default=1
         )
-        offset_s = (self._now - self._period_starts.get(current, self._kickoff)).total_seconds()
-        minute = (current - 1) * HALF_DURATION_S / 60 + offset_s / 60
         return ReplayClock(
             elapsed_s=round(self.elapsed_s, 1),
             period=current,
-            minute=int(minute) if phase != "descanso" else 45,
+            minute=self.minute_at(self._now) if phase != "descanso" else 45,
             phase=phase,
         )
+
+    def minute_at(self, instant: datetime) -> int:
+        """Minuto de partido de un instante, contando cada parte desde su inicio."""
+        current = max(
+            (p for p, start in self._period_starts.items() if start <= instant), default=1
+        )
+        offset_s = (instant - self._period_starts.get(current, self._kickoff)).total_seconds()
+        return int((current - 1) * HALF_DURATION_S / 60 + offset_s / 60)
+
+    @property
+    def delivered(self) -> tuple[MatchEvent, ...]:
+        """Los eventos ya entregados al motor, en orden de tiempo."""
+        return tuple(self._events[: self._next])
 
 
 def _period(event: MatchEvent) -> int:
