@@ -35,11 +35,23 @@
       </div>
     </section>
 
+    <section class="panel" aria-label="Goles esperados">
+      <h2>Goles esperados (xG) acumulados</h2>
+      <div class="chart"><svg id="xg-chart" viewBox="0 0 640 220" role="img"
+        aria-label="xG acumulado de cada equipo a lo largo del partido"></svg></div>
+    </section>
+
+    <section class="panel" aria-label="Estadísticas">
+      <h2>Estadísticas</h2>
+      <table class="stats"><tbody id="stats-body"></tbody></table>
+    </section>
+
     <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
       <b id="pending">0</b> eventos esperando a la marca de agua
     </p>
   </main>
 
+  <script src="charts.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

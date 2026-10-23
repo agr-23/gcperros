@@ -95,6 +95,8 @@ def test_the_page_is_served_and_only_knows_the_api() -> None:
     assert page.status_code == 200
     assert "<title>GCPerros · En vivo</title>" in page.text
     assert "EventSource" in script.text
+    assert 'src="charts.js"' in page.text and 'id="xg-chart"' in page.text
+    assert client.get("/charts.js").status_code == 200
     # Sin CDN ni fuentes externas: la demo tiene que funcionar sin internet.
     assert "http" not in page.text + client.get("/app.css").text
     assert client.get("/api/matches").json() == ["match-0031"]
