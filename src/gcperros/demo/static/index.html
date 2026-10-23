@@ -23,6 +23,25 @@
       <div class="team away"><span class="name" id="away-name">Visitante</span></div>
     </section>
 
+    <section class="panel market" aria-label="Mercado frente a modelo">
+      <h2>¿Quién gana? El modelo frente al mercado</h2>
+      <p class="legend">
+        <span class="model">Modelo propio</span><span class="op-a">OP-A</span><span class="op-b">OP-B</span><span class="op-c">OP-C</span>
+        · probabilidad de victoria local, sin el margen del operador
+      </p>
+      <div class="chart"><svg id="win-chart" viewBox="0 0 640 200" role="img"
+        aria-label="Probabilidad de victoria local según el modelo y según cada operador"></svg></div>
+      <div class="book-wrap">
+        <table class="book"><thead><tr id="book-head"></tr></thead><tbody id="book-body"></tbody></table>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Señales">
+      <h2>Señales <b id="signal-count">0</b></h2>
+      <p class="hint">Un operador se separa del modelo más de 5 puntos: casi siempre, un precio que no se actualizó tras un gol o una expulsión.</p>
+      <ol class="signals" id="signal-list"></ol>
+    </section>
+
     <section class="panel" aria-label="Posesión">
       <h2>Posesión</h2>
       <div class="row">
@@ -52,6 +71,7 @@
   </main>
 
   <script src="charts.js"></script>
+  <script src="market.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
