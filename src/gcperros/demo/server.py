@@ -19,9 +19,11 @@ import asyncio
 import json
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from gcperros.core.contracts import JsonValue
 from gcperros.demo.replay import MatchReplay
@@ -34,6 +36,9 @@ DEFAULT_SPEED = 30.0
 #: Segundos reales entre dos envíos del canal en vivo. A velocidad 30 son
 #: quince segundos de partido: la página se mueve sin saturar al navegador.
 DEFAULT_POLL_S = 0.5
+
+#: La página de la demostración. Va dentro del paquete para que la instale pip.
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 class LiveSource:
@@ -126,4 +131,6 @@ def create_app(
             headers={"Cache-Control": "no-cache"},
         )
 
+    # La página, al final: así las rutas de /api tienen prioridad sobre ella.
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="page")
     return app
