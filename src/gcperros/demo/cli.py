@@ -12,9 +12,11 @@ import sys
 
 import uvicorn
 
+from gcperros.demo.market import MarketTape
 from gcperros.demo.replay import MatchReplay
 from gcperros.demo.server import DEFAULT_SPEED, LiveSource, create_app
 from gcperros.generators.match import MatchConfig, simulate_match
+from gcperros.generators.odds import simulate_odds
 
 #: Partido de exhibición. La semilla de referencia del proyecto (20260826) da un
 #: 4-0 con 1,8 de xG, que ocurre en uno de cada veinte partidos y es lo primero
@@ -51,7 +53,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("la velocidad debe ser positiva")
 
     config = MatchConfig(match_id=f"demo-{args.seed}", home_team=args.home, away_team=args.away)
-    source = LiveSource(MatchReplay(simulate_match(args.seed, config)), speed=args.speed)
+    events = simulate_match(args.seed, config)
+    source = LiveSource(
+        MatchReplay(events),
+        speed=args.speed,
+        market=MarketTape(events, simulate_odds(args.seed, events)),
+    )
     print(
         f"partido={source.match_id} velocidad=x{args.speed:g} "
         f"estado=http://{args.host}:{args.port}/api/matches/{source.match_id}/state",
