@@ -29,6 +29,10 @@ bigquery = ["google-cloud-bigquery>=3.20"]
 # contra este cliente, así que tampoco lo arrastran.
 firestore = ["google-cloud-firestore>=2.16"]
 
+# Servidor de la demostración para clientes (sprint 3). Sólo lo necesita
+# `gcperros-demo`; el pipeline no depende de él.
+demo = ["fastapi>=0.115", "uvicorn>=0.30"]
+
 dev = [
   "pytest>=8.0",
   "ruff>=0.8",
@@ -39,11 +43,16 @@ dev = [
   "google-cloud-pubsub>=2.20",
   "google-cloud-bigquery>=3.20",
   "google-cloud-firestore>=2.16",
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  # El cliente de pruebas de FastAPI habla HTTP a través de httpx.
+  "httpx>=0.27",
 ]
 
 [project.scripts]
 gcperros-generate-match = "gcperros.generators.cli:main"
 gcperros-generate-odds = "gcperros.generators.cli:odds_main"
+gcperros-demo = "gcperros.demo.cli:main"
 gcperros-publish = "gcperros.publishing.cli:main"
 gcperros-benchmark = "gcperros.engine.benchmark_cli:main"
 gcperros-validate = "gcperros.governance.cli:main"
