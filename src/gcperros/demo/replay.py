@@ -76,6 +76,11 @@ class MatchReplay:
         return (self._events[-1].event_time - self._kickoff).total_seconds()
 
     @property
+    def now(self) -> datetime:
+        """Instante del partido en el que está el reloj."""
+        return self._now
+
+    @property
     def elapsed_s(self) -> float:
         """Segundos de partido ya recorridos."""
         return (self._now - self._kickoff).total_seconds()
