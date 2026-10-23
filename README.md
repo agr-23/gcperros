@@ -300,6 +300,43 @@ El mismo código publica en GCP en cuanto se quita esa variable.
 
 ---
 
+## La demo para un cliente
+
+Lo que se le enseña a alguien que no va a leer código: un partido que pasa en
+vivo, el mercado frente al modelo y por qué fiarse de los números.
+
+```bash
+pip install -e ".[demo]"
+gcperros-demo                        # http://127.0.0.1:8000
+```
+
+Tres pantallas, en el orden en que importan:
+
+| Pantalla | Qué enseña |
+|---|---|
+| **En vivo** | Marcador, posesión, xG en el tiempo y estadísticas. Cada número se puede pulsar y abre los eventos que lo formaron, con su huella verificada contra el motor. |
+| **Por qué confiar** | El harness (correcto), el banco de carga (rápido) y la calidad de la ingestión (limpio), leídos de los informes que escriben las CLI. Y el SLA que todavía no cumplimos, en la misma pantalla. |
+| **Bajo el capó** | El recorrido de un evento, las dos bases de datos, el modelo estrella y lo que declara el Terraform. |
+
+El partido empieza cuando se abre la página, dura unos tres minutos y medio a
+la velocidad por defecto (`--speed 30`) y sale igual cada vez: no necesita red,
+ni cuenta de GCP, ni suerte. Para la pantalla de confianza hacen falta los
+informes:
+
+```bash
+mkdir informes
+gcperros-validate-streaming --seed 65 --scenarios all --report informes/validacion.json
+gcperros-benchmark --seed 65 --report informes/carga.json
+gcperros-generate-match --seed 65 --out partido.jsonl
+gcperros-quality --stream match --in partido.jsonl --report informes/calidad.json
+gcperros-demo --reports informes
+```
+
+Las decisiones de diseño de la demo están en
+[`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md), sección 14.
+
+---
+
 ## Dónde seguir
 
 - **[docs/decisiones-de-diseno.md](docs/decisiones-de-diseno.md)** — cada decisión
