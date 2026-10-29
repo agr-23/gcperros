@@ -71,7 +71,8 @@ function carga(report) {
 }
 
 const DIMENSIONS = {
-  completeness: "Completitud", validity: "Validez", uniqueness: "Unicidad", timeliness: "Oportunidad",
+  completeness: "Completitud", validity: "Validez", uniqueness: "Unicidad",
+  timeliness: "Oportunidad", consistency: "Consistencia",
 };
 
 function calidad(report) {
@@ -83,7 +84,7 @@ function calidad(report) {
         [DIMENSIONS[m.dimension] ?? m.dimension],
         [pct(m.value, 2)],
         [pct(m.minimum, 0)],
-        [`${fmt.format(m.total)} mensajes`],
+        [`${fmt.format(m.total)} ${m.dimension === "consistency" ? "indicadores" : "mensajes"}`],
         verdict(m.passed),
       ]),
     ),

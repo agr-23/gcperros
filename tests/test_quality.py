@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from gcperros.core.divergence import Divergence
 from gcperros.engine.dedup import DedupStats
 from gcperros.engine.pipeline import MatchEngine
 from gcperros.engine.watermark import WatermarkStats
@@ -92,6 +93,16 @@ def test_uniqueness_measures_the_delivered_stream_not_the_deduplicated_one() -> 
     assert uniqueness.value == 0.9
 
 
+def test_consistency_counts_indicators_not_events() -> None:
+    """Un gol perdido es un indicador que no cuadra, sin margen (historia #26)."""
+    lost_goal = Divergence(possession_share=0.002, total_xg=0.0, goals=1, events=0)
+
+    (consistency,) = assess("x", IngestionEvidence(divergence=lost_goal)).measurements
+
+    assert (consistency.observed, consistency.total) == (3, 4)
+    assert not consistency.passed
+
+
 ###############################################################################
 # La medición
 ###############################################################################
@@ -129,7 +140,10 @@ def test_a_measurement_below_the_threshold_fails() -> None:
 
 def test_the_report_evaluates_every_rule_it_has_data_for() -> None:
     evidence = IngestionEvidence(
-        gate=_gate(100, 0), dedup=_dedup(100, 0), watermark=_watermark(100, 0)
+        gate=_gate(100, 0),
+        dedup=_dedup(100, 0),
+        watermark=_watermark(100, 0),
+        divergence=Divergence(0.0, 0.0, 0, 0),
     )
 
     report = assess("partido", evidence, measured_at=MEASURED_AT)
@@ -144,7 +158,7 @@ def test_a_dimension_without_data_is_named_not_assumed_good() -> None:
     """No medido no es lo mismo que aprobado."""
     report = assess("cuotas", IngestionEvidence(gate=_gate(100, 0)))
 
-    assert report.unmeasured == ("uniqueness", "timeliness")
+    assert report.unmeasured == ("uniqueness", "timeliness", "consistency")
     assert [m.rule.dimension for m in report.measurements] == [
         QualityDimension.COMPLETENESS,
         QualityDimension.VALIDITY,

@@ -36,11 +36,12 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
 from enum import StrEnum
 
 from gcperros.core.contracts import JsonValue, format_event_time
+from gcperros.core.divergence import Divergence
 from gcperros.engine.dedup import DedupStats
 from gcperros.engine.watermark import WatermarkStats
 from gcperros.governance.gate import GateStats
@@ -70,6 +71,10 @@ class QualityDimension(StrEnum):
 
     #: Qué proporción se aplicó dentro de la marca de agua (HU-12).
     TIMELINESS = "timeliness"
+
+    #: Cuántos indicadores del estado en vivo cuadran con el recálculo batch
+    #: sobre los mismos eventos, con los umbrales del OE-2 (#17).
+    CONSISTENCY = "consistency"
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,6 +199,7 @@ class IngestionEvidence:
     gate: GateStats | None = None
     dedup: DedupStats | None = None
     watermark: WatermarkStats | None = None
+    divergence: Divergence | None = None
 
     def observations(self) -> dict[QualityDimension, tuple[int, int]]:
         """Traduce los contadores a pares ``(observado, total)`` por dimensión."""
@@ -213,6 +219,13 @@ class IngestionEvidence:
 
         if self.watermark is not None:
             found[QualityDimension.TIMELINESS] = (self.watermark.released, self.watermark.seen)
+
+        if self.divergence is not None:
+            # Una comprobación por indicador comparado, no una por evento: el
+            # numerador dice cuántos cuadran y el denominador cuántos se miraron.
+            compared = len(fields(Divergence))
+            breached = len({b.indicator for b in self.divergence.breaches()})
+            found[QualityDimension.CONSISTENCY] = (compared - breached, compared)
 
         return found
 
@@ -265,12 +278,24 @@ APPLICATION_TIMELINESS = QualityRule(
     ),
 )
 
+PLANE_CONSISTENCY = QualityRule(
+    name="plane_consistency",
+    dimension=QualityDimension.CONSISTENCY,
+    minimum=1.0,
+    rationale=(
+        "Declarado en el OE-2: el estado en vivo tiene que coincidir con el recálculo "
+        "batch dentro de sus umbrales, y no hay término medio. Un indicador que no "
+        "cuadra es un número en pantalla que no es el del partido."
+    ),
+)
+
 #: Las reglas vigentes, en el orden en que se informan.
 DEFAULT_RULES: tuple[QualityRule, ...] = (
     REQUIRED_FIELDS,
     DOMAIN_VALIDITY,
     DELIVERY_UNIQUENESS,
     APPLICATION_TIMELINESS,
+    PLANE_CONSISTENCY,
 )
 
 

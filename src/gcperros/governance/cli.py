@@ -32,13 +32,19 @@ import sys
 from pathlib import Path
 
 from gcperros.core.contracts import MatchEvent, OddsUpdate
+from gcperros.core.divergence import PlaneResult, batch_result, measure
 from gcperros.engine.pipeline import MatchEngine
 from gcperros.governance.gate import (
     IngestionGate,
     match_event_gate,
     odds_update_gate,
 )
-from gcperros.governance.quality import IngestionEvidence, QualityReport, assess
+from gcperros.governance.quality import (
+    IngestionEvidence,
+    QualityDimension,
+    QualityReport,
+    assess,
+)
 from gcperros.governance.quarantine import (
     InMemoryInvalidStore,
     InvalidEventStore,
@@ -214,19 +220,29 @@ def _match_evidence(lines: list[str], store: InvalidEventStore) -> IngestionEvid
     """
     gate = match_event_gate(store)
     engine = MatchEngine()
+    admitted: dict[str, MatchEvent] = {}
     try:
         for line in lines:
             event = gate.admit(line)
             if event is not None:
                 engine.process(event)
+                admitted.setdefault(event.event_id, event)
         engine.flush()
     finally:
         gate.close()
 
+    # La consistencia compara el estado en vivo con el recálculo batch sobre
+    # los mismos eventos únicos que admitió la frontera (historia #26).
+    result = engine.result()
+    reference = batch_result(sorted(admitted.values(), key=lambda e: (e.event_time, e.event_id)))
+    observed = PlaneResult(
+        result.summary, result.possession.running_seconds, result.watermark.dropped_late
+    )
     return IngestionEvidence(
         gate=gate.stats,
         dedup=engine.dedup_stats,
         watermark=engine.watermark_stats,
+        divergence=measure(reference, observed),
     )
 
 
@@ -251,7 +267,8 @@ def _describe(report: QualityReport) -> str:
     lines = [f"calidad={veredicto} alcance={report.scope}"]
     lines.extend(
         f"  {'ok ' if m.passed else 'NO '} {m.rule.dimension.value:<12} "
-        f"{m.value:.4f} (minimo {m.rule.minimum}) sobre {m.total} mensajes"
+        f"{m.value:.4f} (minimo {m.rule.minimum}) sobre {m.total} "
+        + ("indicadores" if m.rule.dimension is QualityDimension.CONSISTENCY else "mensajes")
         for m in report.measurements
     )
     if report.unmeasured:
