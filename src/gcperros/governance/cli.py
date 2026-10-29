@@ -218,7 +218,9 @@ def build_quality_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _match_evidence(lines: list[str], store: InvalidEventStore) -> IngestionEvidence:
+def _match_evidence(
+    lines: list[str], store: InvalidEventStore
+) -> tuple[IngestionEvidence, set[str]]:
     """Ingiere el flujo de partido por la frontera y el motor.
 
     El motor solo ve lo que la frontera admitió, que es el orden que fija la
@@ -244,15 +246,18 @@ def _match_evidence(lines: list[str], store: InvalidEventStore) -> IngestionEvid
     observed = PlaneResult(
         result.summary, result.possession.running_seconds, result.watermark.dropped_late
     )
-    return IngestionEvidence(
+    evidence = IngestionEvidence(
         gate=gate.stats,
         dedup=engine.dedup_stats,
         watermark=engine.watermark_stats,
         divergence=measure(reference, observed),
     )
+    return evidence, {event.match_id for event in admitted.values()}
 
 
-def _odds_evidence(lines: list[str], store: InvalidEventStore) -> IngestionEvidence:
+def _odds_evidence(
+    lines: list[str], store: InvalidEventStore
+) -> tuple[IngestionEvidence, set[str]]:
     """Ingiere el flujo de cuotas, que no pasa por el motor.
 
     Sin motor no hay deduplicación ni marca de agua, así que dos de las tres
@@ -261,10 +266,10 @@ def _odds_evidence(lines: list[str], store: InvalidEventStore) -> IngestionEvide
     """
     gate = odds_update_gate(store)
     try:
-        gate.admit_all(lines)
+        admitted = gate.admit_all(lines)
     finally:
         gate.close()
-    return IngestionEvidence(gate=gate.stats)
+    return IngestionEvidence(gate=gate.stats), {update.match_id for update in admitted}
 
 
 def _describe(report: QualityReport) -> str:
@@ -296,11 +301,15 @@ def quality_main(argv: list[str] | None = None) -> int:
 
     lines = _read_lines(args.source)
     store = _build_store(args.invalid)
-    evidence = (
+    evidence, matches = (
         _match_evidence(lines, store) if args.stream == "match" else _odds_evidence(lines, store)
     )
 
-    report = assess(args.scope or STREAM_NAMES[args.stream], evidence)
+    # Por defecto el alcance nombra el partido, para que la serie de informes
+    # distinga un partido de otro (historia #26).
+    stream = STREAM_NAMES[args.stream]
+    default_scope = f"{stream}/{','.join(sorted(matches))}" if matches else stream
+    report = assess(args.scope or default_scope, evidence)
     _write(report.to_json() + "\n", args.report)
     print(_describe(report), file=sys.stderr)
 

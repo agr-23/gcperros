@@ -315,6 +315,22 @@ def test_a_stream_below_the_threshold_fails_under_strict(match_file: Path, tmp_p
     assert governance_cli.quality_main([*arguments, "--strict"]) == 1
 
 
+def test_by_default_the_report_names_the_match_it_measured(
+    match_file: Path, odds_file: Path, tmp_path: Path
+) -> None:
+    """Una serie de informes tiene que distinguir un partido de otro (historia #26)."""
+    match_id = json.loads(match_file.read_text(encoding="utf-8").splitlines()[0])["match_id"]
+    scopes = []
+    for stream, source in (("match", match_file), ("odds", odds_file)):
+        report_file = tmp_path / f"{stream}.json"
+        governance_cli.quality_main(
+            ["--stream", stream, "--in", str(source), "--report", str(report_file)]
+        )
+        scopes.append(json.loads(report_file.read_text(encoding="utf-8"))["scope"])
+
+    assert scopes == [f"match-events/{match_id}", f"odds-updates/{match_id}"]
+
+
 def test_the_scope_can_be_named(match_file: Path, tmp_path: Path) -> None:
     report_file = tmp_path / "calidad.json"
 
