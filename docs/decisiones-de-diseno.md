@@ -1231,3 +1231,34 @@ tiempo, y confundirlas es el error que la HU-20 corrigió.
 
 `gcperros-catalog` lo consulta por rol o por clase, y con `--glossary` saca el
 glosario: «¿de quién es esto?» y «¿qué significa?» sin abrir el código.
+
+---
+
+## 16. Datos de usuario (historia #27)
+
+### Lo único real del sistema
+
+El partido y las cuotas son sintéticos. El identificador de sesión y los
+mercados que alguien sigue no: detrás hay una persona, y es la única parte del
+sistema a la que aplican la Ley 1581 de 2012 y, donde corresponda, el RGPD.
+`governance/privacy.py` es lo primero que toca un mensaje de actividad de
+usuario, y de él sólo sale la versión seudonimizada.
+
+### HMAC con clave, no un hash
+
+Un SHA-256 sin clave no protege nada: los mercados posibles son dos, y su hash se
+revierte probando las dos entradas. Se usa HMAC-SHA256 con una clave de al menos
+32 bytes que vive sólo en el entorno (`GCPERROS_PSEUDONYM_KEY`), nunca en el
+repositorio, y sin valor por defecto: sin clave no se ingiere. El mismo valor da
+siempre el mismo seudónimo, de modo que se puede contar sesiones y preferencias
+sin saber de quién son. Cada campo usa su propio propósito, para que no se pueda
+cruzar un seudónimo entre campos.
+
+Seudonimizado no es anonimizado: con la clave se puede reidentificar, y el RGPD
+(considerando 26) sigue tratando estos datos como personales.
+
+### La frontera no archiva lo rechazado
+
+La frontera deportiva guarda cada mensaje rechazado tal cual, como evidencia
+(sección 7). Aquí eso sería guardar la sesión en claro, así que lo rechazado sólo
+se cuenta por campo —`session_id`, `markets`, `event_time`…—, nunca por valor.
