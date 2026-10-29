@@ -703,6 +703,12 @@ Sin ella no hay serie, y sin serie la calidad vuelve a ser una auditoría suelta
 al final del semestre, que es exactamente lo que la historia pide evitar. El
 reloj se inyecta, por el mismo motivo que en el repositorio de inválidos.
 
+Por la misma razón, el alcance nombra por defecto **el partido** medido
+(`match-events/<match_id>`) y no sólo el flujo: la historia #26 pide la calidad de
+cada partido procesado, y una serie en la que todos los informes se llaman igual
+no distingue uno de otro. La CI conserva el registro de escalados junto a los
+informes.
+
 ### Un umbral incumplido se escala, no sólo se informa
 
 Un fallo que sólo cambia el código de salida no le dice a nadie que le toca.

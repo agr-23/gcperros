@@ -113,9 +113,9 @@ jobs:
       - name: Informe de calidad del flujo de referencia
         run: |
           gcperros-quality --stream match --in primera.jsonl --strict \
-            --report calidad-match-events.json
+            --report calidad-match-events.json --escalations calidad-escalados.jsonl
           gcperros-quality --stream odds --in cuotas-a.jsonl --strict \
-            --report calidad-odds-updates.json
+            --report calidad-odds-updates.json --escalations calidad-escalados.jsonl
 
       # La HU-17 promete la calidad como señal continua y no como auditoría al
       # final. Hasta ahora se medía y se tiraba: sin conservar los informes no
@@ -126,7 +126,10 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: informes-de-calidad
-          path: calidad-*.json
+          # Con los escalados de la historia #26, si los hubo.
+          path: |
+            calidad-*.json
+            calidad-escalados.jsonl
           if-no-files-found: warn
           retention-days: 90
 
