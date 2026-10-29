@@ -1,5 +1,6 @@
 // Trazabilidad en pantalla (HU-18): cualquier cifra marcada con
-// data-indicator se puede pulsar, y se abre de dónde sale, con su huella.
+// data-indicator se puede pulsar, y se abre de dónde sale, con su huella. Las
+// señales del feed (data-signal) también (historia #25).
 "use strict";
 
 const NAMES = {
@@ -50,7 +51,45 @@ async function openTrace(indicator, team) {
   dialog.showModal();
 }
 
+async function openSignalTrace(index) {
+  const dialog = document.getElementById("trace");
+  const [matchId] = await (await fetch("/api/matches")).json();
+  const response = await fetch(`/api/matches/${encodeURIComponent(matchId)}/signals/${Number(index)}/trace`);
+  if (!response.ok) return;
+  const trace = await response.json();
+
+  const list = document.createElement("ol");
+  list.className = "trace-events";
+  for (const event of trace.events) {
+    const item = document.createElement("li");
+    item.textContent = `${event.minute}'  ${TYPES[event.event_type] ?? event.event_type} ${event.team}`;
+    list.append(item);
+  }
+  const price = document.createElement("li");
+  price.textContent = `${trace.odds_update.minute}'  cuota de ${trace.operator}`;
+  list.append(price);
+
+  dialog.querySelector(".trace-body").replaceChildren(
+    line(`Señal · ${trace.operator} · ${trace.market} ${trace.outcome}`, "trace-title"),
+    line(
+      trace.verified
+        ? `✓ Huella verificada: el modelo partió del estado que fijan estos eventos y la cuota de ${trace.operator}.`
+        : "✗ La huella no cuadra: lo reconstruido no es lo que usó el detector.",
+      trace.verified ? "trace-ok" : "trace-ko",
+    ),
+    line(`Huella ${trace.lineage.digest} · modelo ${trace.model_version}`, "trace-meta"),
+    list,
+  );
+  dialog.showModal();
+}
+
 function trigger(event) {
+  const signal = event.target.closest?.("[data-signal]");
+  if (signal) {
+    event.preventDefault();
+    openSignalTrace(signal.dataset.signal);
+    return;
+  }
   const node = event.target.closest?.("[data-indicator]");
   if (!node || !node.dataset.team) return;
   event.preventDefault();
