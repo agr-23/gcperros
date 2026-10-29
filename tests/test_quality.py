@@ -19,9 +19,9 @@ from gcperros.generators.perturbation import inject_disorder, inject_duplicates
 from gcperros.governance.gate import GateStats, match_event_gate
 from gcperros.governance.quality import (
     APPLICATION_TIMELINESS,
-    CONTRACT_CONFORMITY,
     DEFAULT_RULES,
     DELIVERY_UNIQUENESS,
+    REQUIRED_FIELDS,
     IngestionEvidence,
     QualityDimension,
     QualityMeasurement,
@@ -35,8 +35,17 @@ MEASURED_AT = datetime(2026, 8, 26, 20, 0, 0, 500000, tzinfo=UTC)
 CONFIG = MatchConfig(match_id="match-0017", home_team="RMA", away_team="BAR")
 
 
-def _gate(admitted: int, rejected: int, by_rule: dict[str, int] | None = None) -> GateStats:
-    return GateStats(admitted=admitted, rejected=rejected, by_rule=by_rule or {})
+def _gate(
+    admitted: int, rejected: int, by_rule: dict[str, int] | None = None, invalid: int = 0
+) -> GateStats:
+    """Lo rechazado cuenta como incompleto salvo lo que se declare inválido."""
+    return GateStats(
+        admitted=admitted,
+        rejected=rejected,
+        by_rule=by_rule or {},
+        incomplete=rejected - invalid,
+        invalid=invalid,
+    )
 
 
 def _dedup(accepted: int, duplicates: int) -> DedupStats:
@@ -90,15 +99,15 @@ def test_uniqueness_measures_the_delivered_stream_not_the_deduplicated_one() -> 
 
 def test_a_measurement_keeps_its_numerator_and_denominator() -> None:
     """9 de 10 y 900 de 1.000 dan el mismo 0,9 y no merecen la misma confianza."""
-    small = QualityMeasurement(CONTRACT_CONFORMITY, observed=9, total=10)
-    large = QualityMeasurement(CONTRACT_CONFORMITY, observed=900, total=1000)
+    small = QualityMeasurement(REQUIRED_FIELDS, observed=9, total=10)
+    large = QualityMeasurement(REQUIRED_FIELDS, observed=900, total=1000)
 
     assert small.value == large.value
     assert (small.total, large.total) == (10, 1000)
 
 
 def test_an_empty_stream_does_not_look_like_a_breakdown() -> None:
-    assert QualityMeasurement(CONTRACT_CONFORMITY, observed=0, total=0).value == 1.0
+    assert QualityMeasurement(REQUIRED_FIELDS, observed=0, total=0).value == 1.0
 
 
 def test_a_measurement_exactly_at_the_threshold_passes() -> None:
@@ -136,7 +145,10 @@ def test_a_dimension_without_data_is_named_not_assumed_good() -> None:
     report = assess("cuotas", IngestionEvidence(gate=_gate(100, 0)))
 
     assert report.unmeasured == ("uniqueness", "timeliness")
-    assert [m.rule.dimension for m in report.measurements] == [QualityDimension.COMPLETENESS]
+    assert [m.rule.dimension for m in report.measurements] == [
+        QualityDimension.COMPLETENESS,
+        QualityDimension.VALIDITY,
+    ]
 
 
 def test_an_empty_evidence_measures_nothing_and_claims_nothing() -> None:
@@ -154,7 +166,7 @@ def test_one_failing_rule_sinks_the_whole_report() -> None:
     report = assess("partido", evidence)
 
     assert not report.passed
-    assert [m.rule.name for m in report.failures] == ["contract_conformity"]
+    assert [m.rule.name for m in report.failures] == ["required_fields"]
 
 
 def test_the_report_carries_the_diagnosis_not_just_the_verdict() -> None:
@@ -199,7 +211,7 @@ def test_the_serialised_report_says_what_it_measured_and_against_what() -> None:
     assert payload["measured_at"] == "2026-08-26T20:00:00.500Z"
     assert payload["passed"] is False
 
-    (measurement,) = payload["measurements"]
+    measurement, _validity = payload["measurements"]
     assert measurement["dimension"] == "completeness"
     assert measurement["value"] == 0.9
     assert measurement["minimum"] == 0.99
@@ -290,7 +302,8 @@ def test_the_projects_own_adversity_still_clears_the_thresholds() -> None:
         assert report.passed, f"semilla {seed}: {[m.to_dict() for m in report.failures]}"
 
 
-def test_garbage_in_the_stream_shows_up_as_lost_completeness() -> None:
+def test_garbage_in_the_stream_is_invalid_not_incomplete() -> None:
+    """Un mensaje ilegible no es uno al que le falte un campo (historia #26)."""
     events = simulate_match(20260826, CONFIG)
     delivered = [event.to_json() for event in events[:100]] + ["{basura", "[1,2]"]
 
@@ -298,8 +311,22 @@ def test_garbage_in_the_stream_shows_up_as_lost_completeness() -> None:
     gate.admit_all(delivered)
 
     report: QualityReport = assess("match-events", IngestionEvidence(gate=gate.stats))
-    (completeness,) = report.measurements
+    completeness, validity = report.measurements
 
-    assert completeness.total == 102
-    assert completeness.observed == 100
+    assert (completeness.observed, completeness.total) == (102, 102)
+    assert (validity.observed, validity.total) == (100, 102)
     assert set(report.rejections_by_rule) == {"malformed_json", "not_an_object"}
+
+
+def test_a_missing_field_and_a_bad_value_land_on_different_dimensions() -> None:
+    event = json.loads(simulate_match(20260826, CONFIG)[0].to_json())
+    missing = {k: v for k, v in event.items() if k != "team"}
+    both = {**missing, "event_type": "teleport"}
+
+    gate = match_event_gate(InMemoryInvalidStore())
+    gate.admit_all(
+        [json.dumps(missing), json.dumps({**event, "event_type": "x"}), json.dumps(both)]
+    )
+
+    # El que trae los dos defectos cuenta en las dos dimensiones.
+    assert (gate.stats.incomplete, gate.stats.invalid) == (2, 2)

@@ -70,7 +70,9 @@ function carga(report) {
   ];
 }
 
-const DIMENSIONS = { completeness: "Completitud", uniqueness: "Unicidad", timeliness: "Oportunidad" };
+const DIMENSIONS = {
+  completeness: "Completitud", validity: "Validez", uniqueness: "Unicidad", timeliness: "Oportunidad",
+};
 
 function calidad(report) {
   return [

@@ -239,14 +239,13 @@ def test_a_clean_match_passes_every_rule(match_file: Path, tmp_path: Path) -> No
     assert report["passed"] is True
     assert {m["dimension"] for m in report["measurements"]} == {
         "completeness",
+        "validity",
         "uniqueness",
         "timeliness",
     }
 
 
-def test_the_odds_stream_can_only_be_measured_on_completeness(
-    odds_file: Path, tmp_path: Path
-) -> None:
+def test_the_odds_stream_is_only_measured_at_the_gate(odds_file: Path, tmp_path: Path) -> None:
     """No pasa por el motor, y lo que no se midió se dice en vez de aprobarse."""
     report_file = tmp_path / "calidad.json"
 
@@ -256,7 +255,7 @@ def test_the_odds_stream_can_only_be_measured_on_completeness(
 
     report = json.loads(report_file.read_text(encoding="utf-8"))
 
-    assert [m["dimension"] for m in report["measurements"]] == ["completeness"]
+    assert [m["dimension"] for m in report["measurements"]] == ["completeness", "validity"]
     assert report["unmeasured"] == ["uniqueness", "timeliness"]
 
 
