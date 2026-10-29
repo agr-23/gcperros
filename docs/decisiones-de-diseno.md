@@ -1122,3 +1122,23 @@ Dos comprobaciones impiden que se desfase:
 tiempo o un número de goles. El xG es el ejemplo: por remate es una probabilidad
 y por equipo es una suma de goles. La unidad va con el término para que nadie
 tenga que deducirla del contexto.
+
+### Cada dato tiene un responsable, y es un rol
+
+`governance/catalog.py` registra cada dataset —los topics y sus dead letters, las
+tablas Raw y analíticas, el documento vivo y el repositorio de inválidos— con un
+**rol** responsable. Rol y no persona: el rol sobrevive a que alguien deje el
+equipo, y quién lo ocupa hoy se declara en un único sitio, `OWNERS`. Es el mismo
+responsable al que escalará la calidad (historia #26) y el que concederá el acceso
+(historia #27).
+
+El repositorio de inválidos y el dead letter tienen responsables distintos a
+propósito: uno recoge lo que el productor mandó mal y el otro lo que el
+consumidor no supo procesar (sección 6). Una prueba lo fija.
+
+### El catálogo se contrasta contra el Terraform
+
+Un catálogo escrito a mano se queda atrás con la primera tabla nueva.
+`tests/test_catalog.py` lee los flujos, el dataset Raw y las tablas analíticas
+del Terraform y exige que estén catalogados; otra prueba fija la forma que esa
+lectura espera, para que un cambio de formato falle en vez de pasar en silencio.
