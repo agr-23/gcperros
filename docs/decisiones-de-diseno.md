@@ -621,6 +621,25 @@ ilegible— que lo que hay **no vale**. Un mensaje con los dos defectos cuenta e
 las dos dimensiones. Un JSON ilegible es inválido y no incompleto: no se sabe qué
 campos traía, pero sí que lo que llegó no es un mensaje.
 
+### Consistencia: el estado en vivo cuadra con el recálculo
+
+Consistencia es que dos lecturas del mismo dato digan lo mismo. Aquí las dos que
+importan son el estado que el motor fue construyendo evento a evento y el que da
+recalcular el partido de una vez **sobre los mismos eventos únicos que admitió
+la frontera**. Si no cuadran, el número en pantalla no es el del partido.
+
+Se mide con la aritmética del harness (#17) y sus umbrales del OE-2, pero ya no
+sobre escenarios fabricados: sobre lo que de verdad se ingirió, en el mismo acto
+de ingerir. Cada indicador comparado —posesión, xG, goles y la contabilidad de
+eventos— es una comprobación, y el umbral es 1,0: un indicador fuera es un dato
+equivocado, no un dato casi bueno. Con duplicados y desorden comprometidos
+cuadra; con el retardo extremo de diez segundos no —en el partido de referencia
+se descartan 203 tardíos y la posesión se separa 0,014—, y
+`tests/test_governance_cli.py` fija las dos cosas.
+
+El flujo de cuotas no tiene estado que recalcular, y su consistencia se informa
+como no medida.
+
 ### Dónde se mide cada dimensión, y por qué ahí
 
 Es la decisión de fondo de esta historia, y las dos caras del mismo error:
@@ -644,10 +663,11 @@ de agua. El informe **nombra** esas dimensiones como no medidas en lugar de
 omitirlas. Omitirlas dejaría un informe en verde que parecería decir que todo se
 comprobó, que es peor que no tener informe.
 
-### Los umbrales: dos medidos y dos que no
+### Los umbrales: tres con evidencia y dos que no
 
-El proyecto exige que un umbral se sostenga en evidencia. Dos la tienen y dos
-no, y conviene decirlo antes de que lo pregunten:
+El proyecto exige que un umbral se sostenga en evidencia. Tres la tienen
+—medida o declarada en el OE-2— y dos no, y conviene decirlo antes de que lo
+pregunten:
 
 | Dimensión | Umbral | De dónde sale |
 |---|---|---|
@@ -655,6 +675,7 @@ no, y conviene decirlo antes de que lo pregunten:
 | Unicidad | 0,90 | **Medido.** Con el inyector de duplicados en su 5 % por defecto —ya exagerado frente a Pub/Sub— ocho partidos dan entre 0,942 y 0,955 |
 | Completitud | 0,99 | **Política, no medido.** Con los generadores del propio proyecto no hay rechazos, así que no hay nada que observar todavía |
 | Validez | 0,99 | **Política, no medido**, por lo mismo. Es el umbral con el que se medían juntas antes de separarlas |
+| Consistencia | 1,0 | **Declarado** en el OE-2: el estado en vivo coincide con el batch dentro de sus umbrales, o no coincide |
 
 El umbral de unicidad queda deliberadamente por debajo del peor caso observado:
 **acota lo anormal, no la adversidad que el proyecto se autoimpone**. Si un día

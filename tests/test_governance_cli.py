@@ -12,7 +12,10 @@ from pathlib import Path
 
 import pytest
 
+from gcperros.core.contracts import MatchEvent
 from gcperros.generators import cli as generators_cli
+from gcperros.generators.match import MatchConfig, simulate_match
+from gcperros.generators.perturbation import inject_disorder, inject_duplicates
 from gcperros.governance import cli as governance_cli
 
 SEED = "20260826"
@@ -242,6 +245,7 @@ def test_a_clean_match_passes_every_rule(match_file: Path, tmp_path: Path) -> No
         "validity",
         "uniqueness",
         "timeliness",
+        "consistency",
     }
 
 
@@ -256,7 +260,27 @@ def test_the_odds_stream_is_only_measured_at_the_gate(odds_file: Path, tmp_path:
     report = json.loads(report_file.read_text(encoding="utf-8"))
 
     assert [m["dimension"] for m in report["measurements"]] == ["completeness", "validity"]
-    assert report["unmeasured"] == ["uniqueness", "timeliness"]
+    assert report["unmeasured"] == ["uniqueness", "timeliness", "consistency"]
+
+
+def test_the_live_state_is_checked_against_the_batch_recount(tmp_path: Path) -> None:
+    """Con duplicados y desorden comprometidos cuadra; con el retardo extremo, no."""
+    events = simulate_match(int(SEED), MatchConfig())
+    hostile, _ = inject_duplicates(inject_disorder(events, seed=7, mean_delay_s=2.0)[0], seed=7)
+    extreme, _ = inject_disorder(events, seed=7, mean_delay_s=10.0, max_delay_s=120.0)
+
+    def consistency(delivered: list[MatchEvent]) -> dict[str, object]:
+        source, report_file = tmp_path / "flujo.jsonl", tmp_path / "calidad.json"
+        source.write_text("".join(e.to_json() + "\n" for e in delivered), encoding="utf-8")
+        governance_cli.quality_main(
+            ["--stream", "match", "--in", str(source), "--report", str(report_file)]
+        )
+        report = json.loads(report_file.read_text(encoding="utf-8"))
+        (found,) = [m for m in report["measurements"] if m["dimension"] == "consistency"]
+        return dict(found)
+
+    assert consistency(hostile)["passed"] is True
+    assert consistency(extreme)["passed"] is False
 
 
 def test_the_report_says_which_causes_ate_the_completeness(
