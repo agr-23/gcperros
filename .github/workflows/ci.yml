@@ -130,6 +130,26 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+      # Historia #28: un cambio que rompa la corrección del motor no llega a
+      # main. El harness degrada el partido con duplicados, desorden y retardo
+      # y lo compara contra el recálculo batch; con --strict, un escenario
+      # comprometido fuera de los umbrales del OE-2 rompe este trabajo, que es
+      # comprobación obligatoria de main. Dos partidos, para que la puerta no
+      # dependa de cómo cayó uno solo.
+      - name: El streaming sigue dando lo mismo que el batch
+        run: |
+          gcperros-validate-streaming --match primera.jsonl --strict             --report divergencia-referencia.json
+          gcperros-validate-streaming --seed 65 --strict             --report divergencia-exhibicion.json
+
+      - name: Conservar los informes de divergencia
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: informes-de-divergencia
+          path: divergencia-*.json
+          if-no-files-found: warn
+          retention-days: 90
+
       # La HU-18 promete que cualquier indicador se puede explicar a demanda.
       # Aquí se comprueba el cableado de punta a punta, sin broker.
       - name: Trazabilidad del flujo de referencia
