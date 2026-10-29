@@ -70,6 +70,24 @@ nativo, no modo Datastore: es el que trae los listeners en tiempo real sobre
 los que se apoya toda la historia (ver `docs/decisiones-de-diseno.md`, sección
 11).
 
+Y, para los datos de usuario (historia #27, `privacy.tf`):
+
+| Recurso | Nombre | Para qué |
+|---|---|---|
+| Topic | `user-activity` | Sesiones y mercados ya seudonimizados. Retiene un día |
+| Secreto | `pseudonym-key` | La clave de seudonimización. **Sin valor**: se carga a mano |
+| Service account | `gcperros-user-ingest` | La frontera: publica en el topic y lee la clave, sin poder suscribirse |
+
+Los permisos humanos llegan por `governance_members` (administran la clave) y
+`architecture_members` (administran el topic) en `terraform.tfvars`. Nadie
+recibe las dos cosas: es la matriz de acceso de `governance/access.py`, y
+`tests/test_access_terraform.py` lo comprueba. La clave se carga después del
+`apply`, fuera de Terraform para que no quede en el estado:
+
+```bash
+openssl rand -hex 32 | gcloud secrets versions add pseudonym-key --data-file=-
+```
+
 ---
 
 ## 2. Qué se adaptó de la plantilla del curso, y por qué

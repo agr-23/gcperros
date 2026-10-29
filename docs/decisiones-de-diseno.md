@@ -1286,13 +1286,27 @@ tener la clave**. Es la separación que exige el artículo 4.5 del RGPD para que
 dato cuente como seudonimizado. Por eso la actividad la administra Arquitectura y
 la clave Gobernanza, y no la misma persona.
 
+### La matriz se aplica en IAM, no sólo se declara
+
+`infra/terraform/privacy.tf` crea el topic `user-activity` y el secreto
+`pseudonym-key` con los permisos que dice la matriz: Arquitectura administra el
+topic, Gobernanza la clave, y la frontera publica en uno y lee la otra sin poder
+suscribirse. `tests/test_access_terraform.py` lee esos permisos y exige que
+coincidan con `governance/access.py` y que ninguna identidad, humana o de
+servicio, pueda leer las sesiones y tocar la clave a la vez.
+
+Dos detalles con su motivo. El valor de la clave no pasa por Terraform: una
+`google_secret_manager_secret_version` lo dejaría escrito en el estado, y una
+prueba lo prohíbe. Y el topic retiene un día, no siete como los deportivos:
+minimización, porque éste no es sintético.
+
 ### Lo que piden la Ley 1581 y el RGPD, y lo que falta
 
 | Principio | Cómo se cumple | Qué falta |
 |---|---|---|
 | Finalidad y minimización | Sólo se ingieren sesión, mercados, partido e instante | Fijar un plazo de retención y borrar al cumplirlo |
-| Seguridad | Seudonimizado en la frontera, clave fuera del repositorio | Guardar la clave en Secret Manager al desplegar |
-| Acceso y circulación restringida | Matriz de acceso derivada del catálogo | Trasladarla a IAM en el Terraform |
+| Seguridad | Seudonimizado en la frontera; la clave, en Secret Manager y fuera del repositorio y del estado de Terraform | Cargar el valor de la clave al desplegar, a mano |
+| Acceso y circulación restringida | Matriz derivada del catálogo y aplicada en IAM (`privacy.tf`) | Pasar los grupos reales en `terraform.tfvars` |
 | Libertad (consentimiento) | — | Aviso y consentimiento en el panel antes de recoger nada |
 | Derechos del titular (consulta, reclamo) | — | Un procedimiento para atenderlos; con la clave se puede localizar a un titular |
 | Registro Nacional de Bases de Datos | — | Inscribir la base si el sistema llega a operar en Colombia |
