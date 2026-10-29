@@ -1094,3 +1094,31 @@ p95 de 31 s frente al SLA de 2 s está en la pantalla de confianza, los eventos
 retenidos por la marca de agua se cuentan en la de en vivo, y las cifras de
 particionamiento se presentan como estimación, porque salen de un modelo de
 costes y no de un plan de ejecución de BigQuery.
+
+---
+
+## 15. Catálogo y glosario (historia #24)
+
+### El glosario es dato, no un documento aparte
+
+Cada término del dominio se definía donde se usaba, en el docstring de su
+módulo. Cada definición era correcta en su sitio y ninguna era *la* definición.
+`governance/glossary.py` las declara una vez, como dato, por el mismo motivo que
+el contrato (sección 7): lo que se declara como dato se puede comprobar.
+
+Dos comprobaciones impiden que se desfase:
+
+- Cada término nombra el módulo que lo implementa, y una prueba exige que exista.
+  La definición en prosa no repite la fórmula: cuando no basta, se lee el código.
+- **Las cifras de una definición se leen de la constante**, no se copian. El
+  umbral de la señal, el margen de la marca de agua o la versión del modelo de xG
+  salen de `DEFAULT_THRESHOLD`, `DEFAULT_ALLOWED_LATENESS_S` y `MODEL_VERSION`.
+  Si alguien recalibra el umbral, el glosario cambia en el mismo commit sin que
+  nadie tenga que acordarse.
+
+### Cada término lleva su unidad
+
+«0,6» no dice nada sin ella: puede ser una probabilidad, una proporción del
+tiempo o un número de goles. El xG es el ejemplo: por remate es una probabilidad
+y por equipo es una suma de goles. La unidad va con el término para que nadie
+tenga que deducirla del contexto.
