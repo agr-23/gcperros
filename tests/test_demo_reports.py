@@ -85,3 +85,14 @@ def test_under_the_hood_is_linked_and_honest_about_estimates() -> None:
     # Las cifras de particionamiento salen de un modelo de costes, no de BigQuery.
     assert "estimación" in page.text
     assert "<script" not in page.text
+
+
+def test_every_page_shows_the_responsible_use_notice() -> None:
+    """Historia #29: el aviso está en las tres pantallas, en HTML y no en un script."""
+    client = _client(None)
+
+    for page in ("/", "/confianza.html", "/bajo-el-capo.html"):
+        html = client.get(page).text
+        assert 'class="disclaimer"' in html, page
+        assert "no recomienda apostar" in html, page
+    assert ".disclaimer" in client.get("/app.css").text
