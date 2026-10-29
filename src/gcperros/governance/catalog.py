@@ -58,6 +58,7 @@ class AssetKind(StrEnum):
     INDICATOR = "indicator"
     SIGNAL = "signal"
     REPORT = "report"
+    KEY = "key"
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +71,7 @@ class Asset:
         owner: Rol responsable.
         description: Qué contiene, en una frase.
         terms: Términos del glosario necesarios para interpretarlo.
+        personal: Si hay una persona real detrás (historia #27).
     """
 
     name: str
@@ -77,6 +79,7 @@ class Asset:
     owner: Role
     description: str
     terms: tuple[str, ...] = ()
+    personal: bool = False
 
 
 def _stream_assets(stream: str, contents: str) -> tuple[Asset, ...]:
@@ -200,8 +203,28 @@ REPORTS: tuple[Asset, ...] = (
     ),
 )
 
+#: Los únicos datos con una persona real detrás (historia #27). La actividad la
+#: guarda Arquitectura y la clave Gobernanza: quien lee las filas no puede
+#: reidentificarlas.
+PERSONAL: tuple[Asset, ...] = (
+    Asset(
+        "user-activity",
+        AssetKind.TOPIC,
+        Role.ARCHITECTURE,
+        "Sesiones y mercados que siguen, seudonimizados en la frontera.",
+        personal=True,
+    ),
+    Asset(
+        "pseudonym-key",
+        AssetKind.KEY,
+        Role.GOVERNANCE,
+        "Clave de la seudonimización: lo único que permite reidentificar.",
+        personal=True,
+    ),
+)
+
 #: El catálogo completo.
-CATALOG: tuple[Asset, ...] = DATASETS + INDICATORS + SIGNALS + REPORTS
+CATALOG: tuple[Asset, ...] = DATASETS + INDICATORS + SIGNALS + REPORTS + PERSONAL
 
 
 def asset(name: str) -> Asset:

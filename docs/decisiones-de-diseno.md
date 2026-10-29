@@ -1262,3 +1262,41 @@ Seudonimizado no es anonimizado: con la clave se puede reidentificar, y el RGPD
 La frontera deportiva guarda cada mensaje rechazado tal cual, como evidencia
 (sección 7). Aquí eso sería guardar la sesión en claro, así que lo rechazado sólo
 se cuenta por campo —`session_id`, `markets`, `event_time`…—, nunca por valor.
+
+### Tiene que correr antes del broker
+
+«Desde el momento de la ingestión» quiere decir antes de publicar: un topic de
+Pub/Sub retiene los mensajes días. La frontera tiene que ejecutarse donde llega la
+petición del navegador, y lo que se publique en `user-activity` ya va
+seudonimizado.
+
+### Quién ve qué: cuatro reglas, no noventa casillas
+
+`governance/access.py` deriva la matriz del catálogo. Una tabla escrita a mano de
+noventa casillas no se revisa; cuatro reglas sí:
+
+1. El responsable de un activo lo administra.
+2. Nadie más ve la clave de seudonimización.
+3. Un dato personal sólo se ve agregado fuera de su responsable.
+4. El cliente del panel ve indicadores, señales e informes, y nada más.
+
+Por encima de las reglas, `tests/test_access.py` fija la garantía que ninguna
+regla nueva puede romper: **nadie puede leer filas de datos personales y a la vez
+tener la clave**. Es la separación que exige el artículo 4.5 del RGPD para que un
+dato cuente como seudonimizado. Por eso la actividad la administra Arquitectura y
+la clave Gobernanza, y no la misma persona.
+
+### Lo que piden la Ley 1581 y el RGPD, y lo que falta
+
+| Principio | Cómo se cumple | Qué falta |
+|---|---|---|
+| Finalidad y minimización | Sólo se ingieren sesión, mercados, partido e instante | Fijar un plazo de retención y borrar al cumplirlo |
+| Seguridad | Seudonimizado en la frontera, clave fuera del repositorio | Guardar la clave en Secret Manager al desplegar |
+| Acceso y circulación restringida | Matriz de acceso derivada del catálogo | Trasladarla a IAM en el Terraform |
+| Libertad (consentimiento) | — | Aviso y consentimiento en el panel antes de recoger nada |
+| Derechos del titular (consulta, reclamo) | — | Un procedimiento para atenderlos; con la clave se puede localizar a un titular |
+| Registro Nacional de Bases de Datos | — | Inscribir la base si el sistema llega a operar en Colombia |
+
+Mientras falte el consentimiento, **el panel no debe recoger actividad de
+usuario**: la frontera existe para que el primer dato real llegue ya protegido,
+no para empezar a recogerlo.
