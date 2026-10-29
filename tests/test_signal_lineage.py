@@ -8,6 +8,7 @@ a derivar, **sin el detector**, desde los flujos crudos.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -112,3 +113,17 @@ def test_the_published_signal_carries_its_provenance(tmp_path: Path) -> None:
     assert first["model_version"] == odds.MODEL_VERSION
     assert first["lineage"]["indicator"] == "discrepancy_signal"
     assert first["lineage"]["event_count"] > 0
+
+
+def test_the_historical_table_keeps_the_provenance_the_signal_publishes() -> None:
+    """Una señal guardada en BigQuery tiene que seguir siendo auditable (historia #25)."""
+    terraform = Path(__file__).resolve().parent.parent / "infra" / "terraform" / "analytics.tf"
+    text = terraform.read_text(encoding="utf-8")
+    table = text[text.index('"fact_market_signals" {') :]
+    columns = dict(
+        re.findall(r'name = "(\w+)", type = "\w+", mode = "(\w+)"', table[: table.index("\n}")])
+    )
+
+    for column in ("model_version", "lineage_digest", "lineage_event_count"):
+        # NULLABLE: es la única forma de añadir una columna a una tabla que ya existe.
+        assert columns.get(column) == "NULLABLE", column
