@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agr-23/gcperros/actions/workflows/ci.yml/badge.svg)](https://github.com/agr-23/gcperros/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
-[![Pruebas](https://img.shields.io/badge/pruebas-559-brightgreen)](tests/)
+[![Pruebas](https://img.shields.io/badge/pruebas-657-brightgreen)](tests/)
 [![Cobertura](https://img.shields.io/badge/cobertura-97%25-brightgreen)](pyproject.toml)
 
 Ingerimos dos flujos de eventos —las acciones de un partido de fútbol y las
@@ -20,7 +20,7 @@ Prof. Jose Fabio Jaramillo Castro
 |---|---|---|
 | Jean Carlo Londoño | Ingeniero de Pipelines / Big Data | HU-8 a HU-13, HU-19, HU-20, el harness, la carga y la demo |
 | Tomás Londoño | Arquitecto de Datos / Cloud | HU-14, HU-15, HU-22, HU-23 |
-| Alejandro Garcés | Oficial de Gobernanza / Líder DataOps | HU-16 a HU-18 y la puerta de CI |
+| Alejandro Garcés | Oficial de Gobernanza / Líder DataOps | HU-16 a HU-18, las historias 24 a 27 y la puerta de CI |
 
 > **Uso responsable.** Proyecto estrictamente académico. El sistema es una
 > herramienta de apoyo a la decisión informada: no ejecuta apuestas, no
@@ -84,10 +84,12 @@ gcperros-validate --stream match --in partido.jsonl --invalid invalidos.jsonl
 gcperros-quality --stream match --in partido.jsonl
 ```
 ```
-calidad=PASA alcance=match-events
+calidad=PASA alcance=match-events/match-0001
   ok  completeness 1.0000 (minimo 0.99) sobre 1197 mensajes
+  ok  validity     1.0000 (minimo 0.99) sobre 1197 mensajes
   ok  uniqueness   1.0000 (minimo 0.9) sobre 1197 mensajes
   ok  timeliness   1.0000 (minimo 0.95) sobre 1197 mensajes
+  ok  consistency  1.0000 (minimo 1.0) sobre 4 indicadores
 ```
 
 **6. De dónde sale un número.** Qué eventos lo formaron y qué versión del modelo
@@ -142,6 +144,20 @@ gcperros-benchmark --seed 20260826
  tasa ev/s   util.    p50 ms    p95 ms  backlog  veredicto
      50000  0.5869     0.012     0.031        3  sostiene
     100000  1.1739     1.038     1.992      181  satura
+```
+
+**11. Quién responde por cada dato.** El catálogo nombra el responsable de cada
+activo, y `--access` imprime la matriz de quién puede ver qué.
+
+```bash
+gcperros-catalog --access
+```
+```
+activo                               governance   pipelines    architecture client
+match-events                         read         manage       read         none
+total_xg                             read         manage       read         read
+user-activity                        aggregate    aggregate    manage       none
+pseudonym-key                        manage       none         none         none
 ```
 
 ---
@@ -229,13 +245,16 @@ sostiene.
 | HU-15 | 15 | Estado vivo en Firestore | [`firestore/document.py`](src/gcperros/firestore/document.py) | [`test_live_document.py`](tests/test_live_document.py) | ✅ sin desplegar |
 | HU-16 | 16 | Contrato formal y repositorio de inválidos | [`governance/validation.py`](src/gcperros/governance/validation.py) | [`test_validation.py`](tests/test_validation.py) | ✅ |
 | HU-17 | 17 | Reglas de calidad sobre lo ingerido | [`governance/quality.py`](src/gcperros/governance/quality.py) | [`test_quality.py`](tests/test_quality.py) | ✅ |
-| HU-18 | 25 | Trazabilidad de los indicadores | [`governance/traceability.py`](src/gcperros/governance/traceability.py) | [`test_traceability.py`](tests/test_traceability.py) | ✅ |
+| HU-18, [#68](https://github.com/agr-23/gcperros/issues/68) | 25 | Trazabilidad de los indicadores y de cada señal | [`governance/traceability.py`](src/gcperros/governance/traceability.py) | [`test_traceability.py`](tests/test_traceability.py), [`test_signal_lineage.py`](tests/test_signal_lineage.py) | ✅ |
 | HU-19 | 19 | Señal de discrepancia con el mercado | [`engine/signals.py`](src/gcperros/engine/signals.py) | [`test_signals.py`](tests/test_signals.py) | ✅ |
 | HU-20 | 18 | Posesión acumulada y por ventana móvil | [`core/possession.py`](src/gcperros/core/possession.py) | [`test_possession.py`](tests/test_possession.py) | ✅ |
 | [#17](https://github.com/agr-23/gcperros/issues/17) | 20 | Validación del streaming contra el batch | [`engine/harness.py`](src/gcperros/engine/harness.py) | [`test_harness.py`](tests/test_harness.py) | ✅ |
 | [#18](https://github.com/agr-23/gcperros/issues/18) | 21 | Latencia y saturación bajo carga | [`engine/benchmark.py`](src/gcperros/engine/benchmark.py) | [`test_benchmark.py`](tests/test_benchmark.py) | ✅ |
 | HU-22 | 22 | Modelo estrella de la capa analítica | [`infra/terraform/analytics.tf`](infra/terraform/analytics.tf) | [`test_historical_star_schema.py`](tests/test_historical_star_schema.py) | ✅ sin desplegar |
 | HU-23 | 23 | Partición y agrupamiento de lo histórico | [`infra/terraform/analytics.tf`](infra/terraform/analytics.tf) | [`test_historical_benchmark.py`](tests/test_historical_benchmark.py) | ✅ cifras estimadas |
+| [#67](https://github.com/agr-23/gcperros/issues/67) | 24 | Catálogo con responsables y glosario de negocio | [`governance/catalog.py`](src/gcperros/governance/catalog.py) | [`test_catalog.py`](tests/test_catalog.py), [`test_glossary.py`](tests/test_glossary.py) | ✅ |
+| [#69](https://github.com/agr-23/gcperros/issues/69) | 26 | Calidad en cinco dimensiones, con escalado | [`governance/escalation.py`](src/gcperros/governance/escalation.py) | [`test_quality.py`](tests/test_quality.py), [`test_escalation.py`](tests/test_escalation.py) | ✅ |
+| [#70](https://github.com/agr-23/gcperros/issues/70) | 27 | Seudonimización y matriz de acceso | [`governance/privacy.py`](src/gcperros/governance/privacy.py) | [`test_privacy.py`](tests/test_privacy.py), [`test_access_terraform.py`](tests/test_access_terraform.py) | ✅ sin desplegar |
 | [#62](https://github.com/agr-23/gcperros/issues/62) | 28 | Puerta de CI: streaming contra batch | [`ci.yml`](.github/workflows/ci.yml) | CI: Reproducibilidad | ✅ |
 | [#30–#35](https://github.com/agr-23/gcperros/issues/30), [#61](https://github.com/agr-23/gcperros/issues/61) | 29 | Panel en vivo para el usuario | [`demo/`](src/gcperros/demo/) | [`test_demo_*.py`](tests/) | ✅ en local |
 
@@ -251,7 +270,7 @@ tenga que deducirla comparando títulos.
 
 ## Cómo sabemos que funciona
 
-**559 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
+**657 pruebas, 98 % de cobertura.** Pero el número que importa no es ese, sino
 qué vigila cada familia:
 
 | Familia | Qué protege |
@@ -271,7 +290,8 @@ La integración continua corre en cada push ([`ci.yml`](.github/workflows/ci.yml
   una suposición.
 - **Reproducibilidad** — genera el mismo partido dos veces y compara con `cmp`;
   valida que ambos flujos cumplen su propio contrato; corre el informe de calidad
-  y la trazabilidad en modo estricto; y **compara el streaming contra el batch**
+  y la trazabilidad en modo estricto, y guarda los escalados de calidad como
+  artefacto; y **compara el streaming contra el batch**
   con duplicados y desorden sobre dos partidos. Es comprobación obligatoria de
   `main`: si un escenario comprometido se sale de los umbrales, la PR no entra.
 - **Terraform** — `fmt -check`, `init` y `validate` sin credenciales.
@@ -288,7 +308,7 @@ justificación al lado, donde todo el equipo las ve.
 src/gcperros/core/          Dominio compartido: contratos, esquema, campo, xG, cuotas, linaje
 src/gcperros/generators/    Generadores sintéticos e inyector de perturbaciones
 src/gcperros/publishing/    Publicación hacia el broker
-src/gcperros/governance/    Frontera de contrato, inválidos, calidad y trazabilidad
+src/gcperros/governance/    Frontera, calidad, trazabilidad, catálogo, privacidad y acceso
 src/gcperros/engine/        Motor con estado: dedup, marca de agua, estado vivo
 src/gcperros/loading/       Capa histórica Raw hacia BigQuery
 src/gcperros/firestore/     Documento de estado vivo por partido
@@ -324,10 +344,11 @@ Preferimos decirlo aquí a que se descubra leyendo:
 - **La frontera de estrés depende del partido.** Los escenarios comprometidos
   pasan en todos los partidos probados, pero dónde se rompe el diseño cambia con
   qué eventos llegan tarde. Afirmarlo con solidez exige medirlo sobre muchos.
-- **Historias del documento que todavía no están en el repositorio:** la 24
-  (catálogo y glosario), la 26 (cinco dimensiones de calidad; hoy se miden
-  tres), la 27 (privacidad), la 30 (paneles operativos con alertas) y la 31
-  (informe consolidado de validación).
+- **Nadie produce todavía actividad de usuario.** La seudonimización, el topic
+  `user-activity` y su matriz de acceso existen, pero ningún componente emite
+  esa actividad, y la clave de seudónimos se carga a mano tras el `apply`.
+- **Historias del documento que todavía no están en el repositorio:** la 30
+  (paneles operativos con alertas) y la 31 (informe consolidado de validación).
 
 ---
 
