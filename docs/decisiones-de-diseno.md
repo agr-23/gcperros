@@ -703,6 +703,20 @@ Sin ella no hay serie, y sin serie la calidad vuelve a ser una auditoría suelta
 al final del semestre, que es exactamente lo que la historia pide evitar. El
 reloj se inyecta, por el mismo motivo que en el repositorio de inválidos.
 
+### Un umbral incumplido se escala, no sólo se informa
+
+Un fallo que sólo cambia el código de salida no le dice a nadie que le toca.
+`governance/escalation.py` convierte cada regla incumplida en un escalado con
+cuatro respuestas, y `gcperros-quality --escalations` lo añade a un registro
+JSON Lines que es la serie de incidentes:
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Qué tan grave? | **Crítico** si queda a más de 5 puntos del umbral, o si es la consistencia (un indicador que no cuadra es un número equivocado, sin grados). **Aviso** en otro caso |
+| ¿Quién responde? | El responsable que el catálogo declara para el flujo medido (historia #24). No se decide aquí: un flujo sin catalogar no se puede escalar, y eso falla |
+| ¿A quién se informa? | A Gobernanza, siempre: lleva la serie y ve si un fallo se repite |
+| ¿Qué hacer, y cuándo? | Una acción por dimensión —de «revisar el productor» a «no publicar señales del partido»— y un plazo: antes del siguiente partido el aviso, inmediato el crítico |
+
 ### Se mide en el mismo acto de ingerir
 
 `gcperros-quality` recorre la ingestión completa —frontera y motor— y emite el
