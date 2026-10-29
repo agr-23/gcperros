@@ -110,7 +110,7 @@ def test_a_plain_count_declares_no_model(engine: MatchEngine) -> None:
 
 
 def test_only_indicators_with_a_model_behind_them_declare_one() -> None:
-    assert set(MODELS_BY_INDICATOR) == {"total_xg"}
+    assert set(MODELS_BY_INDICATOR) == {"total_xg", "discrepancy_signal"}
 
 
 def test_the_project_models_are_versioned() -> None:

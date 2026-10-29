@@ -14,13 +14,12 @@ Contar goles no usa ninguno; ponerle `xg-1.0.0` a un recuento sería una mentira
 cómoda que haría el informe más uniforme y menos cierto. Hoy el único indicador
 del motor con modelo detrás es ``total_xg``.
 
-Lo que esto todavía no traza
-----------------------------
-Señales. El proyecto no tiene ninguna: la de discrepancia entre mercados es la
-HU-19 y no está construida. Lo que se traza son los indicadores, que es lo que
-existe y lo que cualquier señal futura va a consumir. Cuando la señal aparezca,
-declarar su linaje es añadir una entrada a ``MODELS_BY_INDICATOR`` y plegar los
-identificadores que la produjeron: el mecanismo ya está.
+Y las señales
+-------------
+La señal de discrepancia (HU-19) usa el mismo mecanismo: cada una pliega los
+identificadores que la produjeron y lleva la versión del modelo de mercado
+(historia #25). Su entrada en ``MODELS_BY_INDICATOR`` es la que declara qué
+modelo la calcula.
 """
 
 from __future__ import annotations
@@ -57,10 +56,10 @@ MATCH_INDICATORS: tuple[str, ...] = ("event_count",)
 #: una suma directa, sin modelo que versionar.
 MODELS_BY_INDICATOR: Mapping[str, Mapping[str, str]] = {
     "total_xg": {"xg": xg.MODEL_VERSION},
+    "discrepancy_signal": {"odds": odds.MODEL_VERSION},
 }
 
-#: Modelos del proyecto, para poder declararlos en bloque cuando haga falta
-#: (por ejemplo, al trazar una señal de mercado en la HU-19).
+#: Modelos del proyecto, para poder declararlos en bloque cuando haga falta.
 MODEL_VERSIONS: Mapping[str, str] = {
     "xg": xg.MODEL_VERSION,
     "odds": odds.MODEL_VERSION,
