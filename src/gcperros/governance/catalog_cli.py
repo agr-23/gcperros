@@ -6,6 +6,7 @@ Responde a «¿de quién es esto?» y a «¿qué significa esto?» sin abrir el 
 gcperros-catalog                       # todos los activos con su responsable
 gcperros-catalog --owner governance    # lo que le toca a un rol
 gcperros-catalog --glossary            # el glosario de negocio
+gcperros-catalog --access              # quién puede ver qué (historia #27)
 gcperros-catalog --json                # lo mismo, para otra herramienta
 ```
 """
@@ -17,6 +18,7 @@ import json
 import sys
 
 from gcperros.core.contracts import JsonValue
+from gcperros.governance.access import MATRIX, Principal
 from gcperros.governance.catalog import CATALOG, OWNERS, Asset, AssetKind, Role
 from gcperros.governance.glossary import GLOSSARY, Term
 
@@ -28,6 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Consulta el catálogo de datos con sus responsables, o el glosario.",
     )
     parser.add_argument("--glossary", action="store_true", help="Muestra el glosario.")
+    parser.add_argument("--access", action="store_true", help="Muestra la matriz de acceso.")
     parser.add_argument("--owner", choices=[role.value for role in Role], help="Filtra por rol.")
     parser.add_argument(
         "--kind", choices=[kind.value for kind in AssetKind], help="Filtra por clase."
@@ -72,6 +75,22 @@ def _term_lines(entry: Term) -> str:
 def main(argv: list[str] | None = None) -> int:
     """Punto de entrada."""
     args = build_parser().parse_args(argv)
+
+    if args.access:
+        if args.json:
+            rows = {
+                name: {p.value: a.value for p, a in row.items()} for name, row in MATRIX.items()
+            }
+            output = json.dumps(rows, indent=2)
+        else:
+            header = f"{'activo':<36} " + " ".join(f"{p.value:<12}" for p in Principal)
+            lines = [
+                f"{n:<36} " + " ".join(f"{a.value:<12}" for a in r.values())
+                for n, r in MATRIX.items()
+            ]
+            output = "\n".join(line.rstrip() for line in [header, *lines])
+        sys.stdout.write(output + "\n")
+        return 0
 
     if args.glossary:
         if args.json:
