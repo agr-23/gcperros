@@ -46,6 +46,16 @@ por sí solo.
 Conviene decirlo así de claro: al umbral de 0,05 esto detecta precios que se
 quedaron viejos, no casas que valoran distinto. Con un modelo propio de verdad
 la maquinaria sería la misma; cambia lo que se le pone dentro.
+
+De dónde sale cada señal
+------------------------
+Una señal es lo que el usuario recibe para decidir, así que no puede ser una caja
+negra (historia #25). Cada una lleva la versión del modelo que calculó su
+probabilidad y la huella (HU-18) de los eventos que la produjeron: la cuota
+evaluada y los eventos del partido que fijaron el estado contra el que se evaluó.
+Son los saques iniciales, que ponen el reloj y los equipos; los goles y las
+expulsiones, que ponen el marcador; y el último evento aplicado, que pone el
+minuto. Un pase intermedio no cambia la probabilidad y no forma parte de ella.
 """
 
 from __future__ import annotations
@@ -53,7 +63,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from gcperros.core import odds
 from gcperros.core.contracts import Market, MatchEvent, OddsUpdate
+from gcperros.core.lineage import LineageAccumulator, LineageRecord
 from gcperros.core.matchstate import MatchStateTracker
 from gcperros.core.odds import (
     MatchState,
@@ -65,6 +77,9 @@ from gcperros.core.odds import (
 #: Eventos que mueven la probabilidad lo bastante como para dejar rancio un
 #: precio publicado. Un pase no cambia el pronóstico; un gol sí.
 MARKET_MOVING_EVENTS = frozenset({"goal", "red_card"})
+
+#: Nombre con el que la señal figura en su linaje y en el catálogo.
+SIGNAL_INDICATOR = "discrepancy_signal"
 
 #: Separación mínima, en puntos de probabilidad, para que la señal se emita.
 #: Elegido a partir del reparto de discrepancias observado; ver
@@ -84,6 +99,8 @@ class DiscrepancySignal:
     model_probability: float
     market_probability: float
     minute: float
+    lineage: LineageRecord
+    model_version: str = odds.MODEL_VERSION
 
     @property
     def divergence(self) -> float:
@@ -123,7 +140,7 @@ class DiscrepancyDetector:
     actualización de cuotas se evalúa contra él en el momento en que llega.
     """
 
-    __slots__ = ("_books", "_threshold", "_tracker")
+    __slots__ = ("_books", "_last_event_id", "_state_events", "_threshold", "_tracker")
 
     def __init__(self, threshold: float = DEFAULT_THRESHOLD) -> None:
         """Crea un detector con el umbral indicado.
@@ -143,6 +160,10 @@ class DiscrepancyDetector:
         # Último precio vigente de cada operador en cada mercado. Es lo que
         # queda expuesto mientras el operador no reacciona.
         self._books: dict[tuple[str, Market], OddsUpdate] = {}
+        # Los eventos que fijan el estado del modelo, para el linaje de cada
+        # señal. Son pocos por partido: saques, goles y expulsiones.
+        self._state_events: list[str] = []
+        self._last_event_id: str | None = None
 
     @property
     def threshold(self) -> float:
@@ -166,6 +187,9 @@ class DiscrepancyDetector:
             revisar en cada pase sería ruido y coste sin información.
         """
         self._tracker.apply(event)
+        self._last_event_id = event.event_id
+        if event.event_type in MARKET_MOVING_EVENTS or event.attrs.get("reason") == "kickoff":
+            self._state_events.append(event.event_id)
 
         if event.event_type not in MARKET_MOVING_EVENTS:
             return []
@@ -196,6 +220,7 @@ class DiscrepancyDetector:
         # Aquí está la mitad del trabajo de la historia: el precio se convierte
         # en probabilidad descontando el margen, no dividiendo uno entre la cuota.
         market = implied_probabilities(update.odds)
+        lineage = self._lineage(update)
 
         signals = []
         for outcome, believed in model.items():
@@ -213,9 +238,18 @@ class DiscrepancyDetector:
                     model_probability=round(believed, 4),
                     market_probability=round(priced, 4),
                     minute=round(self._tracker.minute, 1),
+                    lineage=lineage,
                 )
             )
         return signals
+
+    def _lineage(self, update: OddsUpdate) -> LineageRecord:
+        """Pliega la cuota y los eventos que fijaron el estado contra el que se evaluó."""
+        fold = LineageAccumulator()
+        for event_id in {*self._state_events, self._last_event_id, update.event_id}:
+            if event_id is not None:
+                fold.add(event_id)
+        return fold.record(SIGNAL_INDICATOR, f"{update.operator}/{update.market}")
 
 
 def detect_discrepancies(

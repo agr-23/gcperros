@@ -682,15 +682,26 @@ referencia, de modo que una regresión de calidad rompe la construcción.
 
 ### Qué se traza, y qué no
 
-La historia habla de trazar **señales**. El proyecto no tiene ninguna: la de
-discrepancia entre mercados es la HU-19, que el código menciona en siete sitios
-como trabajo futuro y que **no tiene historia asignada en el tablero**. Trazar
-algo que nadie va a construir habría sido escribir un mecanismo sin sujeto.
+La historia habla de trazar **señales**, y cuando se escribió el proyecto no tenía
+ninguna: la de discrepancia (HU-19) no estaba construida. Se trazaron los
+indicadores, que es lo que cualquier señal iba a consumir, y se dejó escrito que
+trazar la señal sería añadir una entrada a `MODELS_BY_INDICATOR` y plegar los
+identificadores que la formaron. La historia #25 lo hizo así; se explica abajo.
 
-Lo que se traza son los indicadores que el motor sí produce, que además es lo que
-cualquier señal futura va a consumir. Cuando la señal exista, declarar su linaje
-es añadir una entrada a `MODELS_BY_INDICATOR` y plegar los identificadores que la
-formaron: el mecanismo ya está montado.
+### El linaje de una señal es el estado, no la historia del partido
+
+Una señal compara el modelo con un precio, y el modelo sólo mira el estado del
+partido: minuto, marcador y expulsiones. Su linaje son los eventos que fijaron
+ese estado —los saques iniciales, los goles, las expulsiones y el último evento
+aplicado, que pone el minuto— más la cuota evaluada. Plegar los 1.200 eventos del
+partido sería exacto y no diría nada: un pase del minuto 12 no movió esa
+probabilidad.
+
+La versión que viaja con la señal es la del modelo de mercado (`odds-1.0.0`),
+declarada en `MODELS_BY_INDICATOR`. `tests/test_signal_lineage.py` deriva cada
+huella **a mano** desde los flujos crudos, sin el detector, y exige que coincida;
+y en las señales que llegan tras un gol, que la huella cuadre con ese gol y deje
+de cuadrar sin él.
 
 ### Una huella verificable en lugar de la lista de identificadores
 

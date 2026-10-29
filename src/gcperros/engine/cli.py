@@ -69,6 +69,8 @@ def _as_dict(signal: DiscrepancySignal) -> dict[str, object]:
         "model_probability": signal.model_probability,
         "market_probability": signal.market_probability,
         "divergence": signal.divergence,
+        "model_version": signal.model_version,
+        "lineage": signal.lineage.to_dict(),
     }
 
 
