@@ -34,6 +34,7 @@ from pathlib import Path
 from gcperros.core.contracts import MatchEvent, OddsUpdate
 from gcperros.core.divergence import PlaneResult, batch_result, measure
 from gcperros.engine.pipeline import MatchEngine
+from gcperros.governance.escalation import escalate
 from gcperros.governance.gate import (
     IngestionGate,
     match_event_gate,
@@ -209,6 +210,11 @@ def build_quality_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Termina con código 1 si alguna regla no alcanza su umbral.",
     )
+    parser.add_argument(
+        "--escalations",
+        type=Path,
+        help="Registro JSON Lines al que se añade cada escalado (historia #26).",
+    )
     return parser
 
 
@@ -297,6 +303,18 @@ def quality_main(argv: list[str] | None = None) -> int:
     report = assess(args.scope or STREAM_NAMES[args.stream], evidence)
     _write(report.to_json() + "\n", args.report)
     print(_describe(report), file=sys.stderr)
+
+    escalations = escalate(report, STREAM_NAMES[args.stream])
+    for escalation in escalations:
+        print(
+            f"  !! escalado {escalation.severity.value} {escalation.measurement.rule.name} -> "
+            f"{escalation.responsible.person}: {escalation.action}",
+            file=sys.stderr,
+        )
+    if escalations and args.escalations is not None:
+        # Se añade y no se sobrescribe: el registro es la serie de escalados.
+        with args.escalations.open("a", encoding="utf-8", newline="") as handle:
+            handle.writelines(escalation.to_json() + "\n" for escalation in escalations)
 
     return 1 if args.strict and not report.passed else 0
 
