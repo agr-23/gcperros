@@ -1079,6 +1079,14 @@ que sabe de apuestas. La demo usa la semilla 65: 2-1 con remontada y xG de
   aplica a un estado vacío y se mira si tocó el indicador— y se verifica
   plegando su huella y comparándola con la del motor.
 
+### El aviso de uso responsable no depende de ningún script
+
+La historia #29 exige mostrarlo de forma permanente: la señal informa, no
+recomienda apostar. Va fijo al pie de las tres pantallas y en HTML estático, no
+inyectado por JavaScript, para que se vea aunque falle un script; el cuerpo
+reserva su altura para que no tape contenido. Una prueba exige que esté en las
+tres.
+
 ### Honestidad en pantalla
 
 Lo que el sistema todavía no hace se dice donde se ve, no en letra pequeña: el
