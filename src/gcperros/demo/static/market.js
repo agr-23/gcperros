@@ -96,6 +96,9 @@ function drawSignals(market) {
         item.append(span);
       }
       item.classList.add(signal.divergence > 0 ? "up" : "down");
+      // Pulsable: abre de qué eventos y qué cuota sale (trace.js).
+      item.dataset.signal = signal.index;
+      item.tabIndex = 0;
       return item;
     }),
   );

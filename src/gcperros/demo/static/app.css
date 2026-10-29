@@ -116,6 +116,8 @@ body {
   padding: 6px 10px; border-radius: 6px; background: var(--ground); border-left: 3px solid var(--warn);
 }
 .signals li.up { border-left-color: var(--ok); }
+.signals li[data-signal] { cursor: pointer; }
+.signals li[data-signal]:focus-visible { outline: 2px solid var(--home); outline-offset: 2px; }
 .signals .when { font: 700 0.9rem ui-monospace, Consolas, monospace; }
 .signals .nums { color: var(--muted); font: 0.8rem ui-monospace, Consolas, monospace; }
 

@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from gcperros.core.contracts import JsonValue
 from gcperros.demo.market import MarketTape
 from gcperros.demo.replay import MatchReplay
+from gcperros.demo.signal_trace import SignalTrace, trace_signal
 from gcperros.demo.snapshot import LiveSnapshot, take_snapshot
 from gcperros.demo.trace import Trace, trace_indicator
 
@@ -105,6 +106,12 @@ class LiveSource:
         """
         return trace_indicator(self._replay, indicator, scope)
 
+    def trace_signal(self, index: int) -> SignalTrace:
+        """De dónde sale una señal del feed; ``IndexError`` si no hay mercado o aún no salió."""
+        if self._market is None:
+            raise IndexError("esta demostración no lleva mercado")
+        return trace_signal(self._market, index, self._replay.minute_at)
+
 
 async def stream_snapshots(
     source: LiveSource,
@@ -176,6 +183,16 @@ def create_app(
             raise HTTPException(
                 status_code=404, detail=f"no se mide {indicator} en {scope}"
             ) from error
+
+    @app.get("/api/matches/{match_id}/signals/{index}/trace", response_model=None)
+    def signal_trace(match_id: str, index: int) -> dict[str, JsonValue]:
+        """Los eventos y la cuota que produjeron una señal, con su huella verificada."""
+        if match_id != source.match_id:
+            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
+        try:
+            return source.trace_signal(index).to_json()
+        except IndexError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
 
     def _report_path(name: str) -> Path | None:
         if reports_dir is None or name not in REPORTS:

@@ -91,6 +91,16 @@ class MarketTape:
         """Todas las señales emitidas hasta ahora, en orden."""
         return tuple(self._signals)
 
+    @property
+    def consumed_events(self) -> tuple[MatchEvent, ...]:
+        """Los eventos del partido que la cinta ya consumió, en orden de tiempo."""
+        return tuple(self._events[: self._next_event])
+
+    @property
+    def consumed_odds(self) -> tuple[OddsUpdate, ...]:
+        """Las cuotas que la cinta ya consumió, en orden de tiempo."""
+        return tuple(self._odds[: self._next_odds])
+
     def view(self, recent: int = RECENT_SIGNALS) -> MarketView:
         """El mercado en el instante actual, con las señales más nuevas primero."""
         model = model_probabilities("1x2", self._detector.state)

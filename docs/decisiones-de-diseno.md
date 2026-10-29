@@ -703,6 +703,12 @@ huella **a mano** desde los flujos crudos, sin el detector, y exige que coincida
 y en las señales que llegan tras un gol, que la huella cuadre con ese gol y deje
 de cuadrar sin él.
 
+En el panel, cada señal del feed se pulsa como un número del marcador (#34) y
+abre los eventos y la cuota de los que salió. `demo/signal_trace.py` los
+reconstruye desde los flujos que la cinta ya consumió, sin preguntarle al
+detector, y los verifica contra la huella que la señal lleva: si no cuadran, el
+diálogo lo dice en lugar de enseñar una lista plausible.
+
 ### Una huella verificable en lugar de la lista de identificadores
 
 Guardar los `event_id` completos no escala —1.200 eventos por partido, y la

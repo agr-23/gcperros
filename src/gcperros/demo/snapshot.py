@@ -64,6 +64,8 @@ def _market_json(view: MarketView) -> dict[str, JsonValue]:
         "total_signals": view.total_signals,
         "signals": [
             {
+                # Posición en la cinta, para pedir su procedencia (historia #25).
+                "index": view.total_signals - 1 - position,
                 "minute": signal.minute,
                 "operator": signal.operator,
                 "market": signal.market,
@@ -72,7 +74,7 @@ def _market_json(view: MarketView) -> dict[str, JsonValue]:
                 "market_probability": signal.market_probability,
                 "divergence": signal.divergence,
             }
-            for signal in view.recent_signals
+            for position, signal in enumerate(view.recent_signals)
         ],
     }
 
