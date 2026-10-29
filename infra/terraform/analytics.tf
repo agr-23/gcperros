@@ -122,6 +122,11 @@ resource "google_bigquery_table" "fact_market_signals" {
     { name = "model_probability", type = "FLOAT", mode = "REQUIRED", description = "Probabilidad estimada por modelo." },
     { name = "market_probability", type = "FLOAT", mode = "REQUIRED", description = "Probabilidad implícita del mercado." },
     { name = "divergence", type = "FLOAT", mode = "REQUIRED", description = "Divergencia con signo (modelo - mercado)." },
-    { name = "magnitude", type = "FLOAT", mode = "REQUIRED", description = "Magnitud absoluta de la divergencia." }
+    { name = "magnitude", type = "FLOAT", mode = "REQUIRED", description = "Magnitud absoluta de la divergencia." },
+    # Procedencia de la señal (historia #25). NULLABLE: es la única forma de
+    # añadir una columna a una tabla de BigQuery que ya existe.
+    { name = "model_version", type = "STRING", mode = "NULLABLE", description = "Versión del modelo que calculó la probabilidad." },
+    { name = "lineage_digest", type = "STRING", mode = "NULLABLE", description = "Huella de los eventos y la cuota que produjeron la señal." },
+    { name = "lineage_event_count", type = "INTEGER", mode = "NULLABLE", description = "Cuántos eventos se plegaron en la huella." }
   ])
 }

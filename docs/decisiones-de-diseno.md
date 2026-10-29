@@ -709,6 +709,11 @@ reconstruye desde los flujos que la cinta ya consumió, sin preguntarle al
 detector, y los verifica contra la huella que la señal lleva: si no cuadran, el
 diálogo lo dice en lugar de enseñar una lista plausible.
 
+La procedencia tampoco se pierde al guardar la señal: `fact_market_signals`
+tiene columnas para la versión del modelo, la huella y su número de eventos, y
+una prueba exige que sigan ahí. Son `NULLABLE` porque es la única forma de añadir
+una columna a una tabla de BigQuery que ya existe.
+
 ### Una huella verificable en lugar de la lista de identificadores
 
 Guardar los `event_id` completos no escala —1.200 eventos por partido, y la
