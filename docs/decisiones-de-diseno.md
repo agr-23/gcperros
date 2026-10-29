@@ -348,6 +348,15 @@ Medido sobre el partido de referencia con el margen de 10 s:
 El diseño aguanta más de lo que se le pidió, y cuando se rompe lo hace por xG
 antes que por posesión: perder un remate pesa más que perder un pase.
 
+### Y es puerta de integración, no sólo informe
+
+Desde la historia #28, la CI ejecuta los escenarios comprometidos con `--strict`
+sobre dos partidos (el de referencia y el de exhibición) dentro del trabajo
+«Reproducibilidad», que es comprobación obligatoria de `main`. Un cambio que
+saque un solo escenario de los umbrales del OE-2 no se puede fusionar. Probado
+con una regresión simulada —el motor sin margen de marca de agua—: la puerta
+falla en los seis escenarios.
+
 ### «Exacto» significa que la contabilidad cierra
 
 El OE-2 exige que los eventos aplicados coincidan *exactamente* con los únicos
