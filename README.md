@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agr-23/gcperros/actions/workflows/ci.yml/badge.svg)](https://github.com/agr-23/gcperros/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
-[![Pruebas](https://img.shields.io/badge/pruebas-558-brightgreen)](tests/)
+[![Pruebas](https://img.shields.io/badge/pruebas-559-brightgreen)](tests/)
 [![Cobertura](https://img.shields.io/badge/cobertura-97%25-brightgreen)](pyproject.toml)
 
 Ingerimos dos flujos de eventos —las acciones de un partido de fútbol y las
@@ -18,9 +18,9 @@ Prof. Jose Fabio Jaramillo Castro
 
 | Integrante | Rol | Historias |
 |---|---|---|
-| Jean Carlo Londoño | Ingeniero de Pipelines / Big Data | HU-8 a HU-13 |
-| Tomás Londoño | Arquitecto de Datos / Cloud | HU-14, HU-15 |
-| Alejandro Garcés | Oficial de Gobernanza / Líder DataOps | HU-16 a HU-18 |
+| Jean Carlo Londoño | Ingeniero de Pipelines / Big Data | HU-8 a HU-13, HU-19, HU-20, el harness, la carga y la demo |
+| Tomás Londoño | Arquitecto de Datos / Cloud | HU-14, HU-15, HU-22, HU-23 |
+| Alejandro Garcés | Oficial de Gobernanza / Líder DataOps | HU-16 a HU-18 y la puerta de CI |
 
 > **Uso responsable.** Proyecto estrictamente académico. El sistema es una
 > herramienta de apoyo a la decisión informada: no ejecuta apuestas, no
@@ -120,7 +120,8 @@ señales=46 umbral=0.05 mayor_separacion=0.297 evaluadas=93 cuotas
 ```
 
 **9. ¿Sigue siendo correcto el streaming?** Degrada el partido como lo haría el
-broker y compara el motor contra el batch. Con `--strict` sirve de puerta en CI.
+broker y compara el motor contra el batch. Con `--strict` es la puerta de la CI:
+un cambio que saque un escenario comprometido de los umbrales no entra en `main`.
 
 ```bash
 gcperros-validate-streaming --seed 20260826 --scenarios all
@@ -163,7 +164,7 @@ Cloud Run · motor con estado                 ← dedup, watermark, ventanas
         └──▶ BigQuery    · histórico y calibración
                     │
                     ▼
-            Dashboard (fuera de GCP)
+            gcperros-demo · panel en vivo por SSE   (fuera de GCP)
 ```
 
 La entrega *at-least-once* y sin orden es **premisa de diseño**, no un defecto
@@ -216,34 +217,41 @@ sostiene.
 
 ## Historia → código → prueba
 
-| Historia | Tablero | Qué hace | Código | Prueba | Estado |
+| Historia | Documento | Qué hace | Código | Prueba | Estado |
 |---|---|---|---|---|---|
-| HU-8 | H-001 | Generador determinista de partido | [`generators/match.py`](src/gcperros/generators/match.py) | [`test_determinism.py`](tests/test_determinism.py) | ✅ |
-| HU-9 | H-002 | Cuotas que reaccionan al partido | [`generators/odds.py`](src/gcperros/generators/odds.py) | [`test_odds_generator.py`](tests/test_odds_generator.py) | ✅ |
-| HU-10 | H-003 | Publicación con reintento y registro | [`publishing/publisher.py`](src/gcperros/publishing/publisher.py) | [`test_publisher.py`](tests/test_publisher.py) | ✅ |
-| HU-11 | H-004 | Deduplicación por `event_id` | [`engine/dedup.py`](src/gcperros/engine/dedup.py) | [`test_dedup.py`](tests/test_dedup.py) | ✅ |
-| HU-12 | H-005 | Reordenamiento por marca de agua | [`engine/watermark.py`](src/gcperros/engine/watermark.py) | [`test_watermark.py`](tests/test_watermark.py) | ✅ |
-| HU-13 | H-006 | Infraestructura declarada en Terraform | [`infra/terraform/pubsub.tf`](infra/terraform/pubsub.tf) | CI: `terraform validate` | ✅ sin desplegar |
-| HU-14 | H-007 | Capa Raw en BigQuery | [`loading/raw_loader.py`](src/gcperros/loading/raw_loader.py) | [`test_raw_loader.py`](tests/test_raw_loader.py) | ✅ sin desplegar |
-| HU-15 | H-008 | Estado vivo en Firestore | [`firestore/document.py`](src/gcperros/firestore/document.py) | [`test_live_document.py`](tests/test_live_document.py) | ✅ sin desplegar |
-| HU-16 | H-009 | Contrato formal y repositorio de inválidos | [`governance/validation.py`](src/gcperros/governance/validation.py) | [`test_validation.py`](tests/test_validation.py) | ✅ |
-| HU-17 | H-010 | Reglas de calidad sobre lo ingerido | [`governance/quality.py`](src/gcperros/governance/quality.py) | [`test_quality.py`](tests/test_quality.py) | ✅ |
-| HU-18 | H-011 | Trazabilidad de los indicadores | [`governance/traceability.py`](src/gcperros/governance/traceability.py) | [`test_traceability.py`](tests/test_traceability.py) | ✅ |
-| HU-19 | — | Señal de discrepancia con el mercado | [`engine/signals.py`](src/gcperros/engine/signals.py) | [`test_signals.py`](tests/test_signals.py) | ✅ |
-| HU-20 | — | Posesión acumulada y por ventana móvil | [`core/possession.py`](src/gcperros/core/possession.py) | [`test_possession.py`](tests/test_possession.py) | ✅ |
-| #20 · [#17](https://github.com/agr-23/gcperros/issues/17) | — | Validación del streaming contra el batch | [`engine/harness.py`](src/gcperros/engine/harness.py) | [`test_harness.py`](tests/test_harness.py) | ✅ |
-| #21 · [#18](https://github.com/agr-23/gcperros/issues/18) | — | Latencia y saturación bajo carga | [`engine/benchmark.py`](src/gcperros/engine/benchmark.py) | [`test_benchmark.py`](tests/test_benchmark.py) | ✅ |
+| HU-8 | 8 | Generador determinista de partido | [`generators/match.py`](src/gcperros/generators/match.py) | [`test_determinism.py`](tests/test_determinism.py) | ✅ |
+| HU-9 | 9 | Cuotas que reaccionan al partido | [`generators/odds.py`](src/gcperros/generators/odds.py) | [`test_odds_generator.py`](tests/test_odds_generator.py) | ✅ |
+| HU-10 | 10 | Publicación con reintento y registro | [`publishing/publisher.py`](src/gcperros/publishing/publisher.py) | [`test_publisher.py`](tests/test_publisher.py) | ✅ |
+| HU-11 | 11 | Deduplicación por `event_id` | [`engine/dedup.py`](src/gcperros/engine/dedup.py) | [`test_dedup.py`](tests/test_dedup.py) | ✅ |
+| HU-12 | 12 | Reordenamiento por marca de agua | [`engine/watermark.py`](src/gcperros/engine/watermark.py) | [`test_watermark.py`](tests/test_watermark.py) | ✅ |
+| HU-13 | 13 | Infraestructura declarada en Terraform | [`infra/terraform/pubsub.tf`](infra/terraform/pubsub.tf) | CI: `terraform validate` | ✅ sin desplegar |
+| HU-14 | 14 | Capa Raw en BigQuery | [`loading/raw_loader.py`](src/gcperros/loading/raw_loader.py) | [`test_raw_loader.py`](tests/test_raw_loader.py) | ✅ sin desplegar |
+| HU-15 | 15 | Estado vivo en Firestore | [`firestore/document.py`](src/gcperros/firestore/document.py) | [`test_live_document.py`](tests/test_live_document.py) | ✅ sin desplegar |
+| HU-16 | 16 | Contrato formal y repositorio de inválidos | [`governance/validation.py`](src/gcperros/governance/validation.py) | [`test_validation.py`](tests/test_validation.py) | ✅ |
+| HU-17 | 17 | Reglas de calidad sobre lo ingerido | [`governance/quality.py`](src/gcperros/governance/quality.py) | [`test_quality.py`](tests/test_quality.py) | ✅ |
+| HU-18 | 25 | Trazabilidad de los indicadores | [`governance/traceability.py`](src/gcperros/governance/traceability.py) | [`test_traceability.py`](tests/test_traceability.py) | ✅ |
+| HU-19 | 19 | Señal de discrepancia con el mercado | [`engine/signals.py`](src/gcperros/engine/signals.py) | [`test_signals.py`](tests/test_signals.py) | ✅ |
+| HU-20 | 18 | Posesión acumulada y por ventana móvil | [`core/possession.py`](src/gcperros/core/possession.py) | [`test_possession.py`](tests/test_possession.py) | ✅ |
+| [#17](https://github.com/agr-23/gcperros/issues/17) | 20 | Validación del streaming contra el batch | [`engine/harness.py`](src/gcperros/engine/harness.py) | [`test_harness.py`](tests/test_harness.py) | ✅ |
+| [#18](https://github.com/agr-23/gcperros/issues/18) | 21 | Latencia y saturación bajo carga | [`engine/benchmark.py`](src/gcperros/engine/benchmark.py) | [`test_benchmark.py`](tests/test_benchmark.py) | ✅ |
+| HU-22 | 22 | Modelo estrella de la capa analítica | [`infra/terraform/analytics.tf`](infra/terraform/analytics.tf) | [`test_historical_star_schema.py`](tests/test_historical_star_schema.py) | ✅ sin desplegar |
+| HU-23 | 23 | Partición y agrupamiento de lo histórico | [`infra/terraform/analytics.tf`](infra/terraform/analytics.tf) | [`test_historical_benchmark.py`](tests/test_historical_benchmark.py) | ✅ cifras estimadas |
+| [#62](https://github.com/agr-23/gcperros/issues/62) | 28 | Puerta de CI: streaming contra batch | [`ci.yml`](.github/workflows/ci.yml) | CI: Reproducibilidad | ✅ |
+| [#30–#35](https://github.com/agr-23/gcperros/issues/30), [#61](https://github.com/agr-23/gcperros/issues/61) | 29 | Panel en vivo para el usuario | [`demo/`](src/gcperros/demo/) | [`test_demo_*.py`](tests/) | ✅ en local |
 
-El tablero numera las mismas historias con un desfase de siete (`H-00N` es
-`HU-(N+7)`). El código y los commits usan `HU-N`, que es la numeración con la que
-nació el repositorio; esta tabla es la única traducción entre ambas, para que
-nadie tenga que deducirla comparando títulos.
+**Tres numeraciones, una tabla.** El código y los commits usan `HU-N`, la
+numeración con la que nació el repositorio; desde el sprint 2, las historias
+nuevas se siguieron por su issue de GitHub. El documento de historias —y ClickUp,
+que lo sigue— numera a su manera: coincide hasta la 17 y después no (la 18 del
+documento es la HU-20, y la HU-18 es la 25). El tablero antiguo usaba `H-00N`,
+que es `HU-(N+7)`. Esta tabla es la única traducción entre todas, para que nadie
+tenga que deducirla comparando títulos.
 
 ---
 
 ## Cómo sabemos que funciona
 
-**558 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
+**559 pruebas, 97 % de cobertura.** Pero el número que importa no es ese, sino
 qué vigila cada familia:
 
 | Familia | Qué protege |
@@ -263,7 +271,9 @@ La integración continua corre en cada push ([`ci.yml`](.github/workflows/ci.yml
   una suposición.
 - **Reproducibilidad** — genera el mismo partido dos veces y compara con `cmp`;
   valida que ambos flujos cumplen su propio contrato; corre el informe de calidad
-  y la trazabilidad en modo estricto.
+  y la trazabilidad en modo estricto; y **compara el streaming contra el batch**
+  con duplicados y desorden sobre dos partidos. Es comprobación obligatoria de
+  `main`: si un escenario comprometido se sale de los umbrales, la PR no entra.
 - **Terraform** — `fmt -check`, `init` y `validate` sin credenciales.
 
 En todo el repositorio no hay **ni un solo `type: ignore` ni `noqa`**. Las
@@ -282,6 +292,7 @@ src/gcperros/governance/    Frontera de contrato, inválidos, calidad y trazabil
 src/gcperros/engine/        Motor con estado: dedup, marca de agua, estado vivo
 src/gcperros/loading/       Capa histórica Raw hacia BigQuery
 src/gcperros/firestore/     Documento de estado vivo por partido
+src/gcperros/demo/          Panel en vivo para un cliente: repetición, API, SSE y páginas
 tests/                      Unitarias por componente y de tubería completa
 infra/terraform/            Infraestructura como código
 docs/                       Decisiones de diseño con su evidencia
@@ -307,6 +318,16 @@ Preferimos decirlo aquí a que se descubra leyendo:
   —un latido para la marca de agua y estado provisional corregido al cerrar la
   ventana— están en [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md),
   sección 3. Ninguna de las dos está implementada.
+- **Cifras de particionamiento estimadas.** Las de la HU-23 salen de un modelo
+  de costes, no de un plan de ejecución de BigQuery: sin nada desplegado no hay
+  plan real que medir.
+- **La frontera de estrés depende del partido.** Los escenarios comprometidos
+  pasan en todos los partidos probados, pero dónde se rompe el diseño cambia con
+  qué eventos llegan tarde. Afirmarlo con solidez exige medirlo sobre muchos.
+- **Historias del documento que todavía no están en el repositorio:** la 24
+  (catálogo y glosario), la 26 (cinco dimensiones de calidad; hoy se miden
+  tres), la 27 (privacidad), la 30 (paneles operativos con alertas) y la 31
+  (informe consolidado de validación).
 
 ---
 
@@ -344,6 +365,9 @@ Tres pantallas, en el orden en que importan:
 | **En vivo** | Marcador, posesión, xG en el tiempo y estadísticas. Cada número se puede pulsar y abre los eventos que lo formaron, con su huella verificada contra el motor. |
 | **Por qué confiar** | El harness (correcto), el banco de carga (rápido) y la calidad de la ingestión (limpio), leídos de los informes que escriben las CLI. Y el SLA que todavía no cumplimos, en la misma pantalla. |
 | **Bajo el capó** | El recorrido de un evento, las dos bases de datos, el modelo estrella y lo que declara el Terraform. |
+
+Las tres llevan fijo al pie el aviso de uso responsable: la señal informa, no
+recomienda apostar.
 
 El partido empieza cuando se abre la página, dura unos tres minutos y medio a
 la velocidad por defecto (`--speed 30`) y sale igual cada vez: no necesita red,
