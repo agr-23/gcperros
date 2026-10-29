@@ -47,15 +47,18 @@ from gcperros.governance.validation import (
 
 T = TypeVar("T")
 
+#: Motivos que dicen que al mensaje le **falta** algo. Todos los demás dicen que
+#: lo que trae no vale. Es la frontera entre completitud y validez (historia #26).
+INCOMPLETENESS_RULES = frozenset({ViolationRule.MISSING_FIELD, ViolationRule.MARKET_INCOMPLETE})
+
 
 @dataclass(frozen=True, slots=True)
 class GateStats:
     """Qué atravesó la frontera y qué se quedó fuera.
 
-    Es la primera medición de calidad del pipeline y alimenta directamente la
-    dimensión de *completitud* del marco de la HU-17: un flujo del que se cae el
-    diez por ciento de los mensajes es un flujo incompleto, aunque todo lo que
-    haya entrado esté impecable.
+    Es la primera medición de calidad del pipeline y alimenta dos dimensiones
+    del marco de la HU-17: la *completitud*, con los mensajes a los que les faltaba
+    algo, y la *validez*, con los que traían algo que no vale (historia #26).
 
     Attributes:
         admitted: Mensajes conformes que siguieron hacia el motor.
@@ -64,11 +67,16 @@ class GateStats:
             defectos distintos suma en los tres, de modo que los recuentos
             responden a «¿cuántos mensajes traían este problema?» y no a
             «¿cuántos mensajes se cayeron por esto?».
+        incomplete: Rechazos a los que les faltaba un campo o un resultado.
+        invalid: Rechazos con algún valor fuera de su dominio. Un mensaje puede
+            contar en los dos.
     """
 
     admitted: int
     rejected: int
     by_rule: dict[str, int]
+    incomplete: int
+    invalid: int
 
     @property
     def seen(self) -> int:
@@ -89,7 +97,17 @@ class GateStats:
 class IngestionGate(Generic[T]):
     """Valida los mensajes de un flujo y aparta los que no cumplen el contrato."""
 
-    __slots__ = ("_admitted", "_by_rule", "_clock", "_parse", "_schema", "_sequence", "_store")
+    __slots__ = (
+        "_admitted",
+        "_by_rule",
+        "_clock",
+        "_incomplete",
+        "_invalid",
+        "_parse",
+        "_schema",
+        "_sequence",
+        "_store",
+    )
 
     def __init__(
         self,
@@ -114,6 +132,8 @@ class IngestionGate(Generic[T]):
         self._sequence = 0
         self._admitted = 0
         self._by_rule: dict[str, int] = {}
+        self._incomplete = 0
+        self._invalid = 0
 
     @property
     def stats(self) -> GateStats:
@@ -122,6 +142,8 @@ class IngestionGate(Generic[T]):
             admitted=self._admitted,
             rejected=self._sequence - self._admitted,
             by_rule=dict(self._by_rule),
+            incomplete=self._incomplete,
+            invalid=self._invalid,
         )
 
     def admit(self, message: bytes | str) -> T | None:
@@ -186,6 +208,9 @@ class IngestionGate(Generic[T]):
     def _reject(self, result: ValidationResult, raw: str) -> None:
         for rule in result.rules:
             self._by_rule[rule] = self._by_rule.get(rule, 0) + 1
+        rules = set(result.rules)
+        self._incomplete += bool(rules & INCOMPLETENESS_RULES)
+        self._invalid += bool(rules - INCOMPLETENESS_RULES)
         self._store.record(build_record(result, raw, self._sequence, self._clock()))
 
 

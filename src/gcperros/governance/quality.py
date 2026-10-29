@@ -18,11 +18,18 @@ Vale igual para la unicidad: contar identificadores repetidos *después* de
 deduplicar daría siempre uno. Lo que se mide es el flujo tal como lo entregó el
 broker, que es donde la repetición ocurre.
 
+Completitud no es validez
+-------------------------
+A un mensaje le puede **faltar** algo o puede traer algo que **no vale**, y son
+problemas distintos con arreglos distintos (historia #26). Hasta entonces los dos
+se contaban juntos como «completitud», así que un productor que mandaba cuotas
+negativas parecía uno que se olvidaba de campos.
+
 Lo medido y lo elegido
 ----------------------
-El proyecto exige que un umbral se sostenga en evidencia. Aquí dos de los tres
-la tienen y el tercero no, y conviene decirlo en voz alta en vez de disimularlo.
-El detalle está en `docs/decisiones-de-diseno.md`, sección 8.
+El proyecto exige que un umbral se sostenga en evidencia, y no todos la tienen
+todavía; conviene decirlo en voz alta en vez de disimularlo. El detalle está en
+`docs/decisiones-de-diseno.md`, sección 8.
 """
 
 from __future__ import annotations
@@ -45,16 +52,18 @@ QUALITY_DECIMALS = 4
 
 
 class QualityDimension(StrEnum):
-    """Dimensiones de calidad que el proyecto mide en este sprint.
+    """Dimensiones de calidad que el proyecto mide.
 
-    Son tres y no las seis del catálogo habitual —exactitud, consistencia y
-    validez quedan fuera— porque son las que se pueden medir con lo que el
-    pipeline ya observa. Una dimensión sin forma de medirla es una casilla en
-    un informe, no una garantía.
+    Exactitud queda fuera: con datos sintéticos no hay una verdad externa contra
+    la que contrastar. Una dimensión sin forma de medirla es una casilla en un
+    informe, no una garantía.
     """
 
-    #: Qué proporción de lo entregado cumplía el contrato (HU-16).
+    #: Qué proporción de lo entregado traía todos sus campos (HU-16).
     COMPLETENESS = "completeness"
+
+    #: Qué proporción de lo entregado traía valores dentro de su dominio.
+    VALIDITY = "validity"
 
     #: Qué proporción de las entregas del broker no eran repeticiones (HU-11).
     UNIQUENESS = "uniqueness"
@@ -193,7 +202,9 @@ class IngestionEvidence:
         if self.gate is not None:
             # El total incluye lo rechazado: medir solo sobre lo admitido daría
             # el cien por cien por construcción.
-            found[QualityDimension.COMPLETENESS] = (self.gate.admitted, self.gate.seen)
+            seen = self.gate.seen
+            found[QualityDimension.COMPLETENESS] = (seen - self.gate.incomplete, seen)
+            found[QualityDimension.VALIDITY] = (seen - self.gate.invalid, seen)
 
         if self.dedup is not None:
             # Y aquí, el flujo tal como lo entregó el broker: contar después de
@@ -210,14 +221,24 @@ class IngestionEvidence:
 # Las reglas del proyecto
 ###############################################################################
 
-CONTRACT_CONFORMITY = QualityRule(
-    name="contract_conformity",
+REQUIRED_FIELDS = QualityRule(
+    name="required_fields",
     dimension=QualityDimension.COMPLETENESS,
     minimum=0.99,
     rationale=(
         "Umbral de política, no medido: con los generadores del propio proyecto "
         "no hay rechazos, así que no hay nada que observar todavía. Se "
         "recalibra cuando exista ingestión real (HU-14)."
+    ),
+)
+
+DOMAIN_VALIDITY = QualityRule(
+    name="domain_validity",
+    dimension=QualityDimension.VALIDITY,
+    minimum=0.99,
+    rationale=(
+        "Umbral de política, por el mismo motivo que el de completitud. Es el mismo "
+        "valor porque antes de la historia #26 los dos se medían juntos con él."
     ),
 )
 
@@ -246,7 +267,8 @@ APPLICATION_TIMELINESS = QualityRule(
 
 #: Las reglas vigentes, en el orden en que se informan.
 DEFAULT_RULES: tuple[QualityRule, ...] = (
-    CONTRACT_CONFORMITY,
+    REQUIRED_FIELDS,
+    DOMAIN_VALIDITY,
     DELIVERY_UNIQUENESS,
     APPLICATION_TIMELINESS,
 )

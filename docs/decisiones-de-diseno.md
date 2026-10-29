@@ -597,16 +597,29 @@ en la frontera en lugar de procesarse a medias.
 
 ## 8. Marco de calidad
 
-### Tres dimensiones, no las seis del catálogo
+### Las dimensiones que se miden, y la que no
 
-Exactitud, consistencia y validez quedan fuera de este sprint. No por descuido:
-son las que **no se pueden medir con lo que el pipeline ya observa**, y una
-dimensión sin forma de medirla es una casilla en un informe, no una garantía.
+La HU-17 midió tres —completitud, unicidad y oportunidad— porque eran las que
+**se podían medir con lo que el pipeline ya observaba**: una dimensión sin forma
+de medirla es una casilla en un informe, no una garantía. Sus contadores ya
+estaban repartidos por el código —`GateStats`, `DedupStats`, `WatermarkStats`—;
+lo que faltaba era **el umbral**.
 
-Las tres que sí entran ya tenían sus contadores repartidos por el código
-—`GateStats`, `DedupStats`, `WatermarkStats`—. Lo que faltaba no era el número,
-era **el umbral**: sin él se podía describir la calidad pero no afirmar que
-estuviera bien ni mal.
+La historia #26 añade validez y consistencia. Exactitud sigue fuera: con datos
+sintéticos no hay una verdad externa contra la que contrastar.
+
+### Completitud no es validez
+
+Hasta la historia #26, «completitud» era la conformidad con el contrato: un
+mensaje sin `team` y uno con una cuota negativa contaban igual. Son problemas
+distintos con arreglos distintos —al productor se le olvida un campo, o calcula
+mal un valor— y medirlos juntos escondía cuál de los dos estaba pasando.
+
+La frontera clasifica ahora cada rechazo: `missing_field` y `market_incomplete`
+dicen que **falta** algo, y todo lo demás —tipo, rango, vocabulario, JSON
+ilegible— que lo que hay **no vale**. Un mensaje con los dos defectos cuenta en
+las dos dimensiones. Un JSON ilegible es inválido y no incompleto: no se sabe qué
+campos traía, pero sí que lo que llegó no es un mensaje.
 
 ### Dónde se mide cada dimensión, y por qué ahí
 
@@ -631,16 +644,17 @@ de agua. El informe **nombra** esas dimensiones como no medidas en lugar de
 omitirlas. Omitirlas dejaría un informe en verde que parecería decir que todo se
 comprobó, que es peor que no tener informe.
 
-### Los umbrales: dos medidos y uno que no
+### Los umbrales: dos medidos y dos que no
 
-El proyecto exige que un umbral se sostenga en evidencia. Dos la tienen y el
-tercero no, y conviene decirlo antes de que lo pregunten:
+El proyecto exige que un umbral se sostenga en evidencia. Dos la tienen y dos
+no, y conviene decirlo antes de que lo pregunten:
 
 | Dimensión | Umbral | De dónde sale |
 |---|---|---|
 | Oportunidad | 0,95 | **Declarado** por el proyecto en el OE-2. Es el mismo que sostiene el margen de 10 s de la sección 3. Observado: 0,9992 – 1,0000 |
 | Unicidad | 0,90 | **Medido.** Con el inyector de duplicados en su 5 % por defecto —ya exagerado frente a Pub/Sub— ocho partidos dan entre 0,942 y 0,955 |
 | Completitud | 0,99 | **Política, no medido.** Con los generadores del propio proyecto no hay rechazos, así que no hay nada que observar todavía |
+| Validez | 0,99 | **Política, no medido**, por lo mismo. Es el umbral con el que se medían juntas antes de separarlas |
 
 El umbral de unicidad queda deliberadamente por debajo del peor caso observado:
 **acota lo anormal, no la adversidad que el proyecto se autoimpone**. Si un día
