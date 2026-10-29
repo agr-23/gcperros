@@ -1142,3 +1142,15 @@ Un catálogo escrito a mano se queda atrás con la primera tabla nueva.
 `tests/test_catalog.py` lee los flujos, el dataset Raw y las tablas analíticas
 del Terraform y exige que estén catalogados; otra prueba fija la forma que esa
 lectura espera, para que un cambio de formato falle en vez de pasar en silencio.
+
+### Indicadores, señales e informes también son datos
+
+Un catálogo de tablas deja fuera justo lo que el usuario ve. Cada indicador del
+motor, la señal de discrepancia y los informes que escriben las CLI están
+catalogados con su responsable, y una prueba exige que todo indicador que la
+auditoría de la HU-18 sabe explicar esté catalogado. `possessions` y la posesión
+son entradas distintas a propósito: una cuenta recuperaciones y la otra mide
+tiempo, y confundirlas es el error que la HU-20 corrigió.
+
+`gcperros-catalog` lo consulta por rol o por clase, y con `--glossary` saca el
+glosario: «¿de quién es esto?» y «¿qué significa?» sin abrir el código.

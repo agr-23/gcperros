@@ -55,6 +55,9 @@ class AssetKind(StrEnum):
     TABLE = "table"
     DOCUMENT = "document"
     REPOSITORY = "repository"
+    INDICATOR = "indicator"
+    SIGNAL = "signal"
+    REPORT = "report"
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,8 +133,75 @@ DATASETS: tuple[Asset, ...] = (
     ),
 )
 
+
+def _indicator(name: str, description: str, *terms: str) -> Asset:
+    # Todo indicador lleva linaje (HU-18): es lo que permite auditarlo.
+    return Asset(name, AssetKind.INDICATOR, Role.PIPELINES, description, (*terms, "lineage"))
+
+
+#: Los indicadores derivados que produce el motor.
+INDICATORS: tuple[Asset, ...] = (
+    _indicator("event_count", "Eventos aplicados al estado del partido."),
+    _indicator("goals", "Goles de un equipo."),
+    _indicator("shots", "Remates de un equipo, incluidos los que acabaron en gol."),
+    _indicator("total_xg", "Suma del xG de los remates de un equipo.", "xg"),
+    _indicator("passes", "Pases intentados por un equipo."),
+    _indicator("completed_passes", "Pases que llegaron a un compañero."),
+    _indicator("fouls", "Faltas cometidas por un equipo."),
+    _indicator("red_cards", "Expulsiones de un equipo."),
+    _indicator("possessions", "Veces que un equipo recuperó el balón. No es la posesión."),
+    _indicator(
+        "possession_share",
+        "Posesión acumulada y en la ventana móvil, por equipo.",
+        "possession",
+        "watermark",
+    ),
+)
+
+#: Lo que el sistema le muestra al usuario para decidir.
+SIGNALS: tuple[Asset, ...] = (
+    Asset(
+        "discrepancy_signal",
+        AssetKind.SIGNAL,
+        Role.PIPELINES,
+        "Momento en que el modelo y el precio vigente de un operador se separan.",
+        ("discrepancy_signal", "implied_probability", "operator_margin", "xg"),
+    ),
+)
+
+#: Los informes que escriben las líneas de comandos con ``--report``.
+REPORTS: tuple[Asset, ...] = (
+    Asset(
+        "quality-report",
+        AssetKind.REPORT,
+        Role.GOVERNANCE,
+        "Reglas de calidad de una ingestión, con numerador y denominador.",
+        ("watermark",),
+    ),
+    Asset(
+        "lineage-audit",
+        AssetKind.REPORT,
+        Role.GOVERNANCE,
+        "Cada indicador de un partido con su linaje y la versión de su modelo.",
+        ("lineage",),
+    ),
+    Asset(
+        "divergence-report",
+        AssetKind.REPORT,
+        Role.GOVERNANCE,
+        "El motor en vivo contra el recálculo batch, bajo perturbaciones.",
+        ("possession", "xg", "watermark"),
+    ),
+    Asset(
+        "load-report",
+        AssetKind.REPORT,
+        Role.PIPELINES,
+        "Coste por evento y tasa a la que el motor se satura.",
+    ),
+)
+
 #: El catálogo completo.
-CATALOG: tuple[Asset, ...] = DATASETS
+CATALOG: tuple[Asset, ...] = DATASETS + INDICATORS + SIGNALS + REPORTS
 
 
 def asset(name: str) -> Asset:
