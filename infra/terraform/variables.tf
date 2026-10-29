@@ -66,6 +66,21 @@ variable "allowed_persistence_regions" {
   default     = []
 }
 
+# Responsables humanos de los datos de usuario (historia #27), como miembros de
+# IAM: "group:..." o "user:...". Vacíos por defecto: el repositorio no guarda
+# direcciones de nadie, se pasan en terraform.tfvars, que no se versiona.
+variable "governance_members" {
+  description = "Miembros IAM del rol de Gobernanza: administran la clave de seudonimización."
+  type        = list(string)
+  default     = []
+}
+
+variable "architecture_members" {
+  description = "Miembros IAM del rol de Arquitectura: administran el topic de actividad de usuario."
+  type        = list(string)
+  default     = []
+}
+
 ###############################################################################
 # Motor analítico (Cloud Run) — HU-11 / HU-12, aún sin imagen desplegada.
 #
