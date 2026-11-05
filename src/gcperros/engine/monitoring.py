@@ -62,46 +62,50 @@ def evaluate_operations(
     alerts: list[Alert] = []
 
     if p95_latency_ms > lim.max_p95_latency_ms:
+        msg = f"Latencia p95 {p95_latency_ms:.1f}ms excede SLA ({lim.max_p95_latency_ms:.1f}ms)"
         alerts.append(
             Alert(
                 metric="p95_latency",
                 observed=p95_latency_ms,
                 threshold=lim.max_p95_latency_ms,
                 severity="CRITICAL",
-                message=f"Latencia p95 {p95_latency_ms:.1f}ms excede SLA de {lim.max_p95_latency_ms:.1f}ms",
+                message=msg,
             )
         )
 
     if throughput_ev_per_s < lim.min_throughput_ev_per_s:
+        msg = f"Throughput {throughput_ev_per_s:.0f} ev/s bajo mínimo"
         alerts.append(
             Alert(
                 metric="throughput",
                 observed=throughput_ev_per_s,
                 threshold=lim.min_throughput_ev_per_s,
                 severity="WARNING",
-                message=f"Rendimiento {throughput_ev_per_s:.1f} ev/s por debajo de {lim.min_throughput_ev_per_s:.1f} ev/s",
+                message=msg,
             )
         )
 
     if max_backlog > lim.max_backlog:
+        msg = f"Backlog de {max_backlog} eventos excede tope ({lim.max_backlog})"
         alerts.append(
             Alert(
                 metric="backlog",
                 observed=float(max_backlog),
                 threshold=float(lim.max_backlog),
                 severity="CRITICAL",
-                message=f"Backlog acumulado de {max_backlog} eventos excede tope de {lim.max_backlog}",
+                message=msg,
             )
         )
 
     if rejection_rate > lim.max_rejection_rate:
+        msg = f"Tasa de rechazo {rejection_rate:.1%} excede umbral ({lim.max_rejection_rate:.1%})"
         alerts.append(
             Alert(
                 metric="rejection_rate",
                 observed=rejection_rate,
                 threshold=lim.max_rejection_rate,
                 severity="WARNING",
-                message=f"Tasa de rechazo {rejection_rate:.1%} excede umbral de {lim.max_rejection_rate:.1%}",
+                message=msg,
             )
         )
 
