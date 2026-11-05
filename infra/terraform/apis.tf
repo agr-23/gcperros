@@ -15,6 +15,7 @@ locals {
     "bigquery.googleapis.com",      # capa Raw (HU-14)
     "firestore.googleapis.com",     # estado vivo (HU-15)
     "secretmanager.googleapis.com", # clave de seudonimización (historia #27)
+    "monitoring.googleapis.com",    # métricas operativas y alertas SLA (HU-30)
   ]
 }
 
