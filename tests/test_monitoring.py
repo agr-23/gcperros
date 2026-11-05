@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from gcperros.engine.monitoring import SLALimits, evaluate_operations
+from gcperros.engine.monitoring import evaluate_operations
 
 
 def test_healthy_pipeline_triggers_no_alerts() -> None:
