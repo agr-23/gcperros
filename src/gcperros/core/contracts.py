@@ -207,9 +207,9 @@ BASKETBALL_MARKET_OUTCOMES: dict[BasketballMarket, tuple[str, ...]] = {
     "total_points": ("over", "under"),
 }
 
-#: En baloncesto no hay goles ni rojas: lo que mueve el mercado es una racha de
-#: puntos, y el tiempo muerto que la corta.
-BasketballOddsTrigger: TypeAlias = Literal["open", "run", "timeout", "drift", "heartbeat"]
+#: En baloncesto no hay goles ni rojas. Cada canasta mueve el precio, una racha
+#: lo mueve mucho, y el tiempo muerto suele cortarla.
+BasketballOddsTrigger: TypeAlias = Literal["open", "basket", "run", "timeout", "drift", "heartbeat"]
 BASKETBALL_ODDS_TRIGGERS: frozenset[str] = frozenset(get_args(BasketballOddsTrigger))
 
 # Las mismas tablas con la clave ensanchada a `str`, que es como llega el
