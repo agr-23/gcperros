@@ -34,11 +34,13 @@ from gcperros.core.contracts import (
     MatchEvent,
     OddsUpdate,
     parse_basketball_event,
+    parse_basketball_odds_update,
     parse_match_event,
     parse_odds_update,
 )
 from gcperros.core.schema import (
     BASKETBALL_EVENT_SCHEMA,
+    BASKETBALL_ODDS_SCHEMA,
     MATCH_EVENT_SCHEMA,
     ODDS_UPDATE_SCHEMA,
     StreamSchema,
@@ -232,6 +234,13 @@ def basketball_event_gate(
 ) -> IngestionGate[MatchEvent]:
     """Frontera del flujo ``basketball-events`` (#87)."""
     return IngestionGate(BASKETBALL_EVENT_SCHEMA, parse_basketball_event, store, clock)
+
+
+def basketball_odds_gate(
+    store: InvalidEventStore, clock: Callable[[], datetime] = utc_now
+) -> IngestionGate[OddsUpdate]:
+    """Frontera del flujo ``basketball-odds`` (#90)."""
+    return IngestionGate(BASKETBALL_ODDS_SCHEMA, parse_basketball_odds_update, store, clock)
 
 
 def odds_update_gate(

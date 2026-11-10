@@ -22,7 +22,7 @@ import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal, TypeAlias, cast, get_args
+from typing import Literal, TypeAlias, TypeGuard, cast, get_args
 
 MATCH_CONTRACT_VERSION = "v1"
 ODDS_CONTRACT_VERSION = "v1"
@@ -194,6 +194,43 @@ OddsTrigger: TypeAlias = Literal["open", "goal", "red_card", "drift", "heartbeat
 #: Los mismos valores en tiempo de ejecución, para validarlos al leer.
 ODDS_TRIGGERS: frozenset[str] = frozenset(get_args(OddsTrigger))
 
+# --- Cuotas del baloncesto (#90) ---------------------------------------------
+# Su propio flujo, `basketball-odds`, por la misma razón que sus eventos: los
+# mercados del fútbol no se ensanchan y su contrato no cambia ni un byte.
+
+BASKETBALL_ODDS_CONTRACT_VERSION = "v1"
+
+#: Ganador, sin empate, y total de puntos sobre una línea.
+BasketballMarket: TypeAlias = Literal["moneyline", "total_points"]
+BASKETBALL_MARKET_OUTCOMES: dict[BasketballMarket, tuple[str, ...]] = {
+    "moneyline": ("home", "away"),
+    "total_points": ("over", "under"),
+}
+
+#: En baloncesto no hay goles ni rojas: lo que mueve el mercado es una racha de
+#: puntos, y el tiempo muerto que la corta.
+BasketballOddsTrigger: TypeAlias = Literal["open", "run", "timeout", "drift", "heartbeat"]
+BASKETBALL_ODDS_TRIGGERS: frozenset[str] = frozenset(get_args(BasketballOddsTrigger))
+
+# Las mismas tablas con la clave ensanchada a `str`, que es como llega el
+# mercado antes de saber si es válido.
+_FOOTBALL_OUTCOMES: dict[str, tuple[str, ...]] = {str(k): v for k, v in MARKET_OUTCOMES.items()}
+_BASKETBALL_OUTCOMES: dict[str, tuple[str, ...]] = {
+    str(k): v for k, v in BASKETBALL_MARKET_OUTCOMES.items()
+}
+_ALL_MARKET_OUTCOMES: dict[str, tuple[str, ...]] = {**_FOOTBALL_OUTCOMES, **_BASKETBALL_OUTCOMES}
+
+
+def market_outcomes(market: str) -> tuple[str, ...]:
+    """Los resultados de un mercado de cualquier deporte, en su orden fijo."""
+    return _ALL_MARKET_OUTCOMES[market]
+
+
+def is_football_market(market: str) -> TypeGuard[Market]:
+    """Si el mercado es del fútbol. Estrecha el tipo para quien lo pregunte."""
+    return market in _FOOTBALL_OUTCOMES
+
+
 _ODDS_NAMESPACE = uuid.UUID("7b3e9d41-2a68-5f0c-8d17-4e6a9c2b5f83")
 
 
@@ -225,13 +262,16 @@ class OddsUpdate:
     event_time: datetime
     match_id: str
     operator: str
-    market: Market
+    market: Market | BasketballMarket
     odds: dict[str, float]
-    trigger: OddsTrigger
+    trigger: OddsTrigger | BasketballOddsTrigger
+    #: La línea del total de puntos. Sólo la lleva ese mercado: los del fútbol
+    #: la tienen en el nombre (`over_under_2_5`) y no la serializan.
+    line: float | None = None
 
     def to_dict(self) -> dict[str, JsonValue]:
         """Proyecta la actualización a la estructura que viaja por el broker."""
-        return {
+        payload: dict[str, JsonValue] = {
             "event_id": self.event_id,
             "event_time": format_event_time(self.event_time),
             "match_id": self.match_id,
@@ -240,10 +280,13 @@ class OddsUpdate:
             "market": self.market,
             "outcomes": [
                 {"outcome": outcome, "odds": self.odds[outcome]}
-                for outcome in MARKET_OUTCOMES[self.market]
+                for outcome in market_outcomes(self.market)
             ],
             "trigger": self.trigger,
         }
+        if self.line is not None:
+            payload["line"] = self.line
+        return payload
 
     def to_json(self) -> str:
         """Serializa la actualización como una línea JSON estable."""
@@ -343,6 +386,23 @@ def parse_odds_update(message: bytes | str) -> OddsUpdate:
     Raises:
         ContractViolationError: Si el mensaje no es JSON o le faltan campos.
     """
+    return _parse_odds(message, _FOOTBALL_OUTCOMES)
+
+
+def parse_basketball_odds_update(message: bytes | str) -> OddsUpdate:
+    """Reconstruye una actualización de cuotas del baloncesto (#90).
+
+    Raises:
+        ContractViolationError: Si el mensaje no es JSON, le faltan campos, el
+            mercado no es del baloncesto o un total de puntos llega sin línea.
+    """
+    update = _parse_odds(message, _BASKETBALL_OUTCOMES)
+    if update.market == "total_points" and update.line is None:
+        raise ContractViolationError("el total de puntos necesita su línea")
+    return update
+
+
+def _parse_odds(message: bytes | str, outcomes_by_market: dict[str, tuple[str, ...]]) -> OddsUpdate:
     try:
         payload = json.loads(message)
     except json.JSONDecodeError as error:
@@ -352,7 +412,7 @@ def parse_odds_update(message: bytes | str) -> OddsUpdate:
         raise ContractViolationError("el mensaje debe ser un objeto JSON")
 
     market = _require(payload, "market", str)
-    if market not in MARKET_OUTCOMES:
+    if market not in outcomes_by_market:
         raise ContractViolationError(f"mercado desconocido: {market!r}")
 
     outcomes = payload.get("outcomes")
@@ -365,15 +425,18 @@ def parse_odds_update(message: bytes | str) -> OddsUpdate:
             raise ContractViolationError("cada outcome necesita nombre y cuota")
         odds[str(entry["outcome"])] = float(str(entry["odds"]))
 
-    if set(odds) != set(MARKET_OUTCOMES[market]):
+    if set(odds) != set(outcomes_by_market[market]):
         raise ContractViolationError(f"el mercado {market} llegó incompleto")
 
+    line = payload.get("line")
     return OddsUpdate(
         event_id=str(_require(payload, "event_id", str)),
         event_time=parse_event_time(str(_require(payload, "event_time", str))),
         match_id=str(_require(payload, "match_id", str)),
         operator=str(_require(payload, "operator", str)),
-        market=market,
+        # Ya se comprobaron contra el vocabulario del flujo.
+        market=cast("Market | BasketballMarket", market),
         odds=odds,
-        trigger=cast(OddsTrigger, _require(payload, "trigger", str)),
+        trigger=cast("OddsTrigger | BasketballOddsTrigger", _require(payload, "trigger", str)),
+        line=float(line) if isinstance(line, int | float) and not isinstance(line, bool) else None,
     )
