@@ -17,14 +17,21 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from gcperros.core.basketball_stats import summarize_basketball
 from gcperros.core.contracts import MatchEvent
 from gcperros.core.divergence import Thresholds
 from gcperros.core.possession import MAX_IN_PLAY_GAP_S, PossessionTracker
 from gcperros.core.stats import summarize_events
+from gcperros.engine.basketball_state import (
+    BASKETBALL_ALLOWED_LATENESS_S,
+    BASKETBALL_MAX_IN_PLAY_GAP_S,
+    basketball_engine,
+)
 from gcperros.engine.harness import DEFAULT_SCENARIOS, Scenario, degrade
 from gcperros.engine.latency import LatencyStats
 from gcperros.engine.pipeline import EngineResult, MatchEngine, S
 from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
+from gcperros.generators.basketball import simulate_basketball
 from gcperros.generators.match import simulate_match
 
 
@@ -112,6 +119,22 @@ def _football_stream(events: list[MatchEvent], allowed_lateness_s: float) -> Spo
     return _run(result, sum(summary.goals.values()), summary.total_xg, summary.event_count)
 
 
+def _basketball_batch(events: list[MatchEvent]) -> SportPlane:
+    summary = summarize_basketball(events)
+    return SportPlane(
+        exact=sum(summary.points.values()),
+        estimate=summary.expected_points,
+        possession_seconds=_possession(events, BASKETBALL_MAX_IN_PLAY_GAP_S),
+        event_count=summary.event_count,
+    )
+
+
+def _basketball_stream(events: list[MatchEvent], allowed_lateness_s: float) -> SportRun:
+    result = basketball_engine(allowed_lateness_s).process_all(events)
+    summary = result.summary
+    return _run(result, sum(summary.points.values()), summary.expected_points, summary.event_count)
+
+
 FOOTBALL = SportProfile(
     "football",
     "goals",
@@ -121,7 +144,16 @@ FOOTBALL = SportProfile(
     _football_stream,
     DEFAULT_ALLOWED_LATENESS_S,
 )
-SPORTS: dict[str, SportProfile] = {sport.name: sport for sport in (FOOTBALL,)}
+BASKETBALL = SportProfile(
+    "basketball",
+    "points",
+    "expected_points",
+    simulate_basketball,
+    _basketball_batch,
+    _basketball_stream,
+    BASKETBALL_ALLOWED_LATENESS_S,
+)
+SPORTS: dict[str, SportProfile] = {sport.name: sport for sport in (FOOTBALL, BASKETBALL)}
 
 
 @dataclass(frozen=True, slots=True)
