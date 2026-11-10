@@ -13,11 +13,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from gcperros.core.contracts import JsonValue, MatchEvent, OddsUpdate
+from gcperros.core.contracts import JsonValue, OddsUpdate
 from gcperros.core.lineage import LineageAccumulator
 from gcperros.demo.market import MarketTape
 from gcperros.demo.trace import TracedEvent
-from gcperros.engine.signals import MARKET_MOVING_EVENTS, DiscrepancySignal
+from gcperros.engine.signals import DiscrepancySignal
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,10 +47,6 @@ class SignalTrace:
         }
 
 
-def _fixes_the_state(event: MatchEvent) -> bool:
-    return event.event_type in MARKET_MOVING_EVENTS or event.attrs.get("reason") == "kickoff"
-
-
 def trace_signal(tape: MarketTape, index: int, minute_at: Callable[[datetime], int]) -> SignalTrace:
     """Reconstruye y verifica la procedencia de la señal ``index`` de la cinta.
 
@@ -61,7 +57,7 @@ def trace_signal(tape: MarketTape, index: int, minute_at: Callable[[datetime], i
         raise IndexError(f"no hay señal {index}")
     signal = tape.signals[index]
 
-    seen = [e for e in tape.consumed_events if e.event_time <= signal.detected_at]
+    seen = list(tape.events_behind(index))
     update = [
         u
         for u in tape.consumed_odds
@@ -69,7 +65,7 @@ def trace_signal(tape: MarketTape, index: int, minute_at: Callable[[datetime], i
         and u.event_time <= signal.detected_at
     ][-1]
     # Los que fijan el estado, más el último, que pone el minuto.
-    events = [e for e in seen if _fixes_the_state(e) or e is seen[-1]]
+    events = [e for e in seen if tape.fixes_state(e) or e is seen[-1]]
 
     fold = LineageAccumulator()
     for event_id in {e.event_id for e in events} | {update.event_id}:
