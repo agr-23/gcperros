@@ -320,6 +320,14 @@ def _court_y(name: str) -> FieldSpec:
 
 _QUARTER = FieldSpec("period", FieldKind.INTEGER, minimum=1, maximum=court.MAX_PERIOD)
 
+#: Lo que queda del periodo en el reloj de juego. En baloncesto el reloj se para
+#: con cada falta y cada tiempo muerto, así que no se deduce del instante del
+#: evento. Es opcional: un campo opcional nuevo no obliga a versionar.
+_CLOCK = FieldSpec(
+    "clock_s", FieldKind.NUMBER, required=False, minimum=0.0, maximum=court.PERIOD_DURATION_S
+)
+_GAME_TIME = (_QUARTER, _CLOCK)
+
 #: El mismo sobre que el fútbol, con el vocabulario y la versión de su flujo.
 BASKETBALL_ENVELOPE: tuple[FieldSpec, ...] = (
     FieldSpec("event_id", FieldKind.STRING),
@@ -340,7 +348,7 @@ BASKETBALL_VARIANTS: Mapping[str, tuple[FieldSpec, ...]] = {
         _team_reference("from_team"),
         _team_reference("to_team"),
         FieldSpec("reason", FieldKind.STRING, allowed=BASKETBALL_POSSESSION_REASONS),
-        _QUARTER,
+        *_GAME_TIME,
     ),
     # Un tiro vale dos o tres: cualquier otro valor es un error del productor.
     "shot": (
@@ -349,21 +357,21 @@ BASKETBALL_VARIANTS: Mapping[str, tuple[FieldSpec, ...]] = {
         FieldSpec("points_value", FieldKind.INTEGER, minimum=2, maximum=3),
         FieldSpec("made", FieldKind.BOOLEAN),
         _probability("make_probability"),
-        _QUARTER,
+        *_GAME_TIME,
     ),
     "free_throw": (
         FieldSpec("made", FieldKind.BOOLEAN),
         _probability("make_probability"),
-        _QUARTER,
+        *_GAME_TIME,
     ),
-    "rebound": (FieldSpec("kind", FieldKind.STRING, allowed=REBOUND_KINDS), _QUARTER),
-    "turnover": (FieldSpec("kind", FieldKind.STRING, allowed=TURNOVER_KINDS), _QUARTER),
+    "rebound": (FieldSpec("kind", FieldKind.STRING, allowed=REBOUND_KINDS), *_GAME_TIME),
+    "turnover": (FieldSpec("kind", FieldKind.STRING, allowed=TURNOVER_KINDS), *_GAME_TIME),
     "foul": (
         _team_reference("against_team"),
         FieldSpec("free_throws", FieldKind.INTEGER, minimum=0, maximum=3),
-        _QUARTER,
+        *_GAME_TIME,
     ),
-    "timeout": (_QUARTER,),
+    "timeout": (*_GAME_TIME,),
 }
 
 BASKETBALL_EVENT_SCHEMA = StreamSchema(
