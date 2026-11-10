@@ -1356,3 +1356,75 @@ causa.
 El topic y su entrada en el catálogo (historia 24) se declaran junto con la capa
 analítica del segundo deporte: el catálogo exige que todo flujo del Terraform
 esté catalogado, y es mejor declararlos a la vez.
+
+---
+
+## 18. El generador de baloncesto y su calibración
+
+`generators/basketball.py` es la HU-8 del segundo deporte, con el mismo enfoque:
+un partido es una secuencia de posesiones, todo el azar sale de una sola
+`random.Random(seed)` y la misma semilla da el mismo fichero byte a byte
+(`gcperros-generate-match --sport basketball`).
+
+### Dos relojes
+
+El fútbol tiene un reloj que casi nunca se para; el baloncesto se para con cada
+falta, cada tiro libre y cada tiempo muerto. El generador lleva los dos: el
+**reloj de juego**, que viaja en `clock_s` y es el que mostrará el marcador, y el
+**reloj de pared**, que es el `event_time` del contrato. `clock_s` entra como
+campo **opcional**, que es el único cambio que no obliga a versionar el contrato
+(sección 7). Las paradas, los descansos entre cuartos (2 min) y el descanso largo
+(15 min) son lo que pondrá a prueba la marca de agua.
+
+### Lo que manda el reglamento
+
+Reloj de posesión de 24 s, que vuelve a 14 tras rebote ofensivo; bonus desde la
+quinta falta de equipo en el cuarto; flecha de posesión alterna tras el salto
+inicial; dos tiempos muertos en la primera parte, tres en la segunda y uno por
+prórroga; prórrogas de 5 min hasta que haya ganador. Las pruebas comprueban cada
+regla sobre 30 partidos.
+
+### Puntos esperados
+
+`core/expected_points.py` es el xG del baloncesto: la probabilidad de anotar cae
+en línea recta con la distancia al aro, con el salto de la línea de triple. Va
+versionado (`ep-1.0.0`) como el xG, porque viajará con los indicadores. En media,
+los puntos esperados se desvían menos de un 3 % de los reales.
+
+### Calibración
+
+Medias por equipo sobre 200 partidos. Los rangos son orientativos, del orden de
+los promedios de temporada de la EuroLeague y de las ligas FIBA europeas de
+primer nivel; las posesiones se cuentan como en Oliver (*Basketball on Paper*,
+2004): un rebote ofensivo no abre posesión nueva.
+
+| Métrica (por equipo) | Simulado | Referencia |
+|---|---|---|
+| Posesiones | 71,0 | 68 – 76 |
+| Puntos | 81,7 | 75 – 88 |
+| Puntos por posesión | 1,15 | 1,05 – 1,18 |
+| Triples sobre tiros de campo | 40 % | 35 – 45 % |
+| Acierto de dos / de triple | 54 % / 34 % | 50 – 57 % / 32 – 38 % |
+| Tiros libres por tiro de campo | 0,35 | 0,25 – 0,40 |
+| Acierto de tiro libre | 76 % | 72 – 80 % |
+| Rebote ofensivo | 27 % | 24 – 32 % |
+| Pérdidas / faltas | 13,8 / 19,6 | 10 – 15 / 17 – 23 |
+| Tiempos muertos | 3,4 | 2 – 5 |
+
+`tests/test_basketball_statistics.py` vuelve a comprobar cada rango en cada
+ejecución.
+
+### Lo que esto anticipa para la medición
+
+Un partido de baloncesto tiene unos **445 eventos en 93 minutos** de pared, unos
+5 por minuto; el de fútbol, unos 1.200 en 110, unos 11. Con este vocabulario —sin
+pases— **llegan menos eventos por minuto, no más**, al revés de lo que suponía
+la issue de medición (#91). Como la marca de agua sólo avanza cuando llega algo,
+la predicción es que la latencia suba, no que baje. Es exactamente lo que #91
+tiene que medir en lugar de suponer.
+
+Una nota sobre la frontera: en la primera versión, los triples lejanos tirados
+desde la esquina salían de la cancha (`y = 15,08`). No lo detectó una prueba del
+generador, sino el contrato: `validate_message` los rechazó con su causa. Ahora
+el ángulo se limita para que el tiro quede dentro de la línea de triple, que en
+FIBA corre a 0,90 m de la banda.
