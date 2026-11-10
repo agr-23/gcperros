@@ -18,6 +18,7 @@ from pathlib import Path
 
 from gcperros.core.basketball_stats import summarize_basketball
 from gcperros.generators.basketball import BasketballConfig, simulate_basketball
+from gcperros.generators.basketball_odds import simulate_basketball_odds
 from gcperros.generators.match import MatchConfig, simulate_match, summarize_match
 from gcperros.generators.odds import simulate_odds, summarize_odds
 
@@ -42,6 +43,15 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
         "--summary",
         action="store_true",
         help="Escribe los agregados en la salida de error.",
+    )
+
+
+def _add_sport_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--sport",
+        choices=("football", "basketball"),
+        default="football",
+        help="Deporte del partido. El baloncesto viaja por sus propios flujos (#87, #90).",
     )
 
 
@@ -72,12 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Genera un partido sintético determinista en formato JSON Lines.",
     )
     _add_common_arguments(parser)
-    parser.add_argument(
-        "--sport",
-        choices=("football", "basketball"),
-        default="football",
-        help="Deporte del partido. El baloncesto viaja por su propio flujo (#87).",
-    )
+    _add_sport_argument(parser)
     return parser
 
 
@@ -91,6 +96,7 @@ def build_odds_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_common_arguments(parser)
+    _add_sport_argument(parser)
     return parser
 
 
@@ -142,8 +148,12 @@ def odds_main(argv: list[str] | None = None) -> int:
     """Punto de entrada del generador de cuotas."""
     args = build_odds_parser().parse_args(argv)
 
-    events = simulate_match(args.seed, _config_from(args))
-    updates = simulate_odds(args.seed, events)
+    if args.sport == "basketball":
+        config = BasketballConfig(match_id=args.match_id, home_team=args.home, away_team=args.away)
+        teams = (args.home, args.away)
+        updates = simulate_basketball_odds(args.seed, simulate_basketball(args.seed, config), teams)
+    else:
+        updates = simulate_odds(args.seed, simulate_match(args.seed, _config_from(args)))
     _write("".join(update.to_json() + "\n" for update in updates), args.out)
 
     if args.summary:
@@ -152,7 +162,7 @@ def odds_main(argv: list[str] | None = None) -> int:
             f"actualizaciones={summary.update_count} "
             f"disparadores={summary.by_trigger} "
             f"operadores={summary.by_operator} "
-            f"overround={summary.mean_overround}",
+            f"overround={ {m: v for m, v in summary.mean_overround.items() if v} }",
             file=sys.stderr,
         )
 
