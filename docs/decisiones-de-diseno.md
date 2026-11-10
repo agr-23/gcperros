@@ -1314,3 +1314,45 @@ minimización, porque éste no es sintético.
 Mientras falte el consentimiento, **el panel no debe recoger actividad de
 usuario**: la frontera existe para que el primer dato real llegue ya protegido,
 no para empezar a recogerlo.
+
+---
+
+## 17. Un segundo deporte: baloncesto (entrega final)
+
+El profesor propuso ensayar el motor con otro deporte. Es la mejor prueba de la
+tesis del proyecto: que deduplicar, reordenar y aplicar **no dependen del
+fútbol**. Si es verdad, lo que cambia es sólo la capa del deporte —contrato,
+estado, modelo de mercado— y el resto no se toca.
+
+### Reglas FIBA, declaradas en un solo sitio
+
+`core/court.py` fija cuatro cuartos de diez minutos, prórrogas de cinco, el reloj
+de posesión de 24 s y el triple desde 6,75 m. FIBA y no NBA: es el reglamento
+internacional y sus partidos más cortos dejan una demostración más ágil.
+
+### Su propio flujo, con el sobre del fútbol
+
+El baloncesto viaja por `basketball-events`, con su contrato versionado aparte.
+Es la misma decisión que separa el fútbol de las cuotas (sección 6): dos
+dinámicas distintas, dos contratos que evolucionan por separado. Un campo
+`sport` dentro de `match-events` habría obligado a versionar el contrato del
+fútbol y a cambiar sus mensajes, y las huellas congeladas (sección 5) dicen que
+un evento de fútbol no debe cambiar ni un byte. Con un flujo aparte, no cambia.
+
+Lo que se comparte es **el sobre**: identificador, instante, partido, equipo,
+tipo y `attrs`. Es exactamente lo que necesitan el deduplicador y la marca de
+agua, y por eso el mismo `MatchEvent` sirve a los dos deportes. Qué deporte es lo
+dice el flujo del que llegó, no el evento: un `shot` existe en los dos.
+
+### El vocabulario, cerrado como el del fútbol
+
+Siete tipos —cambio de posesión, tiro, tiro libre, rebote, pérdida, falta y
+tiempo muerto— y los motivos y clases de cada uno, cerrados (sección 7). Los
+puntos no son un evento aparte como el gol: un tiro anotado ya dice si valía dos
+o tres. El tiro libre sí lo es, porque llega con el reloj parado y no tiene
+coordenadas. Un tiro que dijera valer cuatro lo rechaza la frontera, con su
+causa.
+
+El topic y su entrada en el catálogo (historia 24) se declaran junto con la capa
+analítica del segundo deporte: el catálogo exige que todo flujo del Terraform
+esté catalogado, y es mejor declararlos a la vez.
