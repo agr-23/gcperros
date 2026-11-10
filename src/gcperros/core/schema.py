@@ -28,14 +28,19 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from gcperros.core import pitch
+from gcperros.core import court, pitch
 from gcperros.core.contracts import (
+    BASKETBALL_CONTRACT_VERSION,
+    BASKETBALL_EVENT_TYPES,
+    BASKETBALL_POSSESSION_REASONS,
     EVENT_TYPES,
     MARKET_OUTCOMES,
     MATCH_CONTRACT_VERSION,
     ODDS_CONTRACT_VERSION,
     ODDS_TRIGGERS,
     POSSESSION_REASONS,
+    REBOUND_KINDS,
+    TURNOVER_KINDS,
 )
 from gcperros.core.odds import MAX_ODDS, MIN_ODDS
 
@@ -44,6 +49,7 @@ from gcperros.core.odds import MAX_ODDS, MIN_ODDS
 #: y el código nombran lo mismo de la misma forma.
 MATCH_EVENTS_STREAM = "match-events"
 ODDS_UPDATES_STREAM = "odds-updates"
+BASKETBALL_EVENTS_STREAM = "basketball-events"
 
 #: Periodos reglamentarios. Se declaran aquí y no se importan del generador
 #: porque son valores del contrato: el consumidor los necesita sin tener acceso
@@ -300,6 +306,77 @@ MATCH_EVENT_SCHEMA = StreamSchema(
 
 
 ###############################################################################
+# Flujo `basketball-events` (#87)
+###############################################################################
+
+
+def _court_x(name: str) -> FieldSpec:
+    return FieldSpec(name, FieldKind.NUMBER, minimum=0.0, maximum=court.LENGTH)
+
+
+def _court_y(name: str) -> FieldSpec:
+    return FieldSpec(name, FieldKind.NUMBER, minimum=0.0, maximum=court.WIDTH)
+
+
+_QUARTER = FieldSpec("period", FieldKind.INTEGER, minimum=1, maximum=court.MAX_PERIOD)
+
+#: El mismo sobre que el fútbol, con el vocabulario y la versión de su flujo.
+BASKETBALL_ENVELOPE: tuple[FieldSpec, ...] = (
+    FieldSpec("event_id", FieldKind.STRING),
+    FieldSpec("event_time", FieldKind.TIMESTAMP),
+    FieldSpec("match_id", FieldKind.STRING),
+    FieldSpec("team", FieldKind.STRING),
+    FieldSpec("event_type", FieldKind.STRING, allowed=BASKETBALL_EVENT_TYPES),
+    FieldSpec(
+        "contract_version",
+        FieldKind.STRING,
+        allowed=frozenset({BASKETBALL_CONTRACT_VERSION}),
+    ),
+    FieldSpec("attrs", FieldKind.OBJECT),
+)
+
+BASKETBALL_VARIANTS: Mapping[str, tuple[FieldSpec, ...]] = {
+    "possession_change": (
+        _team_reference("from_team"),
+        _team_reference("to_team"),
+        FieldSpec("reason", FieldKind.STRING, allowed=BASKETBALL_POSSESSION_REASONS),
+        _QUARTER,
+    ),
+    # Un tiro vale dos o tres: cualquier otro valor es un error del productor.
+    "shot": (
+        _court_x("x"),
+        _court_y("y"),
+        FieldSpec("points_value", FieldKind.INTEGER, minimum=2, maximum=3),
+        FieldSpec("made", FieldKind.BOOLEAN),
+        _probability("make_probability"),
+        _QUARTER,
+    ),
+    "free_throw": (
+        FieldSpec("made", FieldKind.BOOLEAN),
+        _probability("make_probability"),
+        _QUARTER,
+    ),
+    "rebound": (FieldSpec("kind", FieldKind.STRING, allowed=REBOUND_KINDS), _QUARTER),
+    "turnover": (FieldSpec("kind", FieldKind.STRING, allowed=TURNOVER_KINDS), _QUARTER),
+    "foul": (
+        _team_reference("against_team"),
+        FieldSpec("free_throws", FieldKind.INTEGER, minimum=0, maximum=3),
+        _QUARTER,
+    ),
+    "timeout": (_QUARTER,),
+}
+
+BASKETBALL_EVENT_SCHEMA = StreamSchema(
+    stream=BASKETBALL_EVENTS_STREAM,
+    contract_version=BASKETBALL_CONTRACT_VERSION,
+    envelope=BASKETBALL_ENVELOPE,
+    discriminator="event_type",
+    variant_container="attrs",
+    variants=BASKETBALL_VARIANTS,
+)
+
+
+###############################################################################
 # Flujo `odds-updates`
 ###############################################################################
 
@@ -342,4 +419,5 @@ ODDS_UPDATE_SCHEMA = StreamSchema(
 SCHEMAS: Mapping[str, StreamSchema] = {
     MATCH_EVENTS_STREAM: MATCH_EVENT_SCHEMA,
     ODDS_UPDATES_STREAM: ODDS_UPDATE_SCHEMA,
+    BASKETBALL_EVENTS_STREAM: BASKETBALL_EVENT_SCHEMA,
 }

@@ -61,6 +61,40 @@ PossessionReason: TypeAlias = Literal[
 #: Los mismos valores en tiempo de ejecución.
 POSSESSION_REASONS: frozenset[str] = frozenset(get_args(PossessionReason))
 
+###############################################################################
+# Contrato del flujo `basketball-events` (segundo deporte, #87)
+#
+# Comparte el sobre con `match-events` —identificador, instante, partido,
+# equipo, tipo y `attrs`— y por eso el motor deduplica y reordena el
+# baloncesto sin cambiar una línea. Lo que cambia es el vocabulario. Viaja por
+# su propio flujo y se versiona aparte, por la misma razón que el fútbol y las
+# cuotas van en topics separados (`docs/decisiones-de-diseno.md`, sección 17).
+###############################################################################
+
+BASKETBALL_CONTRACT_VERSION = "v1"
+
+#: Tipos de evento del baloncesto. Los puntos no son un evento aparte, como el
+#: gol del fútbol: un tiro anotado ya dice cuánto vale, y el tiro libre es su
+#: propio evento porque llega sin reloj corriendo.
+BasketballEventType: TypeAlias = Literal[
+    "possession_change", "shot", "free_throw", "rebound", "turnover", "foul", "timeout"
+]
+BASKETBALL_EVENT_TYPES: frozenset[str] = frozenset(get_args(BasketballEventType))
+
+#: Por qué cambió la posesión en baloncesto. Cerrado, como el del fútbol.
+BasketballPossessionReason: TypeAlias = Literal[
+    "jump_ball", "period_start", "made_shot", "made_free_throw", "defensive_rebound", "turnover"
+]
+BASKETBALL_POSSESSION_REASONS: frozenset[str] = frozenset(get_args(BasketballPossessionReason))
+
+ReboundKind: TypeAlias = Literal["offensive", "defensive"]
+REBOUND_KINDS: frozenset[str] = frozenset(get_args(ReboundKind))
+
+TurnoverKind: TypeAlias = Literal[
+    "steal", "bad_pass", "out_of_bounds", "shot_clock_violation", "offensive_foul"
+]
+TURNOVER_KINDS: frozenset[str] = frozenset(get_args(TurnoverKind))
+
 #: Espacio de nombres fijo para derivar identificadores. Al ser constante, el
 #: mismo partido con la misma semilla produce los mismos `event_id`, que es lo
 #: que permite comparar dos ejecuciones byte a byte.
@@ -95,13 +129,18 @@ def format_event_time(moment: datetime) -> str:
 
 @dataclass(frozen=True, slots=True)
 class MatchEvent:
-    """Un evento del flujo ``match-events``."""
+    """Un evento de partido: de ``match-events`` o de ``basketball-events``.
+
+    Los dos deportes comparten esta forma, que es todo lo que el motor necesita
+    para deduplicar y reordenar. Qué deporte es lo dice el flujo del que llegó,
+    no el evento: un ``shot`` existe en los dos.
+    """
 
     event_id: str
     event_time: datetime
     match_id: str
     team: str
-    event_type: EventType
+    event_type: EventType | BasketballEventType
     attrs: dict[str, JsonValue]
 
     def to_dict(self) -> dict[str, JsonValue]:
@@ -257,6 +296,20 @@ def parse_match_event(message: bytes | str) -> MatchEvent:
     Raises:
         ContractViolationError: Si el mensaje no es JSON o le faltan campos.
     """
+    return _parse_event(message, EVENT_TYPES)
+
+
+def parse_basketball_event(message: bytes | str) -> MatchEvent:
+    """Reconstruye un evento de baloncesto. Es la vuelta del mismo ``to_json``.
+
+    Raises:
+        ContractViolationError: Si el mensaje no es JSON, le faltan campos o su
+            tipo no es del vocabulario del baloncesto.
+    """
+    return _parse_event(message, BASKETBALL_EVENT_TYPES)
+
+
+def _parse_event(message: bytes | str, event_types: frozenset[str]) -> MatchEvent:
     try:
         payload = json.loads(message)
     except json.JSONDecodeError as error:
@@ -270,7 +323,7 @@ def parse_match_event(message: bytes | str) -> MatchEvent:
         raise ContractViolationError("falta el objeto attrs")
 
     event_type = _require(payload, "event_type", str)
-    if event_type not in EVENT_TYPES:
+    if event_type not in event_types:
         raise ContractViolationError(f"tipo de evento desconocido: {event_type!r}")
 
     return MatchEvent(
@@ -278,8 +331,8 @@ def parse_match_event(message: bytes | str) -> MatchEvent:
         event_time=parse_event_time(str(_require(payload, "event_time", str))),
         match_id=str(_require(payload, "match_id", str)),
         team=str(_require(payload, "team", str)),
-        # Ya se comprobó contra EVENT_TYPES: el estrechamiento es seguro.
-        event_type=cast(EventType, event_type),
+        # Ya se comprobó contra el vocabulario del flujo: el estrechamiento es seguro.
+        event_type=cast("EventType | BasketballEventType", event_type),
         attrs=attrs,
     )
 
