@@ -5,11 +5,18 @@ produce el generador de baloncesto (#88), con las tres casas sintéticas de
 siempre —los mismos retrasos y los mismos sesgos sobre el local— y sus márgenes
 para los mercados nuevos.
 
-Lo que cambia es qué provoca la ráfaga. En fútbol, un gol o una roja; en
-baloncesto una canasta suelta no mueve casi nada, pero una **racha** de ocho
-puntos seguidos sí, y el **tiempo muerto** que suele cortarla también. Entre
-ráfagas, cada casa revisa sus precios con el mismo ritmo del fútbol y republica
-sólo si se movieron lo bastante o si llevan demasiado en silencio.
+Lo que cambia es qué provoca la ráfaga. En fútbol, un gol o una roja. En
+baloncesto, **cada canasta**: a mitad de partido una de dos mueve la probabilidad
+de ganar unos 8 puntos, así que cada casa reprecia tras cada una, con su retraso.
+Una **racha** de ocho puntos y el **tiempo muerto** que suele cortarla tienen su
+propio disparador. Entre ráfagas, el mismo ritmo del fútbol.
+
+Cada casa conserva **la misma opinión que en fútbol, medida en probabilidad**.
+Valorar al local un 4 % por encima son 0,06 goles en fútbol pero 3,2 puntos en
+baloncesto: nueve puntos de probabilidad, el doble del umbral de la señal. Por
+eso el sesgo se traduce para que mueva la probabilidad de ganar lo mismo que en
+fútbol al empezar, que es medio punto de hándicap: lo que separa a dos casas
+reales.
 
 La línea del total de puntos se fija al abrir y no se mueve durante el partido:
 lo que cambia es el precio de cada lado. Es una simplificación declarada; un
@@ -22,7 +29,7 @@ import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from gcperros.core.basketball_matchstate import BasketballStateTracker
+from gcperros.core.basketball_matchstate import BasketballStateTracker, points_scored
 from gcperros.core.basketball_odds import (
     BasketballState,
     moneyline_probabilities,
@@ -56,8 +63,12 @@ _MARGINS: dict[str, dict[str, float]] = {
     "OP-B": {"moneyline": 1.060, "total_points": 1.055},
     "OP-C": {"moneyline": 1.052, "total_points": 1.047},
 }
+#: El sesgo de cada casa en fútbol (1,04 y 0,97), traducido a baloncesto para que
+#: mueva la probabilidad de ganar lo mismo al empezar: +0,015 y -0,012.
+_HOME_STRENGTH: dict[str, float] = {"OP-A": 1.0, "OP-B": 1.0064, "OP-C": 0.9951}
 BASKETBALL_OPERATORS: tuple[Operator, ...] = tuple(
-    Operator(op.name, _MARGINS[op.name], op.reaction_delay_s, op.home_strength) for op in OPERATORS
+    Operator(op.name, _MARGINS[op.name], op.reaction_delay_s, _HOME_STRENGTH[op.name])
+    for op in OPERATORS
 )
 
 
@@ -100,11 +111,13 @@ class _BasketballOddsSimulator:
         self._books: dict[tuple[str, str], _Book] = {}
 
     def _triggers(self) -> list[tuple[datetime, BasketballOddsTrigger]]:
-        """Las rachas y los tiempos muertos del partido, en su instante."""
+        """Las canastas, rachas y tiempos muertos del partido, en su instante."""
         tracker = BasketballStateTracker(*self._teams)
         found: list[tuple[datetime, BasketballOddsTrigger]] = []
         for event in self._events:
             trigger = tracker.apply(event)
+            if trigger is None and points_scored(event):
+                trigger = "basket"
             if trigger is not None:
                 found.append((event.event_time, trigger))
         return found

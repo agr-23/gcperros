@@ -53,10 +53,10 @@ def test_every_operator_opens_both_markets_and_only_the_total_has_a_line() -> No
     assert all((u.line is None) == (u.market == "moneyline") for u in _odds(1))
 
 
-def test_runs_and_timeouts_set_off_the_bursts() -> None:
+def test_baskets_runs_and_timeouts_set_off_the_bursts() -> None:
     triggers = Counter(u.trigger for seed in range(5) for u in _odds(seed))
 
-    assert triggers["run"] > 0
+    assert triggers["basket"] > triggers["run"] > 0
     assert triggers["timeout"] > 0
     assert {"goal", "red_card"}.isdisjoint(triggers)
 
@@ -79,3 +79,15 @@ def test_the_houses_disagree_because_they_value_the_home_team_differently() -> N
     first_prices = {u.operator: u.odds["home"] for u in _odds(0) if u.market == "moneyline"}
 
     assert len(set(first_prices.values())) == len(BASKETBALL_OPERATORS)
+
+
+def test_each_house_keeps_its_football_opinion_measured_in_probability() -> None:
+    """El mismo desacuerdo que en fútbol: un punto y medio de probabilidad, no nueve."""
+    opening = {
+        u.operator: u.odds for u in _odds(0) if u.market == "moneyline" and u.trigger == "open"
+    }
+    implied = {
+        op: 1 / odds["home"] / (1 / odds["home"] + 1 / odds["away"]) for op, odds in opening.items()
+    }
+
+    assert max(implied.values()) - min(implied.values()) < 0.04
