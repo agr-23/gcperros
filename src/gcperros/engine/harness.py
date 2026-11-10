@@ -88,7 +88,7 @@ class HarnessReport:
         return tuple(result for result in self.results if not result.passed)
 
 
-def _degrade(events: list[MatchEvent], scenario: Scenario, seed: int) -> list[MatchEvent]:
+def degrade(events: list[MatchEvent], scenario: Scenario, seed: int) -> list[MatchEvent]:
     """Degrada el flujo como dice el escenario, con semilla derivada de su nombre."""
     salt = sum(ord(char) for char in scenario.name)
     delivered = events
@@ -123,7 +123,7 @@ def run_harness(
     results = []
 
     for scenario in scenarios:
-        delivered = _degrade(events, scenario, seed)
+        delivered = degrade(events, scenario, seed)
         outcome = MatchEngine(allowed_lateness_s=allowed_lateness_s).process_all(delivered)
         observed = PlaneResult(
             summary=outcome.summary,
