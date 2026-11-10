@@ -21,7 +21,6 @@ from gcperros.core.lineage import LineageAccumulator, LineageRecord
 from gcperros.core.stats import as_float
 from gcperros.engine.pipeline import StreamEngine
 from gcperros.engine.state import WHOLE_MATCH
-from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
 
 #: Los contadores enteros del resumen, por equipo.
 _COUNTERS: tuple[str, ...] = (
@@ -157,8 +156,28 @@ class BasketballLiveState:
         return tuple(self._teams)
 
 
+#: Hueco máximo entre eventos que sigue contando como juego (#91). El del
+#: fútbol, 10 s, descarta el 90 % del tiempo vivo del baloncesto, donde dos
+#: eventos con el balón vivo pueden separarse hasta 24 s. No hay banda vacía que
+#: separe juego y parón —hay parones de 6 s—, así que el corte lo pone el
+#: reglamento: ningún hueco vivo supera el reloj de posesión.
+BASKETBALL_MAX_IN_PLAY_GAP_S = float(court.SHOT_CLOCK_S)
+
+#: Margen de la marca de agua del baloncesto (#91). Medido como el del fútbol:
+#: el mínimo con el que los seis escenarios comprometidos cumplen el OE-2 en 12
+#: partidos. En fútbol sale 10 s; en baloncesto, con 10 s falla 1 de 72 y con
+#: 15 s ninguno. Con un evento cada ~12 s, el que adelanta a otro ya le saca más
+#: de 10 s, así que el margen tiene que superar el hueco típico entre eventos.
+BASKETBALL_ALLOWED_LATENESS_S = 15.0
+
+
 def basketball_engine(
-    allowed_lateness_s: float = DEFAULT_ALLOWED_LATENESS_S,
+    allowed_lateness_s: float = BASKETBALL_ALLOWED_LATENESS_S,
+    max_in_play_gap_s: float = BASKETBALL_MAX_IN_PLAY_GAP_S,
 ) -> StreamEngine[BasketballSummary]:
-    """El mismo motor del fútbol, con el estado del baloncesto."""
-    return StreamEngine(BasketballLiveState(), allowed_lateness_s=allowed_lateness_s)
+    """El mismo motor del fútbol, con el estado y el corte de posesión del baloncesto."""
+    return StreamEngine(
+        BasketballLiveState(),
+        allowed_lateness_s=allowed_lateness_s,
+        max_in_play_gap_s=max_in_play_gap_s,
+    )
