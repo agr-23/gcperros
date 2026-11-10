@@ -32,6 +32,9 @@ from gcperros.core import court, pitch
 from gcperros.core.contracts import (
     BASKETBALL_CONTRACT_VERSION,
     BASKETBALL_EVENT_TYPES,
+    BASKETBALL_MARKET_OUTCOMES,
+    BASKETBALL_ODDS_CONTRACT_VERSION,
+    BASKETBALL_ODDS_TRIGGERS,
     BASKETBALL_POSSESSION_REASONS,
     EVENT_TYPES,
     MARKET_OUTCOMES,
@@ -50,6 +53,7 @@ from gcperros.core.odds import MAX_ODDS, MIN_ODDS
 MATCH_EVENTS_STREAM = "match-events"
 ODDS_UPDATES_STREAM = "odds-updates"
 BASKETBALL_EVENTS_STREAM = "basketball-events"
+BASKETBALL_ODDS_STREAM = "basketball-odds"
 
 #: Periodos reglamentarios. Se declaran aquí y no se importan del generador
 #: porque son valores del contrato: el consumidor los necesita sin tener acceso
@@ -422,10 +426,41 @@ ODDS_UPDATE_SCHEMA = StreamSchema(
 )
 
 
+###############################################################################
+# Flujo `basketball-odds` (#90)
+###############################################################################
+
+#: El sobre de las cuotas del fútbol, con los mercados del baloncesto y la línea
+#: del total de puntos. Es opcional porque el ganador no la tiene; que el total
+#: la traiga lo comprueba el analizador.
+BASKETBALL_ODDS_ENVELOPE: tuple[FieldSpec, ...] = (
+    *(spec for spec in ODDS_ENVELOPE if spec.name not in {"market", "trigger"}),
+    FieldSpec("market", FieldKind.STRING, allowed=frozenset(BASKETBALL_MARKET_OUTCOMES)),
+    FieldSpec("trigger", FieldKind.STRING, allowed=BASKETBALL_ODDS_TRIGGERS),
+    FieldSpec("line", FieldKind.NUMBER, required=False, minimum=0.0, maximum=400.0),
+)
+
+BASKETBALL_ODDS_SCHEMA = StreamSchema(
+    stream=BASKETBALL_ODDS_STREAM,
+    contract_version=BASKETBALL_ODDS_CONTRACT_VERSION,
+    envelope=BASKETBALL_ODDS_ENVELOPE,
+    market_outcomes=MarketOutcomesSpec(
+        container="outcomes",
+        discriminator="market",
+        outcomes_by_value={str(k): v for k, v in BASKETBALL_MARKET_OUTCOMES.items()},
+        label_field="outcome",
+        price_field="odds",
+        minimum_price=MIN_ODDS,
+        maximum_price=MAX_ODDS,
+    ),
+)
+
+
 #: Los dos contratos, indexados por flujo. Es lo que consulta la frontera para
 #: saber contra qué juzgar un mensaje según el topic del que salió.
 SCHEMAS: Mapping[str, StreamSchema] = {
     MATCH_EVENTS_STREAM: MATCH_EVENT_SCHEMA,
     ODDS_UPDATES_STREAM: ODDS_UPDATE_SCHEMA,
     BASKETBALL_EVENTS_STREAM: BASKETBALL_EVENT_SCHEMA,
+    BASKETBALL_ODDS_STREAM: BASKETBALL_ODDS_SCHEMA,
 }

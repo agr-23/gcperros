@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from gcperros.core.contracts import MARKET_OUTCOMES, ODDS_CONTRACT_VERSION, MatchEvent, OddsUpdate
+from gcperros.core.contracts import ODDS_CONTRACT_VERSION, MatchEvent, OddsUpdate, market_outcomes
 from gcperros.core.odds import MAX_ODDS, MIN_ODDS, overround
 from gcperros.generators.match import MatchConfig, simulate_match
 from gcperros.generators.odds import (
@@ -101,7 +101,7 @@ def test_outcomes_are_complete_and_ordered(updates: list[OddsUpdate]) -> None:
     for update in updates:
         payload: dict[str, Any] = json.loads(update.to_json())
         names = [entry["outcome"] for entry in payload["outcomes"]]
-        assert tuple(names) == MARKET_OUTCOMES[update.market]
+        assert tuple(names) == market_outcomes(update.market)
 
 
 def test_updates_are_chronological(updates: list[OddsUpdate]) -> None:

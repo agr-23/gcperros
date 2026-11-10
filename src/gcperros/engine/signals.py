@@ -64,7 +64,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from gcperros.core import odds
-from gcperros.core.contracts import Market, MatchEvent, OddsUpdate
+from gcperros.core.contracts import Market, MatchEvent, OddsUpdate, is_football_market
 from gcperros.core.lineage import LineageAccumulator, LineageRecord
 from gcperros.core.matchstate import MatchStateTracker
 from gcperros.core.odds import (
@@ -159,7 +159,7 @@ class DiscrepancyDetector:
         self._tracker = MatchStateTracker()
         # Último precio vigente de cada operador en cada mercado. Es lo que
         # queda expuesto mientras el operador no reacciona.
-        self._books: dict[tuple[str, Market], OddsUpdate] = {}
+        self._books: dict[tuple[str, str], OddsUpdate] = {}
         # Los eventos que fijan el estado del modelo, para el linaje de cada
         # señal. Son pocos por partido: saques, goles y expulsiones.
         self._state_events: list[str] = []
@@ -215,6 +215,8 @@ class DiscrepancyDetector:
 
     def _compare(self, update: OddsUpdate, at: datetime) -> list[DiscrepancySignal]:
         """Contrasta un precio contra el modelo en el instante indicado."""
+        if not is_football_market(update.market):
+            return []  # el baloncesto trae su propio modelo (#90)
         state = self._tracker.state()
         model = model_probabilities(update.market, state)
         # Aquí está la mitad del trabajo de la historia: el precio se convierte
