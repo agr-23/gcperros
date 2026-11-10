@@ -1428,3 +1428,29 @@ desde la esquina salían de la cancha (`y = 15,08`). No lo detectó una prueba d
 generador, sino el contrato: `validate_message` los rechazó con su causa. Ahora
 el ángulo se limita para que el tiro quede dentro de la línea de triple, que en
 FIBA corre a 0,90 m de la banda.
+
+---
+
+## 19. El motor no sabe de fútbol
+
+La tesis de las secciones 17 y 18, comprobada en el código. `StreamEngine`
+deduplica, reordena y aplica sobre cualquier estado que cumpla `SportState`
+(`engine/sport.py`): saber aplicar un evento, resumirse y explicar cada número.
+Cada deporte declara además sus indicadores, su contrato y sus modelos, para que
+la auditoría (HU-18) y el documento vivo (HU-15) los expliquen sin conocerlos.
+
+`MatchEngine` es ese motor con el estado del fútbol y la firma de siempre, así
+que nada de lo que ya lo usaba cambió. El baloncesto es
+`StreamEngine(BasketballLiveState())`. **`dedup.py`, `watermark.py` y
+`possession.py` no tienen ni una línea de diferencia**: la posesión por tiempo
+sólo lee `possession_change`, y eso también existe en baloncesto.
+
+Lo que lo demuestra: con duplicados y desorden por debajo del margen, el estado
+vivo del baloncesto coincide con `summarize_basketball`; con desorden fuerte, lo
+que no se aplicó queda contado como tardío; y la huella de cada número es la
+misma llegue el partido como llegue.
+
+Un primer dato para la medición (#91): con un retardo medio de 2 s y hasta 120,
+el baloncesto **no pierde ni un evento**, porque con un evento cada ~12 s casi
+nada adelanta a otro. Hizo falta un retardo medio de 30 s para que la marca de
+agua descartara algo.

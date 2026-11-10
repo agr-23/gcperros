@@ -16,6 +16,7 @@ from typing import cast
 
 from gcperros.core.contracts import JsonValue, format_event_time
 from gcperros.core.stats import MatchSummary
+from gcperros.engine.sport import SportState
 
 #: Los ocho indicadores que trae cada equipo dentro de ``indicators``, en el
 #: orden en que se escriben. Es la misma lista de campos de ``MatchSummary``
@@ -111,6 +112,29 @@ class LiveMatchDocument:
             match_id=match_id,
             teams=tuple(teams),
             event_count=summary.event_count,
+            updated_at=updated_at,
+            indicators=indicators,
+        )
+
+    @classmethod
+    def project_state(
+        cls, match_id: str, state: SportState[object], updated_at: datetime
+    ) -> LiveMatchDocument:
+        """El documento de cualquier deporte, con los indicadores que declara su estado (#89).
+
+        ``project`` sigue construyendo el del fútbol campo a campo; este lee
+        cada indicador del resumen por su nombre, así que sirve igual al
+        baloncesto sin que el documento sepa qué es un rebote.
+        """
+        summary = state.summary()
+        indicators: dict[str, dict[str, JsonValue]] = {
+            team: {name: getattr(summary, name)[team] for name in state.team_indicators}
+            for team in state.teams
+        }
+        return cls(
+            match_id=match_id,
+            teams=state.teams,
+            event_count=state.event_count,
             updated_at=updated_at,
             indicators=indicators,
         )

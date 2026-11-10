@@ -30,24 +30,16 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from gcperros.core import odds, xg
-from gcperros.core.contracts import MATCH_CONTRACT_VERSION, JsonValue, format_event_time
+from gcperros.core.contracts import JsonValue, format_event_time
 from gcperros.core.lineage import LineageRecord
-from gcperros.core.stats import MatchSummary
+from gcperros.engine.sport import SportState
 from gcperros.engine.state import WHOLE_MATCH, LiveMatchState
 from gcperros.governance.quarantine import utc_now
 
 #: Indicadores por equipo que produce el motor, en el orden en que se informan.
 #: Son los campos de ``MatchSummary`` que se desglosan por equipo.
-TEAM_INDICATORS: tuple[str, ...] = (
-    "goals",
-    "shots",
-    "total_xg",
-    "passes",
-    "completed_passes",
-    "fouls",
-    "red_cards",
-    "possessions",
-)
+#: Cada deporte declara los suyos en su estado (``engine/sport.py``, #89).
+TEAM_INDICATORS: tuple[str, ...] = LiveMatchState.team_indicators
 
 #: Indicadores del partido entero.
 MATCH_INDICATORS: tuple[str, ...] = ("event_count",)
@@ -130,7 +122,7 @@ class AuditTrail:
         return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def _value(summary: MatchSummary, indicator: str, scope: str) -> float:
+def _value(summary: object, indicator: str, scope: str) -> float:
     """Lee del resumen el número que se está explicando.
 
     Comprueba que el alcance corresponda al indicador. Sin esa comprobación,
@@ -156,12 +148,14 @@ def _value(summary: MatchSummary, indicator: str, scope: str) -> float:
     return float(counters[scope])
 
 
-def explain(state: LiveMatchState, indicator: str, scope: str) -> Explanation:
-    """Explica un indicador del estado vivo.
+def explain(state: SportState[object], indicator: str, scope: str) -> Explanation:
+    """Explica un indicador del estado vivo, de cualquier deporte.
 
     Args:
-        state: Estado del que sale el número.
-        indicator: Nombre del indicador, tal como lo nombra ``MatchSummary``.
+        state: Estado del que sale el número. El contrato y los modelos los
+            declara el propio estado: el fútbol y el baloncesto no comparten
+            modelos.
+        indicator: Nombre del indicador, tal como lo nombra el resumen.
         scope: Equipo, o ``WHOLE_MATCH`` para los del partido entero.
 
     Returns:
@@ -171,14 +165,14 @@ def explain(state: LiveMatchState, indicator: str, scope: str) -> Explanation:
         indicator=indicator,
         scope=scope,
         value=_value(state.summary(), indicator, scope),
-        contract_version=MATCH_CONTRACT_VERSION,
-        model_versions=MODELS_BY_INDICATOR.get(indicator, {}),
+        contract_version=state.contract_version,
+        model_versions=state.models_by_indicator.get(indicator, {}),
         lineage=state.lineage(indicator, scope),
     )
 
 
 def audit(
-    state: LiveMatchState, scope: str = "match", produced_at: datetime | None = None
+    state: SportState[object], scope: str = "match", produced_at: datetime | None = None
 ) -> AuditTrail:
     """Explica todos los indicadores del partido.
 
@@ -196,10 +190,11 @@ def audit(
     Returns:
         La auditoría completa.
     """
-    summary = state.summary()
     explanations = [explain(state, indicator, WHOLE_MATCH) for indicator in MATCH_INDICATORS]
     explanations.extend(
-        explain(state, indicator, team) for indicator in TEAM_INDICATORS for team in summary.goals
+        explain(state, indicator, team)
+        for indicator in state.team_indicators
+        for team in state.teams
     )
 
     return AuditTrail(
