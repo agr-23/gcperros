@@ -1454,3 +1454,47 @@ Un primer dato para la medición (#91): con un retardo medio de 2 s y hasta 120,
 el baloncesto **no pierde ni un evento**, porque con un evento cada ~12 s casi
 nada adelanta a otro. Hizo falta un retardo medio de 30 s para que la marca de
 agua descartara algo.
+
+---
+
+## 20. El mercado del baloncesto y la señal
+
+**El modelo** (`core/basketball_odds.py`). Con ~160 puntos por partido, lo que
+queda por anotar se comporta como una normal, con media y varianza
+proporcionales al tiempo restante. Las tres constantes se midieron sobre el
+generador (80,6 puntos por equipo, desviación de 13,6 en la diferencia y de 15,8
+en el total), y el supuesto de la varianza también: al descanso la desviación es
+0,71 veces la final, y √½ = 0,707. No hay empate: lo decide la prórroga. Al
+descanso acierta al ganador con un Brier de 0,17, frente al 0,25 de una moneda.
+
+**El contrato** (`basketball-odds`). Su propio flujo, por la razón de la sección
+17: los mercados del fútbol no se ensanchan. El total de puntos lleva su línea,
+que sólo se serializa cuando existe, así que las cuotas del fútbol no cambian ni
+un byte.
+
+**El generador** reutiliza las tres casas, sus retrasos y su ritmo, con dos
+correcciones que salieron de medir, no de suponer:
+
+- **Cada canasta reprecia.** A mitad de partido, una canasta de dos mueve la
+  probabilidad de ganar unos 8 puntos. Con reprecios cada 45 s, como en fútbol,
+  los precios estaban rancios casi siempre.
+- **El sesgo se traduce a probabilidad.** Valorar al local un 4 % por encima son
+  0,06 goles, pero 3,2 puntos: nueve puntos de probabilidad. Cada casa conserva
+  el desacuerdo del fútbol medido en probabilidad, que en baloncesto es medio
+  punto de hándicap.
+
+**La señal** es el mismo detector: se le inyecta cómo se lee el partido y qué
+cree el modelo (`MarketReader`), y umbral, descuento del margen, precio rancio y
+linaje no cambian. ¿Sigue valiendo 0,05? Medido sobre 8 partidos:
+
+| | Fútbol | Baloncesto |
+|---|---|---|
+| p90 de la discrepancia | 0,036 | 0,070 |
+| Señales por partido a 0,05 | 72 | 386 |
+| Señales tras el evento que movió el mercado | 57 % en 45 s | 100 % en 15 s |
+| Umbral con la misma regla (1,4 × p90) | 0,05 | **0,10** (102 señales) |
+
+**En significado sí, en volumen no.** En los dos deportes la señal detecta
+precios rancios y el sesgo de las casas se queda por debajo del umbral. Pero las
+discrepancias del baloncesto son el doble de anchas, así que el umbral del
+baloncesto se declara en 0,10, elegido con la misma regla que el del fútbol.
