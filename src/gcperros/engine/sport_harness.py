@@ -29,7 +29,7 @@ from gcperros.engine.basketball_state import (
 )
 from gcperros.engine.harness import DEFAULT_SCENARIOS, Scenario, degrade
 from gcperros.engine.latency import LatencyStats
-from gcperros.engine.pipeline import EngineResult, MatchEngine, S
+from gcperros.engine.pipeline import EngineResult, MatchEngine
 from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
 from gcperros.generators.basketball import simulate_basketball
 from gcperros.generators.match import simulate_match
@@ -96,7 +96,7 @@ def _football_batch(events: list[MatchEvent]) -> SportPlane:
 
 
 def _run(
-    result: EngineResult[S], exact: int, estimate: dict[str, float], event_count: int
+    result: EngineResult[object], exact: int, estimate: dict[str, float], event_count: int
 ) -> SportRun:
     """Lo que dijo el motor, en los términos que comparten los deportes."""
     return SportRun(

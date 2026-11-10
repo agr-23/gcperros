@@ -62,14 +62,14 @@ class Outcome(StrEnum):
 
 #: El resumen del deporte: ``MatchSummary`` en fútbol, ``BasketballSummary`` en
 #: baloncesto.
-S = TypeVar("S")
+S_co = TypeVar("S_co", covariant=True)
 
 
 @dataclass(frozen=True, slots=True)
-class EngineResult(Generic[S]):
+class EngineResult(Generic[S_co]):
     """Los indicadores del partido y la traza de cómo se llegó a ellos."""
 
-    summary: S
+    summary: S_co
     dedup: DedupStats
     watermark: WatermarkStats
     possession: PossessionSnapshot
@@ -77,7 +77,7 @@ class EngineResult(Generic[S]):
     latency: LatencyStats
 
 
-class StreamEngine(Generic[S]):
+class StreamEngine(Generic[S_co]):
     """Consume eventos de un partido de cualquier deporte y mantiene su estado vivo."""
 
     __slots__ = (
@@ -92,7 +92,7 @@ class StreamEngine(Generic[S]):
 
     def __init__(
         self,
-        state: SportState[S],
+        state: SportState[S_co],
         dedup_capacity: int = DEFAULT_CAPACITY,
         allowed_lateness_s: float = DEFAULT_ALLOWED_LATENESS_S,
         possession_window_s: float = POSSESSION_WINDOW_S,
@@ -113,7 +113,7 @@ class StreamEngine(Generic[S]):
         self._clock: datetime | None = None
 
     @property
-    def state(self) -> SportState[S]:
+    def state(self) -> SportState[S_co]:
         """Estado vivo, consultable en cualquier momento del partido."""
         return self._state
 
@@ -208,14 +208,14 @@ class StreamEngine(Generic[S]):
         if final is not None:
             self._closed_windows.extend(self._possession.close_through(final))
 
-    def process_all(self, events: list[MatchEvent]) -> EngineResult[S]:
+    def process_all(self, events: list[MatchEvent]) -> EngineResult[S_co]:
         """Procesa un flujo completo, lo vacía y devuelve el resultado."""
         for event in events:
             self.process(event)
         self.flush()
         return self.result()
 
-    def result(self) -> EngineResult[S]:
+    def result(self) -> EngineResult[S_co]:
         """Instantánea de los indicadores y de los contadores de calidad.
 
         Refleja lo aplicado **hasta ahora**: lo que siga en el buffer esperando
