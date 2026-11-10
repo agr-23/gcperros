@@ -62,9 +62,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 
 from gcperros.core import odds
-from gcperros.core.contracts import Market, MatchEvent, OddsUpdate, is_football_market
+from gcperros.core.contracts import (
+    BasketballMarket,
+    Market,
+    MatchEvent,
+    OddsUpdate,
+    is_football_market,
+)
 from gcperros.core.lineage import LineageAccumulator, LineageRecord
 from gcperros.core.matchstate import MatchStateTracker
 from gcperros.core.odds import (
@@ -94,7 +101,7 @@ class DiscrepancySignal:
     detected_at: datetime
     match_id: str
     operator: str
-    market: Market
+    market: Market | BasketballMarket
     outcome: str
     model_probability: float
     market_probability: float
@@ -133,6 +140,66 @@ def model_probabilities(market: Market, state: MatchState) -> dict[str, float]:
     return total_goals_probabilities(state)
 
 
+class MarketReader(Protocol):
+    """Lo que el detector necesita saber de un deporte (#90).
+
+    Cómo se lee el partido, qué eventos mueven el mercado y qué cree el modelo
+    para una cuota. Umbral, descuento del margen, precio rancio y linaje son los
+    mismos para todos los deportes y no están aquí.
+    """
+
+    @property
+    def model_version(self) -> str:
+        """Versión del modelo que calcula la probabilidad propia."""
+
+    @property
+    def minute(self) -> float:
+        """Minuto de juego del último evento aplicado."""
+
+    def apply(self, event: MatchEvent) -> bool:
+        """Incorpora un evento y dice si mueve el mercado lo bastante como para revisar."""
+
+    def fixes_state(self, event: MatchEvent) -> bool:
+        """Si el evento forma parte del estado contra el que se evalúa (su linaje)."""
+
+    def probabilities(self, update: OddsUpdate) -> dict[str, float] | None:
+        """Lo que el modelo cree para el mercado de la cuota, o nada si no es suyo."""
+
+
+class FootballMarketReader:
+    """El fútbol: marcador, minuto y expulsiones, con el modelo de Poisson."""
+
+    model_version = odds.MODEL_VERSION
+
+    def __init__(self) -> None:
+        """Crea el lector con el partido sin empezar."""
+        self._tracker = MatchStateTracker()
+
+    @property
+    def minute(self) -> float:
+        """Minuto de juego del último evento aplicado."""
+        return self._tracker.minute
+
+    def state(self) -> MatchState:
+        """Estado del partido para el modelo del fútbol."""
+        return self._tracker.state()
+
+    def apply(self, event: MatchEvent) -> bool:
+        """Sólo un gol o una expulsión dejan rancio un precio; un pase no."""
+        self._tracker.apply(event)
+        return event.event_type in MARKET_MOVING_EVENTS
+
+    def fixes_state(self, event: MatchEvent) -> bool:
+        """Saques, goles y expulsiones: lo que pone reloj, equipos y marcador."""
+        return event.event_type in MARKET_MOVING_EVENTS or event.attrs.get("reason") == "kickoff"
+
+    def probabilities(self, update: OddsUpdate) -> dict[str, float] | None:
+        """El 1X2 o el más/menos de 2,5 goles; los mercados de otro deporte no."""
+        if not is_football_market(update.market):
+            return None
+        return model_probabilities(update.market, self._tracker.state())
+
+
 class DiscrepancyDetector:
     """Contrasta cada actualización de cuotas contra el modelo propio.
 
@@ -140,13 +207,16 @@ class DiscrepancyDetector:
     actualización de cuotas se evalúa contra él en el momento en que llega.
     """
 
-    __slots__ = ("_books", "_last_event_id", "_state_events", "_threshold", "_tracker")
+    __slots__ = ("_books", "_last_event_id", "_reader", "_state_events", "_threshold")
 
-    def __init__(self, threshold: float = DEFAULT_THRESHOLD) -> None:
+    def __init__(
+        self, threshold: float = DEFAULT_THRESHOLD, reader: MarketReader | None = None
+    ) -> None:
         """Crea un detector con el umbral indicado.
 
         Args:
             threshold: Separación mínima, en puntos de probabilidad, para emitir.
+            reader: Cómo se lee el deporte. Por defecto, el fútbol.
 
         Raises:
             ValueError: Si el umbral no cae en ``(0, 1)``. Un umbral de cero
@@ -156,7 +226,7 @@ class DiscrepancyDetector:
             raise ValueError("el umbral debe estar entre 0 y 1, sin incluirlos")
 
         self._threshold = threshold
-        self._tracker = MatchStateTracker()
+        self._reader: MarketReader = reader if reader is not None else FootballMarketReader()
         # Último precio vigente de cada operador en cada mercado. Es lo que
         # queda expuesto mientras el operador no reacciona.
         self._books: dict[tuple[str, str], OddsUpdate] = {}
@@ -172,8 +242,14 @@ class DiscrepancyDetector:
 
     @property
     def state(self) -> MatchState:
-        """Estado del partido con el que se está evaluando ahora mismo."""
-        return self._tracker.state()
+        """Estado del partido de fútbol con el que se está evaluando ahora mismo.
+
+        Raises:
+            TypeError: Si el detector no es de fútbol.
+        """
+        if not isinstance(self._reader, FootballMarketReader):
+            raise TypeError("el estado de fútbol sólo existe en un detector de fútbol")
+        return self._reader.state()
 
     def apply_match_event(self, event: MatchEvent) -> list[DiscrepancySignal]:
         """Actualiza el estado y revisa los precios que quedaron desfasados.
@@ -186,12 +262,12 @@ class DiscrepancyDetector:
             mueven la probabilidad lo bastante como para dejar rancio un precio;
             revisar en cada pase sería ruido y coste sin información.
         """
-        self._tracker.apply(event)
+        moves = self._reader.apply(event)
         self._last_event_id = event.event_id
-        if event.event_type in MARKET_MOVING_EVENTS or event.attrs.get("reason") == "kickoff":
+        if self._reader.fixes_state(event):
             self._state_events.append(event.event_id)
 
-        if event.event_type not in MARKET_MOVING_EVENTS:
+        if not moves:
             return []
 
         signals: list[DiscrepancySignal] = []
@@ -215,10 +291,9 @@ class DiscrepancyDetector:
 
     def _compare(self, update: OddsUpdate, at: datetime) -> list[DiscrepancySignal]:
         """Contrasta un precio contra el modelo en el instante indicado."""
-        if not is_football_market(update.market):
-            return []  # el baloncesto trae su propio modelo (#90)
-        state = self._tracker.state()
-        model = model_probabilities(update.market, state)
+        model = self._reader.probabilities(update)
+        if model is None:
+            return []  # un mercado que el modelo de este deporte no cotiza
         # Aquí está la mitad del trabajo de la historia: el precio se convierte
         # en probabilidad descontando el margen, no dividiendo uno entre la cuota.
         market = implied_probabilities(update.odds)
@@ -239,8 +314,9 @@ class DiscrepancyDetector:
                     outcome=outcome,
                     model_probability=round(believed, 4),
                     market_probability=round(priced, 4),
-                    minute=round(self._tracker.minute, 1),
+                    minute=round(self._reader.minute, 1),
                     lineage=lineage,
+                    model_version=self._reader.model_version,
                 )
             )
         return signals
@@ -258,6 +334,7 @@ def detect_discrepancies(
     match_events: list[MatchEvent],
     odds_updates: list[OddsUpdate],
     threshold: float = DEFAULT_THRESHOLD,
+    reader: MarketReader | None = None,
 ) -> list[DiscrepancySignal]:
     """Recorre los dos flujos entrelazados por tiempo y devuelve las señales.
 
@@ -269,11 +346,12 @@ def detect_discrepancies(
         match_events: Eventos del partido, en orden cronológico.
         odds_updates: Actualizaciones de cuotas, en orden cronológico.
         threshold: Separación mínima para emitir.
+        reader: Cómo se lee el deporte. Por defecto, el fútbol.
 
     Returns:
         Las señales, en orden cronológico.
     """
-    detector = DiscrepancyDetector(threshold=threshold)
+    detector = DiscrepancyDetector(threshold=threshold, reader=reader)
     signals: list[DiscrepancySignal] = []
 
     # Se intercalan por tiempo de evento: una cuota tiene que evaluarse contra el
