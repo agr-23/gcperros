@@ -27,12 +27,13 @@ def test_the_firestore_document_travels_intact(match: list[MatchEvent]) -> None:
     payload = snapshot.to_json()
     document = snapshot.document.to_firestore_document()
 
-    extra = {"clock", "possession", "pending"}
+    extra = {"clock", "possession", "pending", "sport"}
     assert {k: v for k, v in payload.items() if k not in extra} == document
     assert set(payload) - set(document) == extra
     assert payload["teams"] == ["RMA", "BAR"]
     assert payload["updated_at"] == "2026-08-26T19:10:00.000Z"
     assert payload["clock"] == {"elapsed_s": 600.0, "period": 1, "minute": 10, "phase": "parte-1"}
+    assert payload["sport"] == "football"
 
 
 def test_possession_is_a_share_of_the_time_played(match: list[MatchEvent]) -> None:

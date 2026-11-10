@@ -56,6 +56,10 @@ class Replay(Generic[S_co]):
     #: El deporte, tal como lo nombra la página.
     sport = ""
 
+    #: Local y visitante, cuando el flujo no permite deducirlos (#92). Sin él,
+    #: se respeta el orden en que los equipos aparecen.
+    teams: tuple[str, str] | None = None
+
     def __init__(self, events: list[MatchEvent], engine: StreamEngine[S_co]) -> None:
         """Prepara la repetición en el inicio, sin nada entregado.
 
@@ -219,16 +223,22 @@ class MatchReplay(Replay[MatchSummary]):
 class BasketballReplay(Replay[BasketballSummary]):
     """Un partido de baloncesto: cuartos, descansos y prórrogas, con reloj de juego."""
 
-    __slots__ = ("_times",)
+    __slots__ = ("_times", "teams")
     sport = "basketball"
 
-    def __init__(self, events: list[MatchEvent]) -> None:
+    def __init__(self, events: list[MatchEvent], teams: tuple[str, str] | None = None) -> None:
         """Prepara la repetición en el salto inicial, con el motor del baloncesto.
+
+        Args:
+            events: Eventos del partido.
+            teams: ``(local, visitante)``. El salto inicial no dice quién es
+                local: el primero en aparecer es quien lo gana.
 
         Raises:
             ValueError: Si no hay eventos que repetir.
         """
         super().__init__(events, basketball_engine())
+        self.teams = teams
         self._times = [event.event_time for event in self._events]
 
     def fresh_state(self) -> BasketballLiveState:

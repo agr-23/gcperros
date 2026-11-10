@@ -118,22 +118,35 @@ class LiveMatchDocument:
 
     @classmethod
     def project_state(
-        cls, match_id: str, state: SportState[object], updated_at: datetime
+        cls,
+        match_id: str,
+        state: SportState[object],
+        updated_at: datetime,
+        teams: Sequence[str] | None = None,
     ) -> LiveMatchDocument:
         """El documento de cualquier deporte, con los indicadores que declara su estado (#89).
 
         ``project`` sigue construyendo el del fútbol campo a campo; este lee
         cada indicador del resumen por su nombre, así que sirve igual al
         baloncesto sin que el documento sepa qué es un rebote.
+
+        ``teams`` fija el orden de local y visitante cuando el flujo no lo dice: en
+        baloncesto el primero en aparecer es quien gana el salto inicial (#92).
+        Sólo se usan los que ya tienen eventos.
         """
         summary = state.summary()
+        known = state.teams
+        if teams is not None:
+            known = tuple(team for team in teams if team in known) + tuple(
+                team for team in known if team not in teams
+            )
         indicators: dict[str, dict[str, JsonValue]] = {
             team: {name: getattr(summary, name)[team] for name in state.team_indicators}
-            for team in state.teams
+            for team in known
         }
         return cls(
             match_id=match_id,
-            teams=state.teams,
+            teams=known,
             event_count=state.event_count,
             updated_at=updated_at,
             indicators=indicators,
