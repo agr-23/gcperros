@@ -16,6 +16,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from gcperros.core.basketball_stats import summarize_basketball
+from gcperros.generators.basketball import BasketballConfig, simulate_basketball
 from gcperros.generators.match import MatchConfig, simulate_match, summarize_match
 from gcperros.generators.odds import simulate_odds, summarize_odds
 
@@ -70,6 +72,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Genera un partido sintético determinista en formato JSON Lines.",
     )
     _add_common_arguments(parser)
+    parser.add_argument(
+        "--sport",
+        choices=("football", "basketball"),
+        default="football",
+        help="Deporte del partido. El baloncesto viaja por su propio flujo (#87).",
+    )
     return parser
 
 
@@ -89,6 +97,8 @@ def build_odds_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     """Punto de entrada del generador de partidos."""
     args = build_parser().parse_args(argv)
+    if args.sport == "basketball":
+        return _basketball(args)
 
     events = simulate_match(args.seed, _config_from(args))
     _write("".join(event.to_json() + "\n" for event in events), args.out)
@@ -101,6 +111,26 @@ def main(argv: list[str] | None = None) -> int:
             f"xG={summary.total_xg} "
             f"remates={summary.shots} "
             f"rojas={summary.red_cards} "
+            f"posesiones={summary.possessions}",
+            file=sys.stderr,
+        )
+
+    return 0
+
+
+def _basketball(args: argparse.Namespace) -> int:
+    """El mismo comando, para el segundo deporte (#88)."""
+    config = BasketballConfig(match_id=args.match_id, home_team=args.home, away_team=args.away)
+    events = simulate_basketball(args.seed, config)
+    _write("".join(event.to_json() + "\n" for event in events), args.out)
+
+    if args.summary:
+        summary = summarize_basketball(events)
+        print(
+            f"eventos={summary.event_count} "
+            f"puntos={summary.points} "
+            f"puntos_esperados={summary.expected_points} "
+            f"triples={summary.three_made} "
             f"posesiones={summary.possessions}",
             file=sys.stderr,
         )
