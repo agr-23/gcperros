@@ -28,6 +28,7 @@ dato aquí es sintético.
 from __future__ import annotations
 
 import random
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -92,7 +93,7 @@ class Operator:
     """
 
     name: str
-    overrounds: dict[Market, float]
+    overrounds: Mapping[str, float]
     reaction_delay_s: float
     home_strength: float
 
@@ -303,7 +304,9 @@ def summarize_odds(updates: list[OddsUpdate]) -> OddsSummary:
     for update in updates:
         by_trigger[update.trigger] = by_trigger.get(update.trigger, 0) + 1
         by_operator[update.operator] = by_operator.get(update.operator, 0) + 1
-        books[update.market].append(overround(update.odds))
+        # Los mercados del fútbol salen siempre y en su orden; los de otro
+        # deporte se añaden según aparecen.
+        books.setdefault(update.market, []).append(overround(update.odds))
 
     return OddsSummary(
         update_count=len(updates),
