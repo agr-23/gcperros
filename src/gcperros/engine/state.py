@@ -15,7 +15,10 @@ Firestore (HU-15): un único documento denormalizado, no un documento por evento
 
 from __future__ import annotations
 
-from gcperros.core.contracts import MatchEvent
+from collections.abc import Mapping
+
+from gcperros.core import xg
+from gcperros.core.contracts import MATCH_CONTRACT_VERSION, MatchEvent
 from gcperros.core.lineage import LineageAccumulator, LineageRecord
 from gcperros.core.stats import MatchSummary, as_float
 
@@ -27,6 +30,20 @@ WHOLE_MATCH = "*"
 
 class LiveMatchState:
     """Acumula los indicadores del partido a medida que llegan los eventos."""
+
+    #: Lo que el motor y la auditoría saben del fútbol (``engine/sport.py``).
+    contract_version = MATCH_CONTRACT_VERSION
+    team_indicators: tuple[str, ...] = (
+        "goals",
+        "shots",
+        "total_xg",
+        "passes",
+        "completed_passes",
+        "fouls",
+        "red_cards",
+        "possessions",
+    )
+    models_by_indicator: Mapping[str, Mapping[str, str]] = {"total_xg": {"xg": xg.MODEL_VERSION}}
 
     __slots__ = (
         "_completed_passes",

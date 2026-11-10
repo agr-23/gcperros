@@ -12,6 +12,11 @@ Ordena las piezas del recorrido de un evento, y el orden no es negociable:
 
 Tener los tres pasos en un solo sitio legible es lo que permite discutir el
 diseño sin leer el código que consume del broker.
+
+Ninguno de los tres sabe de qué deporte es el partido (#89). ``StreamEngine``
+recibe el estado por inyección (``engine/sport.py``), y ``MatchEngine`` es ese
+mismo motor con el estado del fútbol, que es lo que el resto del sistema ya
+usaba.
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from typing import Generic, TypeVar
 
 from gcperros.core.contracts import MatchEvent
 from gcperros.core.possession import (
@@ -31,6 +37,7 @@ from gcperros.core.possession import (
 from gcperros.core.stats import MatchSummary
 from gcperros.engine.dedup import DEFAULT_CAPACITY, Deduplicator, DedupStats
 from gcperros.engine.latency import LatencyRecorder, LatencyStats
+from gcperros.engine.sport import SportState
 from gcperros.engine.state import LiveMatchState
 from gcperros.engine.watermark import (
     DEFAULT_ALLOWED_LATENESS_S,
@@ -53,11 +60,16 @@ class Outcome(StrEnum):
     DROPPED_LATE = "dropped_late"
 
 
+#: El resumen del deporte: ``MatchSummary`` en fútbol, ``BasketballSummary`` en
+#: baloncesto.
+S = TypeVar("S")
+
+
 @dataclass(frozen=True, slots=True)
-class EngineResult:
+class EngineResult(Generic[S]):
     """Los indicadores del partido y la traza de cómo se llegó a ellos."""
 
-    summary: MatchSummary
+    summary: S
     dedup: DedupStats
     watermark: WatermarkStats
     possession: PossessionSnapshot
@@ -65,8 +77,8 @@ class EngineResult:
     latency: LatencyStats
 
 
-class MatchEngine:
-    """Consume eventos de un partido y mantiene su estado vivo."""
+class StreamEngine(Generic[S]):
+    """Consume eventos de un partido de cualquier deporte y mantiene su estado vivo."""
 
     __slots__ = (
         "_clock",
@@ -80,15 +92,16 @@ class MatchEngine:
 
     def __init__(
         self,
+        state: SportState[S],
         dedup_capacity: int = DEFAULT_CAPACITY,
         allowed_lateness_s: float = DEFAULT_ALLOWED_LATENESS_S,
         possession_window_s: float = POSSESSION_WINDOW_S,
         max_in_play_gap_s: float = MAX_IN_PLAY_GAP_S,
     ) -> None:
-        """Crea un motor con sus componentes vacíos."""
+        """Crea un motor vacío alrededor del estado de un deporte."""
         self._dedup = Deduplicator(capacity=dedup_capacity)
         self._reorderer = WatermarkReorderer(allowed_lateness_s=allowed_lateness_s)
-        self._state = LiveMatchState()
+        self._state = state
         self._possession = PossessionTracker(
             window_s=possession_window_s,
             max_in_play_gap_s=max_in_play_gap_s,
@@ -100,7 +113,7 @@ class MatchEngine:
         self._clock: datetime | None = None
 
     @property
-    def state(self) -> LiveMatchState:
+    def state(self) -> SportState[S]:
         """Estado vivo, consultable en cualquier momento del partido."""
         return self._state
 
@@ -195,14 +208,14 @@ class MatchEngine:
         if final is not None:
             self._closed_windows.extend(self._possession.close_through(final))
 
-    def process_all(self, events: list[MatchEvent]) -> EngineResult:
+    def process_all(self, events: list[MatchEvent]) -> EngineResult[S]:
         """Procesa un flujo completo, lo vacía y devuelve el resultado."""
         for event in events:
             self.process(event)
         self.flush()
         return self.result()
 
-    def result(self) -> EngineResult:
+    def result(self) -> EngineResult[S]:
         """Instantánea de los indicadores y de los contadores de calidad.
 
         Refleja lo aplicado **hasta ahora**: lo que siga en el buffer esperando
@@ -216,3 +229,28 @@ class MatchEngine:
             possession_windows=tuple(self._closed_windows),
             latency=self._latency.stats(),
         )
+
+
+class MatchEngine(StreamEngine[MatchSummary]):
+    """El motor con el estado del fútbol: el que usaba todo el sistema."""
+
+    __slots__ = ("_live",)
+
+    def __init__(
+        self,
+        dedup_capacity: int = DEFAULT_CAPACITY,
+        allowed_lateness_s: float = DEFAULT_ALLOWED_LATENESS_S,
+        possession_window_s: float = POSSESSION_WINDOW_S,
+        max_in_play_gap_s: float = MAX_IN_PLAY_GAP_S,
+    ) -> None:
+        """Crea un motor de fútbol con sus componentes vacíos."""
+        live = LiveMatchState()
+        super().__init__(
+            live, dedup_capacity, allowed_lateness_s, possession_window_s, max_in_play_gap_s
+        )
+        self._live = live
+
+    @property
+    def state(self) -> LiveMatchState:
+        """Estado vivo del fútbol, con todo lo que sólo él sabe hacer."""
+        return self._live
