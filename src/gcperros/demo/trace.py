@@ -18,8 +18,8 @@ from dataclasses import dataclass
 
 from gcperros.core.contracts import JsonValue, MatchEvent
 from gcperros.core.lineage import LineageAccumulator
-from gcperros.demo.replay import MatchReplay
-from gcperros.engine.state import LiveMatchState
+from gcperros.demo.replay import Replay
+from gcperros.engine.sport import SportState
 from gcperros.governance.traceability import Explanation, explain
 
 
@@ -57,13 +57,14 @@ class Trace:
         return payload
 
 
-def _contributes(event: MatchEvent, indicator: str, scope: str) -> bool:
-    scratch = LiveMatchState()
+def _contributes(
+    scratch: SportState[object], event: MatchEvent, indicator: str, scope: str
+) -> bool:
     scratch.apply(event)
     return scratch.lineage(indicator, scope).event_count > 0
 
 
-def trace_indicator(replay: MatchReplay, indicator: str, scope: str) -> Trace:
+def trace_indicator(replay: Replay[object], indicator: str, scope: str) -> Trace:
     """Reconstruye los eventos de un indicador y verifica su huella contra el motor.
 
     Raises:
@@ -71,9 +72,10 @@ def trace_indicator(replay: MatchReplay, indicator: str, scope: str) -> Trace:
         AttributeError: Si el indicador no existe.
     """
     explanation = explain(replay.engine.state, indicator, scope)
-    applied = [e for e in replay.delivered if _contributes(e, indicator, scope)][
-        : explanation.lineage.event_count
-    ]
+    # Cada evento, en un estado vacío del mismo deporte: no se copian las reglas.
+    applied = [
+        e for e in replay.delivered if _contributes(replay.fresh_state(), e, indicator, scope)
+    ][: explanation.lineage.event_count]
 
     fold = LineageAccumulator()
     for event in applied:
