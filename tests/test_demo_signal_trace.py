@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 
 from gcperros.core import odds
 from gcperros.core.contracts import MatchEvent
-from gcperros.demo import signal_trace
 from gcperros.demo.market import MarketTape
 from gcperros.demo.replay import MatchReplay
 from gcperros.demo.server import LiveSource, create_app
@@ -50,7 +49,7 @@ def test_a_wrong_reconstruction_is_not_passed_off_as_verified(
 ) -> None:
     """Si se olvidan los goles al reconstruir, la huella deja de cuadrar y se dice."""
     tape, replay = _tape_at_full_time(match)
-    monkeypatch.setattr(signal_trace, "_fixes_the_state", lambda _event: False)
+    monkeypatch.setattr(MarketTape, "fixes_state", lambda _tape, _event: False)
 
     assert not any(
         trace_signal(tape, i, replay.minute_at).verified for i in range(len(tape.signals))

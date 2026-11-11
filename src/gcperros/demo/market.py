@@ -22,6 +22,8 @@ from gcperros.engine.signals import (
     DEFAULT_THRESHOLD,
     DiscrepancyDetector,
     DiscrepancySignal,
+    FootballMarketReader,
+    MarketReader,
     model_probabilities,
 )
 
@@ -31,7 +33,10 @@ RECENT_SIGNALS = 12
 
 @dataclass(frozen=True, slots=True)
 class MarketView:
-    """El resultado final (1X2) según el modelo y según cada operador, y las señales."""
+    """El mercado de ganador según el modelo y según cada operador, y las señales.
+
+    En fútbol es el 1X2; en baloncesto, el ganador sin empate (#92).
+    """
 
     model: dict[str, float]
     operators: dict[str, dict[str, float]]
@@ -42,23 +47,47 @@ class MarketView:
 class MarketTape:
     """Recorre cuotas y eventos intercalados por tiempo hasta donde se le pida."""
 
-    __slots__ = ("_books", "_detector", "_events", "_next_event", "_next_odds", "_odds", "_signals")
+    __slots__ = (
+        "_books",
+        "_detector",
+        "_events",
+        "_headline",
+        "_last_headline",
+        "_next_event",
+        "_next_odds",
+        "_odds",
+        "_reader",
+        "_seen",
+        "_signals",
+    )
 
     def __init__(
         self,
         match_events: list[MatchEvent],
         odds_updates: list[OddsUpdate],
         threshold: float = DEFAULT_THRESHOLD,
+        reader: MarketReader | None = None,
     ) -> None:
-        """Prepara la cinta antes del pitido inicial."""
+        """Prepara la cinta antes del inicio.
+
+        Con ``reader``, el deporte que no es el fútbol: el baloncesto trae su
+        lectura del partido, su modelo y su mercado de ganador.
+        """
         self._events = sorted(match_events, key=lambda event: event.event_time)
         self._odds = sorted(odds_updates, key=lambda update: update.event_time)
         self._next_event = 0
         self._next_odds = 0
-        self._detector = DiscrepancyDetector(threshold=threshold)
+        self._reader: MarketReader = reader if reader is not None else FootballMarketReader()
+        self._detector = DiscrepancyDetector(threshold=threshold, reader=self._reader)
+        self._headline = "1x2" if reader is None else "moneyline"
+        self._last_headline: OddsUpdate | None = None
         # Probabilidad implícita, sin margen, del último 1X2 de cada operador.
         self._books: dict[str, dict[str, float]] = {}
         self._signals: list[DiscrepancySignal] = []
+        # Cuántos eventos se habían consumido al emitir cada señal. En baloncesto
+        # varios eventos comparten instante (un tiro y su rebote), así que el
+        # tiempo no basta para saber qué había visto el detector.
+        self._seen: list[int] = []
 
     def advance_to(self, instant: datetime) -> int:
         """Consume todo lo ocurrido hasta ``instant`` y devuelve las señales nuevas.
@@ -76,15 +105,28 @@ class MarketTape:
                 and event.event_time <= instant
                 and (update is None or event.event_time <= update.event_time)
             ):
-                self._signals.extend(self._detector.apply_match_event(event))
                 self._next_event += 1
+                self._record(self._detector.apply_match_event(event))
             elif update is not None and update.event_time <= instant:
-                self._signals.extend(self._detector.evaluate(update))
-                if update.market == "1x2":
+                self._record(self._detector.evaluate(update))
+                if update.market == self._headline:
                     self._books[update.operator] = implied_probabilities(update.odds)
+                    self._last_headline = update
                 self._next_odds += 1
             else:
                 return len(self._signals) - before
+
+    def _record(self, signals: list[DiscrepancySignal]) -> None:
+        self._signals.extend(signals)
+        self._seen.extend([self._next_event] * len(signals))
+
+    def events_behind(self, index: int) -> tuple[MatchEvent, ...]:
+        """Los eventos que el detector había visto al emitir la señal ``index``."""
+        return tuple(self._events[: self._seen[index]])
+
+    def fixes_state(self, event: MatchEvent) -> bool:
+        """Si el evento forma parte del estado contra el que se evalúa, según el deporte."""
+        return self._reader.fixes_state(event)
 
     @property
     def signals(self) -> tuple[DiscrepancySignal, ...]:
@@ -103,7 +145,11 @@ class MarketTape:
 
     def view(self, recent: int = RECENT_SIGNALS) -> MarketView:
         """El mercado en el instante actual, con las señales más nuevas primero."""
-        model = model_probabilities("1x2", self._detector.state)
+        if self._headline == "1x2":
+            model = model_probabilities("1x2", self._detector.state)
+        else:
+            latest = self._last_headline
+            model = (self._reader.probabilities(latest) if latest is not None else None) or {}
         return MarketView(
             model={outcome: round(p, 4) for outcome, p in model.items()},
             operators={
