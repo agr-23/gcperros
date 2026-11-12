@@ -43,6 +43,7 @@ from enum import StrEnum
 from gcperros.core.contracts import JsonValue, format_event_time
 from gcperros.core.divergence import Divergence
 from gcperros.engine.dedup import DedupStats
+from gcperros.engine.sport_harness import SportDivergence
 from gcperros.engine.watermark import WatermarkStats
 from gcperros.governance.gate import GateStats
 from gcperros.governance.quarantine import utc_now
@@ -199,7 +200,8 @@ class IngestionEvidence:
     gate: GateStats | None = None
     dedup: DedupStats | None = None
     watermark: WatermarkStats | None = None
-    divergence: Divergence | None = None
+    #: La del fútbol, o la de cualquier deporte en sus términos (#98).
+    divergence: Divergence | SportDivergence | None = None
 
     def observations(self) -> dict[QualityDimension, tuple[int, int]]:
         """Traduce los contadores a pares ``(observado, total)`` por dimensión."""
@@ -223,7 +225,7 @@ class IngestionEvidence:
         if self.divergence is not None:
             # Una comprobación por indicador comparado, no una por evento: el
             # numerador dice cuántos cuadran y el denominador cuántos se miraron.
-            compared = len(fields(Divergence))
+            compared = len(fields(self.divergence))
             breached = len({b.indicator for b in self.divergence.breaches()})
             found[QualityDimension.CONSISTENCY] = (compared - breached, compared)
 

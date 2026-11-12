@@ -106,6 +106,13 @@ jobs:
         run: |
           gcperros-validate --stream match --in primera.jsonl --strict > /dev/null
           gcperros-validate --stream odds --in cuotas-a.jsonl --strict > /dev/null
+      # Y el segundo deporte, con su propio contrato (#98).
+      - name: Los flujos del baloncesto cumplen su propio contrato
+        run: |
+          gcperros-generate-match --sport basketball --seed "$REFERENCE_SEED" --out baloncesto.jsonl
+          gcperros-generate-odds --sport basketball --seed "$REFERENCE_SEED" --out cuotas-baloncesto.jsonl
+          gcperros-validate --stream basketball --in baloncesto.jsonl --strict > /dev/null
+          gcperros-validate --stream basketball-odds --in cuotas-baloncesto.jsonl --strict > /dev/null
 
       # La HU-17 mide la calidad en el mismo acto de ingerir. Con --strict una
       # regresión de calidad rompe la construccion, en vez de descubrirse en una
@@ -116,6 +123,10 @@ jobs:
             --report calidad-match-events.json --escalations calidad-escalados.jsonl
           gcperros-quality --stream odds --in cuotas-a.jsonl --strict \
             --report calidad-odds-updates.json --escalations calidad-escalados.jsonl
+          gcperros-quality --stream basketball --in baloncesto.jsonl --strict \
+            --report calidad-basketball-events.json --escalations calidad-escalados.jsonl
+          gcperros-quality --stream basketball-odds --in cuotas-baloncesto.jsonl --strict \
+            --report calidad-basketball-odds.json --escalations calidad-escalados.jsonl
 
       # La HU-17 promete la calidad como señal continua y no como auditoría al
       # final. Hasta ahora se medía y se tiraba: sin conservar los informes no
