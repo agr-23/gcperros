@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 
 from gcperros.core.contracts import JsonValue
 from gcperros.demo.market import MarketTape
-from gcperros.demo.replay import MatchReplay
+from gcperros.demo.replay import Replay
 from gcperros.demo.signal_trace import SignalTrace, trace_signal
 from gcperros.demo.snapshot import LiveSnapshot, take_snapshot
 from gcperros.demo.trace import Trace, trace_indicator
@@ -61,7 +61,7 @@ class LiveSource:
 
     def __init__(
         self,
-        replay: MatchReplay,
+        replay: Replay[object],
         speed: float = DEFAULT_SPEED,
         clock: Callable[[], float] = time.monotonic,
         market: MarketTape | None = None,
@@ -87,6 +87,11 @@ class LiveSource:
     def match_id(self) -> str:
         """El partido que sirve esta fuente."""
         return self._replay.match_id
+
+    @property
+    def sport(self) -> str:
+        """El deporte del partido, para el selector de la página (#92)."""
+        return self._replay.sport
 
     def current(self) -> LiveSnapshot:
         """El estado del partido ahora mismo, según cuánto tiempo real pasó."""
@@ -133,12 +138,15 @@ async def stream_snapshots(
 
 
 def create_app(
-    source: LiveSource,
+    source: LiveSource | Sequence[LiveSource],
     poll_s: float = DEFAULT_POLL_S,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     reports_dir: Path | None = None,
 ) -> FastAPI:
-    """Construye la aplicación sobre una fuente de estado vivo.
+    """Construye la aplicación sobre una o varias fuentes de estado vivo.
+
+    Con varias, una por deporte, la página ofrece un selector (#92); la primera
+    es la que abre por defecto.
 
     ``sleep`` se inyecta para que las pruebas recorran un partido entero sin
     esperar a que pase de verdad. ``reports_dir`` es la carpeta de la que se
@@ -146,28 +154,37 @@ def create_app(
     como no generados.
     """
     app = FastAPI(title="GCPerros · demostración", docs_url="/api/docs", redoc_url=None)
+    sources = [source] if isinstance(source, LiveSource) else list(source)
+    by_id = {live.match_id: live for live in sources}
+
+    def _source(match_id: str) -> LiveSource:
+        live = by_id.get(match_id)
+        if live is None:
+            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
+        return live
 
     @app.get("/api/matches")
     def matches() -> list[str]:
-        """Los partidos disponibles. En la demostración, uno."""
-        return [source.match_id]
+        """Los partidos disponibles, el de por defecto primero."""
+        return [live.match_id for live in sources]
+
+    @app.get("/api/sports")
+    def sports() -> list[dict[str, str]]:
+        """Qué deporte es cada partido, para el selector de la página."""
+        return [{"match_id": live.match_id, "sport": live.sport} for live in sources]
 
     # Sin modelo de respuesta: el documento ya cumple su propio contrato, y
     # pydantic no sabe derivar un esquema del tipo recursivo `JsonValue`.
     @app.get("/api/matches/{match_id}/state", response_model=None)
     def state(match_id: str) -> dict[str, JsonValue]:
         """El estado vivo del partido, con la forma del documento de Firestore."""
-        if match_id != source.match_id:
-            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
-        return source.current().to_json()
+        return _source(match_id).current().to_json()
 
     @app.get("/api/matches/{match_id}/stream")
     def stream(match_id: str) -> StreamingResponse:
         """El estado en vivo, empujado al navegador por Server-Sent Events."""
-        if match_id != source.match_id:
-            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
         return StreamingResponse(
-            stream_snapshots(source, poll_s, sleep),
+            stream_snapshots(_source(match_id), poll_s, sleep),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache"},
         )
@@ -175,10 +192,9 @@ def create_app(
     @app.get("/api/matches/{match_id}/trace/{indicator}/{scope}", response_model=None)
     def trace(match_id: str, indicator: str, scope: str) -> dict[str, JsonValue]:
         """Los eventos que formaron un número del marcador, con su huella verificada."""
-        if match_id != source.match_id:
-            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
+        live = _source(match_id)
         try:
-            return source.trace(indicator, scope).to_json()
+            return live.trace(indicator, scope).to_json()
         except (KeyError, AttributeError) as error:
             raise HTTPException(
                 status_code=404, detail=f"no se mide {indicator} en {scope}"
@@ -187,10 +203,9 @@ def create_app(
     @app.get("/api/matches/{match_id}/signals/{index}/trace", response_model=None)
     def signal_trace(match_id: str, index: int) -> dict[str, JsonValue]:
         """Los eventos y la cuota que produjeron una señal, con su huella verificada."""
-        if match_id != source.match_id:
-            raise HTTPException(status_code=404, detail=f"no hay partido {match_id}")
+        live = _source(match_id)
         try:
-            return source.trace_signal(index).to_json()
+            return live.trace_signal(index).to_json()
         except IndexError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
