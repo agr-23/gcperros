@@ -144,6 +144,12 @@ jobs:
           gcperros-validate-streaming --match primera.jsonl --strict             --report divergencia-referencia.json
           gcperros-validate-streaming --seed 65 --strict             --report divergencia-exhibicion.json
 
+      # Entrega final (#91): el motor no sabe de fútbol. Los dos deportes, sobre
+      # 12 partidos cada uno, cumplen los escenarios comprometidos con su margen
+      # declarado (10 s y 15 s), y la tabla lado a lado queda en el informe.
+      - name: Fútbol y baloncesto, con la misma vara
+        run: gcperros-compare-sports --strict --no-capacity --report divergencia-deportes.json
+
       - name: Conservar los informes de divergencia
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
