@@ -490,6 +490,25 @@ al riesgo declarado de «prohibición de credenciales en el repositorio».
 
 ---
 
+### El motor como servicio: lo que Cloud Run despliega
+
+El Terraform conectaba Pub/Sub por push a un motor en Cloud Run que no existía:
+no había nada que reciba una entrega. `gcperros-engine-service`
+(`service/app.py`) es ese servicio. Deduce el flujo de la suscripción del motor
+(`<prefijo><flujo>-engine`), lo pasa por su frontera, lo aplica al motor de su
+partido —uno por partido, del deporte del flujo— y reescribe el documento vivo
+en Firestore cuando el estado cambia.
+
+Lo que contesta decide si Pub/Sub reintenta. **204** a todo lo que se pudo
+decidir, también a un mensaje que incumple el contrato: reintentarlo no lo
+arregla, y ya está archivado con su causa. **400** a un sobre que no es de
+Pub/Sub o de un flujo desconocido, que tras los reintentos acaba en la dead
+letter. **500** si Firestore no aceptó el documento; como el reintento es una
+repetición que el motor descarta, el servicio recuerda qué partido quedó sin
+escribir y lo escribe con esa misma entrega. Las cuotas se juzgan y se
+confirman, pero la señal todavía no se calcula en el servicio: necesita las dos
+fuentes de un partido a la vez, como la demo.
+
 ## 7. Contratos y frontera de ingestión
 
 ### El contrato se declara como dato, no como comprobaciones
