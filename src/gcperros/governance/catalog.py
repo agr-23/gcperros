@@ -127,10 +127,13 @@ DATASETS: tuple[Asset, ...] = (
         "Un documento vivo por partido con sus indicadores y su linaje.",
         ("possession", "xg", "lineage"),
     ),
-    _analytics("dim_match", "Partidos: jornada, temporada, equipos y fecha."),
+    _analytics("dim_sport", "Deportes: sus flujos, sus periodos y su duración."),
+    _analytics("dim_match", "Partidos: jornada, temporada, equipos, fecha y deporte."),
     _analytics("dim_market", "Mercados de cuotas y sus resultados posibles."),
     _analytics("dim_operator", "Operadores de apuestas."),
-    _analytics("fact_match_events", "Un hecho por evento del partido.", ("xg",)),
+    _analytics(
+        "fact_match_events", "Un hecho por evento del partido, de cualquier deporte.", ("xg",)
+    ),
     _analytics(
         "fact_market_signals",
         "Una fila por señal de discrepancia emitida.",

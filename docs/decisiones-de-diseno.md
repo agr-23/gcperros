@@ -1074,6 +1074,25 @@ consultas preexistentes, BigQuery admite adiciones de columnas en modo `NULLABLE
 provocar fallos de serialización ni errores en agregaciones históricas, permitiendo
 a consultas nuevas explotar el campo añadido sin requerir reprocesos retroactivos.
 
+### Un modelo estrella para los dos deportes (#94)
+
+El segundo deporte es justo la evolución de esquema que esta sección promete
+tolerar. Entra una dimensión, `dim_sport`, con lo que una consulta necesita para
+comparar deportes: sus flujos, cuántos periodos tiene y cuánto dura cada uno. Y
+una columna `sport` en `dim_match` y en las dos tablas de hechos. Todo lo que se
+añade a una tabla existente es `NULLABLE`; una fila sin deporte es de fútbol,
+que era el único cuando se escribió, así que una consulta por deporte usa
+`COALESCE(sport, 'football')` y no hay que reprocesar nada.
+
+Los hechos del baloncesto van en `fact_match_events`, no en una tabla aparte:
+comparten el sobre igual que sus flujos (sección 17), y el particionado por
+`event_time` y el agrupamiento por partido y tipo de evento les sirven tal cual.
+Sus columnas propias —valor del tiro, si entró y sus puntos esperados— quedan
+vacías en el fútbol, y el xG en el baloncesto. `tests/test_multisport_analytics.py`
+fija las columnas que ya existían, con su tipo y su modo, y exige que toda
+columna nueva en una tabla existente sea `NULLABLE`: añadir un deporte no puede
+romper los datos del anterior.
+
 ---
 
 ## 13. Particionamiento, agrupamiento y benchmark físico (HU-23)
