@@ -21,6 +21,7 @@ usaba.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -209,6 +210,20 @@ class StreamEngine(Generic[S_co]):
         self._state.apply(event)
         self._possession.apply(event)
         self._latency.applied(event, at)
+
+    def provisional(self) -> S_co:
+        """La vista provisional: lo aplicado más lo que espera a la marca de agua.
+
+        Un gol o una canasta aparece aquí en cuanto llega, sin esperar al
+        margen; es la segunda salida de la sección 3 para el SLA. Lo exacto no
+        se corrige nunca —contar no depende del orden—, y cuando la ventana se
+        cierra la vista definitiva da lo mismo. El estado vivo no se toca: se
+        trabaja sobre una copia.
+        """
+        view = copy.deepcopy(self._state)
+        for event in self._reorderer.pending():
+            view.apply(event)
+        return view.summary()
 
     def flush(self) -> None:
         """Aplica lo que quedaba retenido y cierra las ventanas que faltaban.
