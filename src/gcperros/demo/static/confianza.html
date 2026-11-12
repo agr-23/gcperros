@@ -10,6 +10,7 @@
   <header class="bar">
     <span class="brand">GCPerros</span>
     <nav class="nav"><a href="/">En vivo</a><a href="confianza.html" aria-current="page">Por qué confiar</a><a href="bajo-el-capo.html">Bajo el capó</a></nav>
+    <nav class="sports" id="sports" aria-label="Deporte" hidden></nav>
   </header>
 
   <main class="wrap trust-page">
@@ -42,10 +43,12 @@
       <p class="claim">Cuántos eventos por segundo aguanta el motor antes de que se le acumulen.</p>
       <div class="body"></div>
       <p class="note">
-        Lo que todavía no cumplimos, dicho aquí y no en letra pequeña: para ordenar bien los eventos,
-        el motor espera a que llegue uno más de 10 s posterior (15 s en baloncesto). En las pausas del
-        juego no llega nadie, y el p95 de espera es de 31 s en fútbol frente a los 2 s que declaramos.
-        Las dos salidas están escritas en el documento de decisiones, sección 3.
+        Lo que todavía no cumplimos, dicho aquí y no en letra pequeña: la vista definitiva espera su
+        margen para ordenar bien los eventos —10 s en fútbol, 15 s en baloncesto—, lejos de los 2 s que
+        declaramos. El latido de la marca de agua ya quitó lo peor: una pausa del juego no retiene nada y
+        el p95 de espera baja de 31,2 a 10,9 s en fútbol (de 68,5 a 15,9 s en baloncesto). Lo que queda
+        es el propio margen; para eso el motor tiene una vista provisional, que enseña el marcador al
+        llegar y que en más de 4.900 comprobaciones no hubo que corregir nunca. Decisiones, sección 3.
       </p>
       <p class="source">Fuente: <code>gcperros-benchmark --report carga.json</code></p>
     </section>
@@ -63,6 +66,8 @@
     GCPerros no ejecuta apuestas, no intermedia en el juego y no promete rentabilidad.
   </aside>
 
+  <script src="sport.js"></script>
+  <script src="pages.js"></script>
   <script src="confianza.js"></script>
 </body>
 </html>

@@ -268,6 +268,7 @@ body { padding-bottom: 72px; }
 /* Segundo deporte (#92). Los mismos componentes; cambian los colores y el
    suelo del marcador. Lo esencial está aquí; el pulido, en T3 y A3. */
 .sports { display: flex; gap: 6px; }
+.sports[hidden] { display: none; }
 .sports a {
   color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600;
   padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line);
@@ -331,7 +332,7 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
   .board { grid-area: board; }
   .market { grid-area: market; }
   .signals-panel { grid-area: signals; align-self: stretch; display: flex; flex-direction: column; }
-  .signals-panel .signals { max-height: none; flex: 1 1 0; min-height: 260px; }
+  .signals-panel .signals { max-height: none; flex: 1 1 0; min-height: 260px; align-content: start; }
   .signals-panel .signals li { grid-template-columns: 44px 1fr; row-gap: 2px; }
   .signals-panel .signals .nums { grid-column: 2; }
   .estimate-panel { grid-area: estimate; }
