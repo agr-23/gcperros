@@ -33,12 +33,14 @@ from typing import Generic, TypeVar
 from gcperros.core.contracts import (
     MatchEvent,
     OddsUpdate,
+    parse_american_football_event,
     parse_basketball_event,
     parse_basketball_odds_update,
     parse_match_event,
     parse_odds_update,
 )
 from gcperros.core.schema import (
+    AMERICAN_FOOTBALL_EVENT_SCHEMA,
     BASKETBALL_EVENT_SCHEMA,
     BASKETBALL_ODDS_SCHEMA,
     MATCH_EVENT_SCHEMA,
@@ -234,6 +236,15 @@ def basketball_event_gate(
 ) -> IngestionGate[MatchEvent]:
     """Frontera del flujo ``basketball-events`` (#87)."""
     return IngestionGate(BASKETBALL_EVENT_SCHEMA, parse_basketball_event, store, clock)
+
+
+def american_football_event_gate(
+    store: InvalidEventStore, clock: Callable[[], datetime] = utc_now
+) -> IngestionGate[MatchEvent]:
+    """Frontera del flujo ``american-football-events`` (tercer deporte)."""
+    return IngestionGate(
+        AMERICAN_FOOTBALL_EVENT_SCHEMA, parse_american_football_event, store, clock
+    )
 
 
 def basketball_odds_gate(
