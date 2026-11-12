@@ -1587,6 +1587,12 @@ avanza cuando llega algo, avanza menos a menudo, y **el p95 se duplica**. Es el
 mismo mecanismo que la sección 3 encontró en el fútbol, visto desde el otro
 lado: la latencia no la pone el motor, la pone la densidad del flujo.
 
+**Y la densidad también cambia lo que significa una alerta (#95).** La de
+backlog avisa a los 50 mensajes sin entregar: 4,5 minutos de fútbol, pero más de
+10 de baloncesto. Se suma una alerta por la antigüedad del mensaje más viejo sin
+confirmar, en 300 s, que no depende de cuántos eventos mande cada deporte y que,
+sin filtro por suscripción, cubre los cuatro flujos.
+
 **Sobre el p90 del umbral.** La sección 20 lo mide sobre cada resultado que se
 separa del modelo, también al reevaluar los precios vigentes tras cada evento,
 con el mismo método en los dos deportes. No es la misma población que las 6.286

@@ -6,6 +6,7 @@
 # 1. Latencia p95 > 2.000 ms (SLA declarado)
 # 2. Backlog en cola de eventos > 50 mensajes
 # 3. Tasa de rechazo en la frontera > 5 %
+# 4. Mensaje más antiguo sin confirmar > 300 s, igual para cualquier deporte
 ###############################################################################
 
 resource "google_monitoring_alert_policy" "p95_latency_sla" {
@@ -59,6 +60,45 @@ resource "google_monitoring_alert_policy" "backlog_threshold" {
 
   documentation {
     content   = "El backlog acumulado en Pub/Sub supera los 50 eventos (riesgo de saturación del consumidor)."
+    mime_type = "text/markdown"
+  }
+}
+
+###############################################################################
+# El backlog medido en tiempo, para cualquier deporte (#95)
+#
+# 50 mensajes no significan lo mismo en los dos deportes: el fútbol manda 11,1
+# eventos por minuto y el baloncesto 4,8 (decisiones de diseño, sección 21), así
+# que una cola del baloncesto tarda más del doble en llegar a 50 y la alerta
+# anterior avisa tarde. La antigüedad del mensaje más viejo sin confirmar no
+# depende de la densidad del flujo. 300 s son los 50 mensajes del fútbol
+# redondeados (50 / 11,1 por minuto = 4,5 min), y en baloncesto equivalen a 24.
+# Sin filtro por suscripción: cubre las de los cuatro flujos.
+###############################################################################
+
+resource "google_monitoring_alert_policy" "backlog_age" {
+  display_name = "gcperros-alerta-backlog-antiguo"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "El mensaje más antiguo sin confirmar supera 300 s"
+
+    condition_threshold {
+      filter          = "metric.type=\"pubsub.googleapis.com/subscription/oldest_unacked_message_age\" AND resource.type=\"pubsub_subscription\""
+      duration        = "60s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 300.0
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  documentation {
+    content   = "Un mensaje lleva más de 5 minutos sin confirmar en una suscripción, de cualquier deporte: el consumidor no da abasto o está caído."
     mime_type = "text/markdown"
   }
 }
