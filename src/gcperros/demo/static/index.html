@@ -144,42 +144,44 @@
           </div>
         </section>
 
-        <section class="panel possession-panel" aria-label="Posesión">
-          <header class="section-lead">
-            <span class="section-num">IV</span>
-            <h2>Distribución de Posesión</h2>
-          </header>
-          <div class="possession-block">
-            <div class="row">
-              <span class="label">Partido</span>
-              <div class="split" id="running"><i class="home"></i><i class="away"></i></div>
+        <!-- Columna derecha: Posesión y Estadísticas acumuladas -->
+        <div class="stats-stack">
+          <section class="panel possession-panel" aria-label="Posesión">
+            <header class="section-lead">
+              <span class="section-num">IV</span>
+              <h2>Distribución de Posesión</h2>
+            </header>
+            <div class="possession-block">
+              <div class="row">
+                <span class="label">Partido</span>
+                <div class="split" id="running"><i class="home"></i><i class="away"></i></div>
+              </div>
+              <div class="row">
+                <span class="label">Últimos 5'</span>
+                <div class="split" id="window"><i class="home"></i><i class="away"></i></div>
+              </div>
             </div>
-            <div class="row">
-              <span class="label">Últimos 5'</span>
-              <div class="split" id="window"><i class="home"></i><i class="away"></i></div>
-            </div>
-          </div>
-        </section>
+          </section>
+
+          <section class="panel stats-panel" aria-label="Estadísticas">
+            <header class="section-lead">
+              <span class="section-num">V</span>
+              <h2>Estadísticas acumuladas</h2>
+            </header>
+            <table class="stats">
+              <caption>Comparativa de volumen y acierto entre ambos conjuntos</caption>
+              <tbody id="stats-body"></tbody>
+            </table>
+          </section>
+        </div>
       </div>
 
-      <!-- Estadísticas de partido -->
-      <section class="panel stats-panel" aria-label="Estadísticas">
-        <header class="section-lead">
-          <span class="section-num">V</span>
-          <h2>Estadísticas acumuladas</h2>
-        </header>
-        <table class="stats">
-          <caption>Comparativa de volumen y acierto entre ambos conjuntos</caption>
-          <tbody id="stats-body"></tbody>
-        </table>
-
-        <!-- Transparencia del motor y retención -->
-        <div class="watermark-note">
-          <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
-            Retención de flujo: <b id="pending">0</b> eventos esperando a la marca de agua
-          </p>
-        </div>
-      </section>
+      <!-- Transparencia del motor y retención -->
+      <div class="watermark-note">
+        <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
+          Retención de flujo: <b id="pending">0</b> eventos esperando a la marca de agua
+        </p>
+      </div>
     </div>
 
     <!-- Barra lateral derecha: Próximos partidos programados -->
