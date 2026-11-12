@@ -98,7 +98,13 @@ function renderSelector(sports, current) {
       const link = document.createElement("a");
       const config = SPORTS[sport] ?? SPORTS.football;
       link.href = `?partido=${encodeURIComponent(matchId)}`;
-      link.textContent = `${config.icon} ${config.label}`;
+      const icon = document.createElement("span");
+      icon.className = "sport-ball";
+      icon.textContent = config.icon;
+      const label = document.createElement("span");
+      label.className = "sport-label";
+      label.textContent = config.label;
+      link.append(icon, label);
       if (matchId === current) link.setAttribute("aria-current", "true");
       return link;
     }),
