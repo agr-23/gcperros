@@ -3,12 +3,45 @@
 // resultados tiene el mercado de ganador y qué estadísticas se enseñan.
 "use strict";
 
+const BALL_SVGS = {
+  football:
+    '<svg class="sport-ball-svg" viewBox="0 0 24 24" fill="none">' +
+    '<circle cx="12" cy="12" r="10.5" fill="#f8fafc" stroke="#1e293b" stroke-width="1.4"/>' +
+    '<polygon points="12,7.5 15.8,10.2 14.3,14.6 9.7,14.6 8.2,10.2" fill="#1e293b"/>' +
+    '<line x1="12" y1="7.5" x2="12" y2="1.5" stroke="#1e293b" stroke-width="1.3"/>' +
+    '<line x1="15.8" y1="10.2" x2="22" y2="8" stroke="#1e293b" stroke-width="1.3"/>' +
+    '<line x1="14.3" y1="14.6" x2="18.5" y2="20" stroke="#1e293b" stroke-width="1.3"/>' +
+    '<line x1="9.7" y1="14.6" x2="5.5" y2="20" stroke="#1e293b" stroke-width="1.3"/>' +
+    '<line x1="8.2" y1="10.2" x2="2" y2="8" stroke="#1e293b" stroke-width="1.3"/>' +
+    '</svg>',
+  basketball:
+    '<svg class="sport-ball-svg" viewBox="0 0 24 24" fill="none">' +
+    '<circle cx="12" cy="12" r="10.5" fill="#ea580c" stroke="#1e293b" stroke-width="1.4"/>' +
+    '<line x1="1.5" y1="12" x2="22.5" y2="12" stroke="#1e293b" stroke-width="1.3"/>' +
+    '<line x1="12" y1="1.5" x2="12" y2="22.5" stroke="#1e293b" stroke-width="1.3"/>' +
+    '<path d="M 4.5 4.5 C 8.5 8.5 8.5 15.5 4.5 19.5" stroke="#1e293b" stroke-width="1.3" fill="none"/>' +
+    '<path d="M 19.5 4.5 C 15.5 8.5 15.5 15.5 19.5 19.5" stroke="#1e293b" stroke-width="1.3" fill="none"/>' +
+    '</svg>',
+  american_football:
+    '<svg class="sport-ball-svg" viewBox="0 0 24 24" fill="none">' +
+    '<g transform="rotate(-35 12 12)">' +
+    '<ellipse cx="12" cy="12" rx="10.5" ry="6.2" fill="#85371b" stroke="#1e293b" stroke-width="1.3"/>' +
+    '<path d="M 3.8 8.5 C 4.8 10 4.8 14 3.8 15.5" stroke="#f8fafc" stroke-width="1.2" fill="none"/>' +
+    '<path d="M 20.2 8.5 C 19.2 10 19.2 14 20.2 15.5" stroke="#f8fafc" stroke-width="1.2" fill="none"/>' +
+    '<line x1="7.5" y1="12" x2="16.5" y2="12" stroke="#f8fafc" stroke-width="1.4"/>' +
+    '<line x1="9.5" y1="9.5" x2="9.5" y2="14.5" stroke="#f8fafc" stroke-width="1.3"/>' +
+    '<line x1="12" y1="9" x2="12" y2="15" stroke="#f8fafc" stroke-width="1.3"/>' +
+    '<line x1="14.5" y1="9.5" x2="14.5" y2="14.5" stroke="#f8fafc" stroke-width="1.3"/>' +
+    '</g></svg>',
+};
+
 const pad2 = (n) => String(n).padStart(2, "0");
 
 const SPORTS = {
   football: {
     label: "Fútbol",
     icon: "⚽",
+    svg: BALL_SVGS.football,
     headline: "goals",
     estimate: "total_xg",
     estimateTitle: "Goles esperados (xG) acumulados",
@@ -39,6 +72,7 @@ const SPORTS = {
   basketball: {
     label: "Baloncesto",
     icon: "🏀",
+    svg: BALL_SVGS.basketball,
     headline: "points",
     estimate: "expected_points",
     estimateTitle: "Puntos esperados acumulados",
@@ -81,6 +115,7 @@ const SPORTS = {
 SPORTS.american_football = {
   label: "Fútbol americano",
   icon: "🏈",
+  svg: BALL_SVGS.american_football,
   market: false,
   headline: "points",
   estimate: "kick_expected_points",

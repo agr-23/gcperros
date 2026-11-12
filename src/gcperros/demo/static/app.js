@@ -100,7 +100,7 @@ function renderSelector(sports, current) {
       link.href = `?partido=${encodeURIComponent(matchId)}`;
       const icon = document.createElement("span");
       icon.className = "sport-ball";
-      icon.textContent = config.icon;
+      icon.innerHTML = config.svg ?? config.icon;
       const label = document.createElement("span");
       label.className = "sport-label";
       label.textContent = config.label;
