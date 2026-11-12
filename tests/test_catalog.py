@@ -43,7 +43,13 @@ def _analytics_tables() -> set[str]:
 
 def test_the_terraform_declares_what_the_tests_expect() -> None:
     """Si el formato del Terraform cambia, que fallen estas y no pasen las demás."""
-    assert _streams() == {"match-events", "odds-updates", "basketball-events", "basketball-odds"}
+    assert _streams() == {
+        "match-events",
+        "odds-updates",
+        "basketball-events",
+        "basketball-odds",
+        "american-football-events",
+    }
     assert len(_analytics_tables()) >= 5
 
 

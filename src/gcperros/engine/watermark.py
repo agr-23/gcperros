@@ -121,6 +121,10 @@ class WatermarkReorderer:
             max_buffered=self._max_buffered,
         )
 
+    def pending(self) -> list[MatchEvent]:
+        """Lo que espera en el buffer, en orden, sin sacarlo (sección 3)."""
+        return [entry[2] for entry in sorted(self._buffer)]
+
     def push(self, event: MatchEvent) -> tuple[bool, list[MatchEvent]]:
         """Ofrece un evento y devuelve los que ya son seguros de aplicar.
 
@@ -147,6 +151,24 @@ class WatermarkReorderer:
 
         self._advance_watermark(event.event_time)
         return True, self._release()
+
+    def tick(self, now: datetime) -> list[MatchEvent]:
+        """Latido: el reloj avanza aunque no llegue nada (sección 3).
+
+        Sin latido la marca de agua sólo avanza con las llegadas, y en una
+        pausa del juego lo último que pasó espera hasta que el juego se
+        reanuda. Con él avanza a ``now`` menos el margen, igual que si hubiera
+        llegado un evento de ese instante, y nunca retrocede.
+
+        Returns:
+            Los eventos que la marca de agua acaba de rebasar, en orden.
+        """
+        if self._max_event_time is None:
+            return []  # sin nada visto no hay de qué estar seguro
+        candidate = now - self._allowed_lateness
+        if self._watermark is None or candidate > self._watermark:
+            self._watermark = candidate
+        return self._release()
 
     def flush(self) -> list[MatchEvent]:
         """Vacía el buffer al cerrarse el flujo.

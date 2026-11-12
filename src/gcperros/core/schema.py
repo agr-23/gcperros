@@ -28,19 +28,25 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from gcperros.core import court, pitch
+from gcperros.core import court, gridiron, pitch
 from gcperros.core.contracts import (
+    AMERICAN_FOOTBALL_CONTRACT_VERSION,
+    AMERICAN_FOOTBALL_EVENT_TYPES,
+    AMERICAN_FOOTBALL_POSSESSION_REASONS,
     BASKETBALL_CONTRACT_VERSION,
     BASKETBALL_EVENT_TYPES,
     BASKETBALL_MARKET_OUTCOMES,
     BASKETBALL_ODDS_CONTRACT_VERSION,
     BASKETBALL_ODDS_TRIGGERS,
     BASKETBALL_POSSESSION_REASONS,
+    CONVERSION_KINDS,
     EVENT_TYPES,
+    GRIDIRON_TURNOVER_KINDS,
     MARKET_OUTCOMES,
     MATCH_CONTRACT_VERSION,
     ODDS_CONTRACT_VERSION,
     ODDS_TRIGGERS,
+    PLAY_KINDS,
     POSSESSION_REASONS,
     REBOUND_KINDS,
     TURNOVER_KINDS,
@@ -54,6 +60,7 @@ MATCH_EVENTS_STREAM = "match-events"
 ODDS_UPDATES_STREAM = "odds-updates"
 BASKETBALL_EVENTS_STREAM = "basketball-events"
 BASKETBALL_ODDS_STREAM = "basketball-odds"
+AMERICAN_FOOTBALL_EVENTS_STREAM = "american-football-events"
 
 #: Periodos reglamentarios. Se declaran aquí y no se importan del generador
 #: porque son valores del contrato: el consumidor los necesita sin tener acceso
@@ -389,6 +396,92 @@ BASKETBALL_EVENT_SCHEMA = StreamSchema(
 
 
 ###############################################################################
+# Flujo `american-football-events` (tercer deporte)
+###############################################################################
+
+_GRIDIRON_TIME = (
+    FieldSpec("period", FieldKind.INTEGER, minimum=1, maximum=gridiron.MAX_PERIOD),
+    FieldSpec(
+        "clock_s",
+        FieldKind.NUMBER,
+        required=False,
+        minimum=0.0,
+        maximum=gridiron.PERIOD_DURATION_S,
+    ),
+)
+
+AMERICAN_FOOTBALL_VARIANTS: Mapping[str, tuple[FieldSpec, ...]] = {
+    "possession_change": (
+        _team_reference("from_team"),
+        _team_reference("to_team"),
+        FieldSpec("reason", FieldKind.STRING, allowed=AMERICAN_FOOTBALL_POSSESSION_REASONS),
+        *_GRIDIRON_TIME,
+    ),
+    "play": (
+        FieldSpec("kind", FieldKind.STRING, allowed=PLAY_KINDS),
+        FieldSpec(
+            "yards",
+            FieldKind.INTEGER,
+            minimum=-gridiron.MAX_PLAY_YARDS,
+            maximum=gridiron.MAX_PLAY_YARDS,
+        ),
+        FieldSpec("down", FieldKind.INTEGER, minimum=1, maximum=gridiron.DOWNS),
+        *_GRIDIRON_TIME,
+    ),
+    "touchdown": (*_GRIDIRON_TIME,),
+    # Una conversión vale uno pateada y dos jugada: el tipo lo dice, no un número.
+    "conversion": (
+        FieldSpec("kind", FieldKind.STRING, allowed=CONVERSION_KINDS),
+        FieldSpec("made", FieldKind.BOOLEAN),
+        _probability("make_probability"),
+        *_GRIDIRON_TIME,
+    ),
+    "field_goal": (
+        FieldSpec(
+            "distance_yd",
+            FieldKind.INTEGER,
+            minimum=gridiron.MIN_FIELD_GOAL_YARDS,
+            maximum=gridiron.MAX_FIELD_GOAL_YARDS,
+        ),
+        FieldSpec("made", FieldKind.BOOLEAN),
+        _probability("make_probability"),
+        *_GRIDIRON_TIME,
+    ),
+    "punt": (
+        FieldSpec("yards", FieldKind.INTEGER, minimum=0, maximum=gridiron.MAX_PLAY_YARDS),
+        *_GRIDIRON_TIME,
+    ),
+    "turnover": (
+        FieldSpec("kind", FieldKind.STRING, allowed=GRIDIRON_TURNOVER_KINDS),
+        *_GRIDIRON_TIME,
+    ),
+    "safety": (*_GRIDIRON_TIME,),
+    "timeout": (*_GRIDIRON_TIME,),
+}
+
+#: El sobre de siempre, con su vocabulario y su versión.
+AMERICAN_FOOTBALL_ENVELOPE: tuple[FieldSpec, ...] = (
+    *BASKETBALL_ENVELOPE[:4],
+    FieldSpec("event_type", FieldKind.STRING, allowed=AMERICAN_FOOTBALL_EVENT_TYPES),
+    FieldSpec(
+        "contract_version",
+        FieldKind.STRING,
+        allowed=frozenset({AMERICAN_FOOTBALL_CONTRACT_VERSION}),
+    ),
+    FieldSpec("attrs", FieldKind.OBJECT),
+)
+
+AMERICAN_FOOTBALL_EVENT_SCHEMA = StreamSchema(
+    stream=AMERICAN_FOOTBALL_EVENTS_STREAM,
+    contract_version=AMERICAN_FOOTBALL_CONTRACT_VERSION,
+    envelope=AMERICAN_FOOTBALL_ENVELOPE,
+    discriminator="event_type",
+    variant_container="attrs",
+    variants=AMERICAN_FOOTBALL_VARIANTS,
+)
+
+
+###############################################################################
 # Flujo `odds-updates`
 ###############################################################################
 
@@ -463,4 +556,5 @@ SCHEMAS: Mapping[str, StreamSchema] = {
     ODDS_UPDATES_STREAM: ODDS_UPDATE_SCHEMA,
     BASKETBALL_EVENTS_STREAM: BASKETBALL_EVENT_SCHEMA,
     BASKETBALL_ODDS_STREAM: BASKETBALL_ODDS_SCHEMA,
+    AMERICAN_FOOTBALL_EVENTS_STREAM: AMERICAN_FOOTBALL_EVENT_SCHEMA,
 }

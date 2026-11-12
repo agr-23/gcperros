@@ -41,6 +41,11 @@ output "engine_push_subscriptions_enabled" {
   value       = local.push_enabled
 }
 
+output "engine_url" {
+  description = "URL del motor en Cloud Run, si esta raíz lo despliega (`engine_image`)."
+  value       = one(google_cloud_run_v2_service.engine[*].uri)
+}
+
 output "raw_dataset_id" {
   description = "Dataset de BigQuery que contiene las tablas Raw (HU-14)."
   value       = google_bigquery_dataset.raw.dataset_id

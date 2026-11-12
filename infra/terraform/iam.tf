@@ -64,11 +64,11 @@ resource "google_service_account" "pubsub_invoker" {
 # Cloud Run se declara en la historia que despliega el motor; hasta entonces
 # esta autorización no tiene destino y por eso viaja junto a la SA.
 resource "google_cloud_run_v2_service_iam_member" "engine_invoker" {
-  count = local.push_enabled && var.engine_service_name != null ? 1 : 0
+  count = local.push_enabled && local.engine_service_name != null ? 1 : 0
 
   project  = var.project_id
   location = var.region
-  name     = var.engine_service_name
+  name     = local.engine_service_name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${local.pubsub_invoker_email}"
 }

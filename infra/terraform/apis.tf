@@ -12,10 +12,12 @@ locals {
     "pubsub.googleapis.com",
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com",
-    "bigquery.googleapis.com",      # capa Raw (HU-14)
-    "firestore.googleapis.com",     # estado vivo (HU-15)
-    "secretmanager.googleapis.com", # clave de seudonimización (historia #27)
-    "monitoring.googleapis.com",    # métricas operativas y alertas SLA (HU-30)
+    "bigquery.googleapis.com",         # capa Raw (HU-14)
+    "firestore.googleapis.com",        # estado vivo (HU-15)
+    "secretmanager.googleapis.com",    # clave de seudonimización (historia #27)
+    "monitoring.googleapis.com",       # métricas operativas y alertas SLA (HU-30)
+    "run.googleapis.com",              # el motor en Cloud Run (cloud_run.tf)
+    "artifactregistry.googleapis.com", # la imagen del motor
   ]
 }
 

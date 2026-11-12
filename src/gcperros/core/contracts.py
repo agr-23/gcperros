@@ -95,6 +95,45 @@ TurnoverKind: TypeAlias = Literal[
 ]
 TURNOVER_KINDS: frozenset[str] = frozenset(get_args(TurnoverKind))
 
+###############################################################################
+# Contrato del flujo `american-football-events` (tercer deporte)
+#
+# El mismo sobre otra vez, con el vocabulario del fútbol americano. Los puntos,
+# como en baloncesto, los dice el propio evento: un touchdown vale seis, una
+# conversión uno o dos si entra, un gol de campo tres y un safety dos.
+###############################################################################
+
+AMERICAN_FOOTBALL_CONTRACT_VERSION = "v1"
+
+AmericanFootballEventType: TypeAlias = Literal[
+    "possession_change",
+    "play",
+    "touchdown",
+    "conversion",
+    "field_goal",
+    "punt",
+    "turnover",
+    "safety",
+    "timeout",
+]
+AMERICAN_FOOTBALL_EVENT_TYPES: frozenset[str] = frozenset(get_args(AmericanFootballEventType))
+
+AmericanFootballPossessionReason: TypeAlias = Literal[
+    "kickoff", "touchdown", "field_goal", "punt", "turnover", "downs", "safety", "half_start"
+]
+AMERICAN_FOOTBALL_POSSESSION_REASONS: frozenset[str] = frozenset(
+    get_args(AmericanFootballPossessionReason)
+)
+
+PlayKind: TypeAlias = Literal["run", "pass_complete", "pass_incomplete", "sack"]
+PLAY_KINDS: frozenset[str] = frozenset(get_args(PlayKind))
+
+ConversionKind: TypeAlias = Literal["kick", "two_point"]
+CONVERSION_KINDS: frozenset[str] = frozenset(get_args(ConversionKind))
+
+GridironTurnoverKind: TypeAlias = Literal["interception", "fumble"]
+GRIDIRON_TURNOVER_KINDS: frozenset[str] = frozenset(get_args(GridironTurnoverKind))
+
 #: Espacio de nombres fijo para derivar identificadores. Al ser constante, el
 #: mismo partido con la misma semilla produce los mismos `event_id`, que es lo
 #: que permite comparar dos ejecuciones byte a byte.
@@ -140,7 +179,7 @@ class MatchEvent:
     event_time: datetime
     match_id: str
     team: str
-    event_type: EventType | BasketballEventType
+    event_type: EventType | BasketballEventType | AmericanFootballEventType
     attrs: dict[str, JsonValue]
 
     def to_dict(self) -> dict[str, JsonValue]:
@@ -352,6 +391,16 @@ def parse_basketball_event(message: bytes | str) -> MatchEvent:
     return _parse_event(message, BASKETBALL_EVENT_TYPES)
 
 
+def parse_american_football_event(message: bytes | str) -> MatchEvent:
+    """Reconstruye un evento de fútbol americano. Es la vuelta del mismo ``to_json``.
+
+    Raises:
+        ContractViolationError: Si el mensaje no es JSON, le faltan campos o su
+            tipo no es del vocabulario del fútbol americano.
+    """
+    return _parse_event(message, AMERICAN_FOOTBALL_EVENT_TYPES)
+
+
 def _parse_event(message: bytes | str, event_types: frozenset[str]) -> MatchEvent:
     try:
         payload = json.loads(message)
@@ -375,7 +424,7 @@ def _parse_event(message: bytes | str, event_types: frozenset[str]) -> MatchEven
         match_id=str(_require(payload, "match_id", str)),
         team=str(_require(payload, "team", str)),
         # Ya se comprobó contra el vocabulario del flujo: el estrechamiento es seguro.
-        event_type=cast("EventType | BasketballEventType", event_type),
+        event_type=cast("EventType | BasketballEventType | AmericanFootballEventType", event_type),
         attrs=attrs,
     )
 

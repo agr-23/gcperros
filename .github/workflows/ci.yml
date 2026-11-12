@@ -180,6 +180,21 @@ jobs:
       - name: Publicación en modo de ensayo
         run: gcperros-publish --seed "$REFERENCE_SEED" --dry-run
 
+  # La imagen que despliega Cloud Run se construye y arranca en cada cambio:
+  # un Dockerfile que nadie construye se rompe sin que nadie se entere.
+  engine-image:
+    name: Imagen del motor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -t gcperros-engine .
+      - name: El contenedor arranca y responde a la sonda de salud
+        run: |
+          docker run -d --name motor -p 8080:8080 gcperros-engine gcperros-engine-service --memory
+          for _ in $(seq 30); do curl -fsS localhost:8080/healthz && exit 0; sleep 1; done
+          docker logs motor; exit 1
+
   terraform:
     name: Terraform
     runs-on: ubuntu-latest

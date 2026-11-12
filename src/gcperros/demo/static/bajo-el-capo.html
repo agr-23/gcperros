@@ -10,6 +10,7 @@
   <header class="bar">
     <span class="brand">GCPerros</span>
     <nav class="nav"><a href="/">En vivo</a><a href="confianza.html">Por qué confiar</a><a href="bajo-el-capo.html" aria-current="page">Bajo el capó</a></nav>
+    <nav class="sports" id="sports" aria-label="Deporte" hidden></nav>
   </header>
 
   <main class="wrap">
@@ -29,7 +30,7 @@
         </li>
         <li>
           <div class="stage-tag"><span class="step-num">02</span> Transportar</div>
-          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/pubsub.tf" target="_blank" rel="noopener"><b>Pub/Sub <span class="ext">↗</span></b><span>Eventos y cuotas de cada deporte: cuatro flujos, cada uno con Dead Letter.</span></a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/pubsub.tf" target="_blank" rel="noopener"><b>Pub/Sub <span class="ext">↗</span></b><span>Eventos y cuotas de fútbol y baloncesto, y las jugadas del fútbol americano: 5 flujos, cada uno con Dead Letter.</span></a>
         </li>
         <li>
           <div class="stage-tag"><span class="step-num">03</span> Procesar</div>
@@ -62,12 +63,13 @@
           </ul>
         </div>
         <div class="diff-card own">
-          <h3><span class="badge badge-own">Específico</span> Lo que trajo el baloncesto</h3>
+          <h3><span class="badge badge-own">Propio</span> La capa del deporte</h3>
           <ul>
-            <li>Flujos <code>basketball-events</code> y <code>basketball-odds</code></li>
-            <li>Cuotas: <b>ganador sin empate</b> y total de puntos</li>
-            <li>Umbral de la señal en <b>0,10</b></li>
-            <li><b>Margen</b> de 15 s y corte de juego en el reloj de <b>24 s</b></li>
+            <li><b>Contrato y flujos</b>: <code>basketball-events</code>, <code>basketball-odds</code></li>
+            <li><b>Estado vivo</b>: puntos, puntos esperados, tiros, rebotes</li>
+            <li><b>Mercado</b>: ganador sin empate y total de puntos</li>
+            <li><b>Umbral de la señal</b>: 0,10 frente a 0,05</li>
+            <li><b>Margen</b> de 15 s y corte de juego en el reloj de 24 s</li>
           </ul>
         </div>
       </div>
@@ -104,6 +106,7 @@
           <tr><td><code>dim_operator</code></td><td><span class="tag tag-dim">dimensión</span></td><td>—</td><td>—</td></tr>
         </tbody>
       </table></div>
+      <p class="aside">Los hechos de los dos deportes comparten tabla, con una columna <code>sport</code> y las columnas propias de cada uno vacías en el otro: añadir el baloncesto no tocó una columna del fútbol.</p>
       <div class="kpi-banner">
         <div class="kpi-num">~2%</div>
         <div class="kpi-info">
@@ -117,11 +120,12 @@
     <section class="panel" aria-label="Infraestructura">
       <h2>Infraestructura como código (Terraform)</h2>
       <div class="infra-grid">
-        <div class="infra-card"><span class="infra-icon">📨</span><div><b>Mensajería (Pub/Sub)</b><p>4 topics, eventos y cuotas de cada deporte, con dead letter aislada.</p></div></div>
+        <div class="infra-card"><span class="infra-icon">📨</span><div><b>Mensajería (Pub/Sub)</b><p>5 topics de partido (fútbol, baloncesto y fútbol americano), cada uno con dead letter aislada.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📊</span><div><b>Almacén Analítico (BigQuery)</b><p>2 datasets (Raw append-only y Analítico dimensional particionado).</p></div></div>
         <div class="infra-card"><span class="infra-icon">⚡</span><div><b>Estado en Vivo (Firestore)</b><p>1 base de datos nativa para persistir el documento vivo de cada partido.</p></div></div>
         <div class="infra-card"><span class="infra-icon">🛡️</span><div><b>Seguridad e Identidad (IAM)</b><p>5 cuentas de servicio con mínimos privilegios, sin credenciales estáticas; la de los datos de usuario no puede leer lo que publica.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📦</span><div><b>Registro de Artefactos</b><p>Artifact Registry para la imagen del motor en contenedor (Cloud Run).</p></div></div>
+        <div class="infra-card"><span class="infra-icon">🚀</span><div><b>El motor (Cloud Run)</b><p>Recibe Pub/Sub por push, con un latido por segundo, y escribe en Firestore. Se despliega al indicar <code>engine_image</code>.</p></div></div>
       </div>
       <p class="aside">Todo declarado en Terraform y validado en CI. Sin dependencias opacas y con migraciones reproducibles.</p>
     </section>
@@ -131,5 +135,7 @@
     <b>Uso responsable.</b> Proyecto académico con datos sintéticos. La señal informa, no recomienda apostar:
     GCPerros no ejecuta apuestas, no intermedia en el juego y no promete rentabilidad.
   </aside>
+  <script src="sport.js"></script>
+  <script src="pages.js"></script>
 </body>
 </html>

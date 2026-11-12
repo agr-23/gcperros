@@ -34,3 +34,12 @@ def test_the_service_account_count_matches_the_terraform() -> None:
     )
 
     assert f"{declared} cuentas de servicio" in PAGE
+
+
+def test_the_stream_count_matches_the_terraform() -> None:
+    """Cada flujo trae su ``contract_version`` en ``locals.tf``: el tercer deporte también."""
+    locals_tf = (TERRAFORM / "locals.tf").read_text(encoding="utf-8")
+    declared = len(re.findall(r'"[a-z-]+" = \{\s*contract_version', locals_tf))
+
+    assert f"{declared} flujos" in PAGE
+    assert f"{declared} topics de partido" in PAGE

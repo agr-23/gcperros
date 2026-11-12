@@ -47,12 +47,21 @@ locals {
       producer         = "Generador de cuotas de baloncesto (#90)"
       description      = "Cuotas de ganador y total de puntos, reactivas a las canastas."
     }
+
+    "american-football-events" = {
+      contract_version = "v1"
+      producer         = "Generador de partidos de fútbol americano"
+      description      = "Jugadas, touchdowns, conversiones, goles de campo, despejes y pérdidas."
+    }
   }
 
-  # El motor solo se conecta por push cuando ya existe su URL de Cloud Run.
-  push_enabled         = var.engine_push_endpoint != null
+  # El motor se conecta por push cuando hay URL: la que se indique, o la del
+  # servicio que esta raíz despliega con `engine_image` (cloud_run.tf).
+  push_enabled         = var.engine_push_endpoint != null || var.engine_image != null
+  engine_base_url      = var.engine_push_endpoint != null ? var.engine_push_endpoint : one(google_cloud_run_v2_service.engine[*].uri)
+  engine_service_name  = var.engine_image != null ? "${local.prefix}gcperros-engine" : var.engine_service_name
   pubsub_invoker_email = one(google_service_account.pubsub_invoker[*].email)
-  engine_push_url      = local.push_enabled ? "${trimsuffix(var.engine_push_endpoint, "/")}${var.engine_push_path}" : null
+  engine_push_url      = local.push_enabled ? "${trimsuffix(local.engine_base_url, "/")}${var.engine_push_path}" : null
 
   #############################################################################
   # Suscripciones por flujo.
@@ -94,7 +103,7 @@ locals {
         "${local.prefix}${name}-engine" = {
           push_endpoint              = local.engine_push_url
           push_service_account_email = local.pubsub_invoker_email
-          push_audience              = var.engine_push_endpoint
+          push_audience              = local.engine_base_url
           ack_deadline_seconds       = var.engine_ack_deadline_seconds
           message_retention_duration = "604800s"
           retain_acked_messages      = false

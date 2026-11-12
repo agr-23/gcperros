@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -31,6 +32,8 @@ def test_a_report_is_served_as_its_cli_wrote_it(tmp_path: Path) -> None:
         "validacion": True,
         "carga": False,
         "calidad": False,
+        "calidad-baloncesto": False,
+        "comparacion": False,
     }
     assert client.get("/api/reports/validacion").json() == written
     assert client.get("/api/reports/carga").status_code == 404
@@ -84,7 +87,11 @@ def test_under_the_hood_is_linked_and_honest_about_estimates() -> None:
         assert 'href="bajo-el-capo.html"' in client.get(linked_from).text
     # Las cifras de particionamiento salen de un modelo de costes, no de BigQuery.
     assert "estimación" in page.text
-    assert "<script" not in page.text
+    # Ningún script calcula nada: los únicos son los del selector de deporte.
+    assert re.findall(r"<script[^>]*>", page.text) == [
+        '<script src="sport.js">',
+        '<script src="pages.js">',
+    ]
 
 
 def test_every_page_shows_the_responsible_use_notice() -> None:
@@ -96,3 +103,16 @@ def test_every_page_shows_the_responsible_use_notice() -> None:
         assert 'class="disclaimer"' in html, page
         assert "no recomienda apostar" in html, page
     assert ".disclaimer" in client.get("/app.css").text
+
+
+def test_the_trust_page_compares_both_sports_and_sums_up_on_top(tmp_path: Path) -> None:
+    """#99: la tabla de B5, la calidad de los dos deportes y una cifra por pregunta."""
+    client = _client(tmp_path)
+    page = client.get("/confianza.html").text
+    script = client.get("/confianza.js").text
+
+    assert 'id="comparacion"' in page and 'id="kpis"' in page
+    assert "function comparacion" in script and "function fillKpi" in script
+    assert 'load("calidad-baloncesto")' in script
+    # Lo de estrés no se aprueba ni se suspende: aguanta o se rompe.
+    assert '"aguanta", "se rompe"' in script

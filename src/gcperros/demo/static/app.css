@@ -268,6 +268,7 @@ body { padding-bottom: 72px; }
 /* Segundo deporte (#92). Los mismos componentes; cambian los colores y el
    suelo del marcador. Lo esencial está aquí; el pulido, en T3 y A3. */
 .sports { display: flex; gap: 6px; }
+.sports[hidden] { display: none; }
 .sports a {
   color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600;
   padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line);
@@ -331,7 +332,7 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
   .board { grid-area: board; }
   .market { grid-area: market; }
   .signals-panel { grid-area: signals; align-self: stretch; display: flex; flex-direction: column; }
-  .signals-panel .signals { max-height: none; flex: 1 1 0; min-height: 260px; }
+  .signals-panel .signals { max-height: none; flex: 1 1 0; min-height: 260px; align-content: start; }
   .signals-panel .signals li { grid-template-columns: 44px 1fr; row-gap: 2px; }
   .signals-panel .signals .nums { grid-column: 2; }
   .estimate-panel { grid-area: estimate; }
@@ -376,6 +377,83 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
   .state[data-phase="live"]::before, .score .bump { animation: none; }
 }
 
+/* Trazabilidad (#99): el número grande, la prueba en una píldora, la ficha y
+   una línea de tiempo con lo que aportó cada evento. */
+.trace { position: relative; width: min(620px, calc(100% - 32px)); padding: 22px 24px; box-shadow: 0 24px 64px rgb(0 0 0 / 55%); }
+.trace[open] { animation: rise 0.18s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.trace-x { position: absolute; top: 10px; right: 12px; }
+.trace-x button {
+  width: 32px; height: 32px; border: 0; border-radius: 50%; cursor: pointer;
+  background: transparent; color: var(--muted); font-size: 1.4rem; line-height: 1;
+}
+.trace-x button:hover, .trace-x button:focus-visible { background: var(--line); color: var(--ink); outline: none; }
+.trace-head { display: flex; align-items: baseline; gap: 10px; padding-right: 36px; margin-bottom: 12px; }
+.trace-chip {
+  font: 700 0.75rem/1 ui-monospace, Consolas, monospace; padding: 4px 8px; border-radius: 4px;
+  background: var(--line); color: var(--ink);
+}
+.trace-chip.home { background: var(--home); color: var(--ground); }
+.trace-chip.away { background: var(--away); color: var(--ground); }
+.trace .trace-title { font-weight: 700; font-size: 1.1rem; flex: 1; }
+.trace-value { font: 800 2rem/1 ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.trace-verdict { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; }
+.trace-verdict.ok { background: rgb(79 192 141 / 12%); color: var(--ok); }
+.trace-verdict.ko { background: rgb(240 122 95 / 12%); color: var(--warn); }
+.trace-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, auto)); gap: 8px 24px; margin: 0 0 12px;
+}
+.trace-facts dt { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.trace-facts dd { margin: 2px 0 0; font: 600 0.85rem ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+.trace-facts dd[title] { cursor: help; }
+.trace .trace-events {
+  columns: auto; display: grid; gap: 2px; max-height: 300px; overflow-y: auto;
+  margin: 0 0 10px; padding: 0 4px 0 0; font: 0.88rem ui-monospace, Consolas, monospace;
+}
+.trace-events li { display: grid; grid-template-columns: 44px 1fr 96px; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 4px; }
+.trace-events li:nth-child(odd) { background: rgb(0 0 0 / 18%); }
+.trace-events .when { color: var(--muted); }
+.trace-events .amount {
+  text-align: right; padding-right: 4px; font-weight: 700; color: var(--ink);
+  background: linear-gradient(90deg, transparent calc(100% - var(--w)), rgb(255 255 255 / 10%) 0) no-repeat;
+}
+.trace-foot { color: var(--muted); font-size: 0.8rem; margin: 0 0 10px; }
+.trace-versus { display: grid; gap: 6px; margin: 0 0 12px; }
+.vs-row { display: grid; grid-template-columns: 70px 1fr 48px; gap: 10px; align-items: center; font-size: 0.85rem; }
+.vs-bar { height: 12px; border-radius: 6px; background: linear-gradient(90deg, currentColor var(--w), var(--line) 0); }
+.vs-row.vs-model { color: var(--ink); }
+.vs-row.vs-market { color: var(--warn); }
+.vs-label { color: var(--muted); }
+.vs-num { font: 700 0.9rem ui-monospace, Consolas, monospace; text-align: right; }
+.vs-gap { margin: 2px 0 0; color: var(--muted); font-size: 0.8rem; }
+@media (prefers-reduced-motion: reduce) { .trace[open] { animation: none; } }
+
+/* «Por qué confiar» (#99): una cifra por pregunta arriba, y debajo el detalle. */
+.trust-hero {
+  padding: 26px 28px; border-radius: 12px; border: 1px solid var(--line);
+  background: linear-gradient(135deg, var(--panel) 0%, #1a2c4b 100%);
+}
+.trust-hero h1 { margin: 0 0 6px; font-size: clamp(1.4rem, 3vw, 1.9rem); letter-spacing: -0.01em; }
+.trust-hero > p { margin: 0 0 18px; color: var(--muted); max-width: 64ch; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.kpi {
+  display: grid; gap: 4px; padding: 14px 16px; border-radius: 10px; text-decoration: none; color: var(--ink);
+  background: var(--ground); border: 1px solid var(--line); border-top: 3px solid var(--muted);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.kpi:hover, .kpi:focus-visible { transform: translateY(-2px); border-color: var(--home); outline: none; }
+.kpi[data-state="ok"] { border-top-color: var(--ok); }
+.kpi[data-state="ko"] { border-top-color: var(--warn); }
+.kpi-label { font: 700 0.72rem/1 system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.kpi b { font: 800 2rem/1.1 ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.kpi[data-state="ok"] b { color: var(--ok); }
+.kpi[data-state="ko"] b { color: var(--warn); }
+.kpi small { color: var(--muted); font-size: 0.8rem; }
+.trust-page .trust { scroll-margin-top: 16px; }
+#comparacion .trust-table td:not(:first-child), #calidad .trust-table td:not(:first-child) { text-align: center; }
+#comparacion .trust-table th:not(:first-child), #calidad .trust-table th:not(:first-child) { text-align: center; }
+@media (prefers-reduced-motion: reduce) { .kpi { transition: none; } }
+
 /* «Bajo el capó» (#96): lo que el segundo deporte comparte y lo que trae. */
 .sport-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
 .diff-card { background: var(--ground); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
@@ -388,5 +466,3 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
 .badge-shared { background: rgb(79 192 141 / 15%); color: var(--ok); border: 1px solid rgb(79 192 141 / 30%); }
 .badge-own { background: rgb(242 138 46 / 15%); color: #f28a2e; border: 1px solid rgb(242 138 46 / 30%); }
 @media (max-width: 760px) { .sport-diff { grid-template-columns: 1fr; } }
-
-

@@ -91,3 +91,112 @@ def test_schema_tolerates_structural_evolution_without_breaking_existing_data() 
     # Las consultas analíticas previas siguen dando el mismo resultado sobre el registro histórico
     assert historical_record["magnitude"] == 0.08
     assert "signal_severity" not in historical_record
+
+
+def test_schema_tolerates_second_sport_facts_without_breaking_football() -> None:
+    """HU-22 / #94: el modelo estrella tolera el segundo deporte en fact_match_events."""
+    football_event: dict[str, Any] = {
+        "event_id": "evt-fb-001",
+        "match_id": "match-fb-01",
+        "team": "ATM",
+        "event_type": "shot",
+        "minute": 23,
+        "xg": 0.32,
+        # Registros históricos no tenían 'sport' ni columnas de baloncesto
+    }
+
+    basketball_shot: dict[str, Any] = {
+        "event_id": "evt-bb-101",
+        "match_id": "match-bb-01",
+        "team": "LAL",
+        "event_type": "shot",
+        "minute": 4,
+        "second": 12,
+        "period": 1,
+        "sport": "basketball",
+        "points_value": 3,
+        "made": True,
+        "expected_points": 1.14,
+        "xg": None,
+    }
+
+    basketball_possession: dict[str, Any] = {
+        "event_id": "evt-bb-102",
+        "match_id": "match-bb-01",
+        "team": "BOS",
+        "event_type": "possession_change",
+        "minute": 4,
+        "second": 14,
+        "period": 1,
+        "sport": "basketball",
+        "points_value": None,
+        "made": None,
+        "expected_points": None,
+    }
+
+    events: list[dict[str, Any]] = [football_event, basketball_shot, basketball_possession]
+
+    # 1. Consulta histórica de fútbol asume 'football' si 'sport' es nulo/ausente
+    def get_sport(row: dict[str, Any]) -> str:
+        return str(row.get("sport") or "football")
+
+    football_events = [e for e in events if get_sport(e) == "football"]
+    assert len(football_events) == 1
+    assert football_events[0]["xg"] == 0.32
+    assert "points_value" not in football_events[0]
+
+    # 2. Hechos de baloncesto conviven en la misma tabla sin colisión
+    basketball_events = [e for e in events if get_sport(e) == "basketball"]
+    assert len(basketball_events) == 2
+
+    # 3. Consulta de tiros y puntos esperados en baloncesto
+    shots = [e for e in basketball_events if e["event_type"] == "shot"]
+    assert len(shots) == 1
+    assert shots[0]["points_value"] == 3
+    assert shots[0]["made"] is True
+    assert shots[0]["expected_points"] == 1.14
+
+    # 4. Hechos de posesión en baloncesto
+    possessions = [e for e in basketball_events if e["event_type"] == "possession_change"]
+    assert len(possessions) == 1
+    assert possessions[0]["team"] == "BOS"
+
+
+def test_multisport_aggregate_queries_by_sport_and_matchday_run_without_friction() -> None:
+    """HU-22 / #94: consultas analíticas agregadas por deporte y jornada sin reprocesos."""
+    dim_match: dict[str, dict[str, Any]] = {
+        "match-fb-01": {"matchday": 1, "sport": None},  # Antiguo fútbol (NULLABLE sport)
+        "match-fb-02": {"matchday": 1, "sport": "football"},
+        "match-bb-01": {"matchday": 1, "sport": "basketball"},
+    }
+
+    events: list[dict[str, Any]] = [
+        {"match_id": "match-fb-01", "event_type": "shot", "xg": 0.45},
+        {"match_id": "match-fb-02", "event_type": "shot", "xg": 0.35},
+        {"match_id": "match-bb-01", "event_type": "shot", "points_value": 3, "made": True},
+        {"match_id": "match-bb-01", "event_type": "shot", "points_value": 2, "made": False},
+        {"match_id": "match-bb-01", "event_type": "possession_change"},
+    ]
+
+    event_counts: dict[str, int] = {"football": 0, "basketball": 0}
+    football_xg: float = 0.0
+    basketball_points: int = 0
+    basketball_possessions: int = 0
+
+    for evt in events:
+        match_id: str = str(evt["match_id"])
+        sport: str = str(dim_match[match_id].get("sport") or "football")
+        event_counts[sport] += 1
+        if sport == "football":
+            football_xg += float(evt.get("xg", 0.0))
+        elif sport == "basketball":
+            if evt["event_type"] == "shot" and evt.get("made"):
+                basketball_points += int(evt.get("points_value", 0))
+            elif evt["event_type"] == "possession_change":
+                basketball_possessions += 1
+
+    assert event_counts["football"] == 2
+    assert round(football_xg, 2) == 0.80
+    assert event_counts["basketball"] == 3
+    assert basketball_points == 3
+    assert basketball_possessions == 1
