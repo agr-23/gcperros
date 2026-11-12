@@ -28,6 +28,8 @@ logger = logging.getLogger("gcperros.load_raw")
 STREAM_TOPICS: dict[str, str] = {
     "match": "match-events",
     "odds": "odds-updates",
+    "basketball": "basketball-events",
+    "basketball-odds": "basketball-odds",
 }
 
 #: Nombre corto -> tabla Raw que le corresponde. Coincide con
@@ -35,6 +37,8 @@ STREAM_TOPICS: dict[str, str] = {
 STREAM_TABLES: dict[str, str] = {
     "match": "match_events_raw",
     "odds": "odds_updates_raw",
+    "basketball": "basketball_events_raw",
+    "basketball-odds": "basketball_odds_raw",
 }
 
 _DRY_RUN_NAMESPACE = "gcperros-load-raw-dry-run"
@@ -49,9 +53,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--stream",
-        choices=["match", "odds", "both"],
+        choices=[*STREAM_TOPICS, "both"],
         default="both",
-        help="Qué flujo cargar. 'both' no es compatible con --loop: cada "
+        help="Qué flujo cargar. 'both' son los dos del fútbol, y no es compatible con --loop: cada "
         "flujo tiene su propia suscripción y necesita su propio proceso "
         "de larga duración.",
     )

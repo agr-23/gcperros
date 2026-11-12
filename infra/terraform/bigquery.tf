@@ -16,7 +16,7 @@ resource "google_bigquery_dataset" "raw" {
   dataset_id  = var.raw_dataset_id
   project     = var.project_id
   location    = var.raw_dataset_location
-  description = "Capa histórica Raw: cada mensaje de match-events y odds-updates, sin transformar (HU-14)."
+  description = "Capa histórica Raw: cada mensaje de cada flujo, de los dos deportes, sin transformar (HU-14)."
 
   # Tiempo que una tabla del dataset conserva una partición antes de
   # expirarla automáticamente. Vacío (el valor por defecto de la variable)
@@ -103,7 +103,7 @@ resource "google_bigquery_table" "raw" {
       name        = "stream"
       type        = "STRING"
       mode        = "REQUIRED"
-      description = "Flujo de origen (match-events u odds-updates), redundante con la tabla pero útil si algún día se consolidan."
+      description = "Flujo de origen (match-events, odds-updates, basketball-events o basketball-odds), redundante con la tabla pero útil si algún día se consolidan."
     },
     {
       name        = "payload"
