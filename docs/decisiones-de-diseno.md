@@ -1238,6 +1238,25 @@ extremos y el resto queda en el título. El diálogo de una señal dibuja el
 modelo frente al precio del operador en dos barras, con la separación en puntos
 frente al umbral del deporte.
 
+### «Por qué confiar», con los dos deportes (#99)
+
+Arriba, una cifra por pregunta —escenarios dentro de los umbrales, eventos por
+segundo, reglas de calidad— que lleva a su detalle. Debajo, la tabla fútbol
+frente a baloncesto de la sección 21, leída del informe de
+`gcperros-compare-sports`, y la calidad de los dos deportes lado a lado. Los
+escenarios de estrés no se aprueban ni se suspenden, porque no se prometieron:
+se dice si el motor aguantó o se rompió.
+
+### «Bajo el capó», con el segundo deporte (#96)
+
+La pantalla de arquitectura enseña ahora lo que el baloncesto compartió sin
+cambiar una línea —deduplicación, marca de agua, posesión, frontera, linaje y
+calidad— frente a lo que trajo —contrato y flujos, estado, mercado, umbral,
+margen y corte—: la tesis de la sección 21 en dos columnas. El recorrido, el
+modelo estrella y la infraestructura cuentan los cuatro flujos, `dim_sport` y
+las cinco cuentas de servicio; una prueba cuenta las del Terraform para que la
+pantalla no se desfase.
+
 ---
 
 ## 15. Catálogo y glosario (historia #24)
