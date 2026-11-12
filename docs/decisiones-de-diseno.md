@@ -1353,9 +1353,14 @@ o tres. El tiro libre sí lo es, porque llega con el reloj parado y no tiene
 coordenadas. Un tiro que dijera valer cuatro lo rechaza la frontera, con su
 causa.
 
-El topic y su entrada en el catálogo (historia 24) se declaran junto con la capa
-analítica del segundo deporte: el catálogo exige que todo flujo del Terraform
-esté catalogado, y es mejor declararlos a la vez.
+Los dos flujos del baloncesto, `basketball-events` y `basketball-odds`, son dos
+entradas más en `locals.streams` del Terraform (#97): cada una trae su topic, su
+dead letter, sus suscripciones y su tabla Raw, sin copiar un recurso. Se
+declaran a la vez que su entrada en el catálogo, porque el catálogo exige que
+todo flujo del Terraform esté catalogado. Una prueba cierra el círculo: cada
+contrato de `core/schema.py` tiene su topic en el Terraform y su tabla en el
+cargador Raw, de modo que un flujo nuevo no puede quedarse sin por dónde llegar
+ni sin dónde guardarse.
 
 ---
 

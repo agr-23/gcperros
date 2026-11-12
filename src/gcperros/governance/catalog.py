@@ -112,6 +112,8 @@ def _analytics(table: str, description: str, terms: tuple[str, ...] = ()) -> Ass
 DATASETS: tuple[Asset, ...] = (
     *_stream_assets("match-events", "Las acciones del partido"),
     *_stream_assets("odds-updates", "Las cuotas de cada operador"),
+    *_stream_assets("basketball-events", "Las acciones del partido de baloncesto"),
+    *_stream_assets("basketball-odds", "Las cuotas del baloncesto de cada operador"),
     Asset(
         "invalid-events",
         AssetKind.REPOSITORY,
