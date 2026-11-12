@@ -12,16 +12,31 @@ comprobar. Cada término nombra el módulo que lo implementa, y las pruebas exig
 que ese módulo exista; las cifras que aparecen en una definición —el umbral de la
 señal, el margen de la marca de agua— se leen de la constante que el código usa,
 no se copian. Una definición que se desfasa del código es peor que no tenerla.
+
+Con el segundo deporte (#97), cada término dice a qué deportes se aplica. Lo
+que no depende del deporte —el margen, el linaje— se define una vez para los
+dos; lo que sí —la posesión, el xG— tiene su término en cada uno.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from gcperros.core import xg
+from gcperros.core import basketball_odds, court, expected_points, xg
 from gcperros.core.possession import MAX_IN_PLAY_GAP_S, POSSESSION_WINDOW_S
+from gcperros.engine.basketball_market import BASKETBALL_THRESHOLD
+from gcperros.engine.basketball_state import (
+    BASKETBALL_ALLOWED_LATENESS_S,
+    BASKETBALL_MAX_IN_PLAY_GAP_S,
+)
 from gcperros.engine.signals import DEFAULT_THRESHOLD
 from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
+
+FOOTBALL = "football"
+BASKETBALL = "basketball"
+
+#: Los deportes del sistema, con los mismos nombres que ``--sport``.
+SPORTS: tuple[str, ...] = (FOOTBALL, BASKETBALL)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +51,7 @@ class Term:
             probabilidad, una proporción o un número de goles.
         implemented_in: Módulo que lo calcula. Es la referencia cuando la
             definición en prosa no basta.
+        sports: Deportes a los que se aplica.
     """
 
     key: str
@@ -43,6 +59,7 @@ class Term:
     definition: str
     unit: str
     implemented_in: str
+    sports: tuple[str, ...] = SPORTS
 
 
 POSSESSION = Term(
@@ -56,6 +73,7 @@ POSSESSION = Term(
     ),
     unit="proporción del tiempo en juego, entre 0 y 1",
     implemented_in="gcperros.core.possession",
+    sports=(FOOTBALL,),
 )
 
 EXPECTED_GOALS = Term(
@@ -68,6 +86,7 @@ EXPECTED_GOALS = Term(
     ),
     unit="goles; por remate, una probabilidad entre 0 y 1",
     implemented_in="gcperros.core.xg",
+    sports=(FOOTBALL,),
 )
 
 OPERATOR_MARGIN = Term(
@@ -97,9 +116,10 @@ DISCREPANCY_SIGNAL = Term(
     name="Señal de discrepancia",
     definition=(
         "Aviso de que la probabilidad del modelo propio y la probabilidad implícita del "
-        f"precio vigente de un operador se separan {DEFAULT_THRESHOLD:g} o más. Al umbral "
-        "declarado detecta sobre todo precios que se quedaron viejos tras un gol o una "
-        "expulsión, no operadores que valoran distinto."
+        f"precio vigente de un operador se separan {DEFAULT_THRESHOLD:g} o más en fútbol y "
+        f"{BASKETBALL_THRESHOLD:g} o más en baloncesto, cada umbral elegido con la misma "
+        "regla. Detecta sobre todo precios que se quedaron viejos tras un gol, una expulsión "
+        "o una canasta, no operadores que valoran distinto."
     ),
     unit="diferencia de probabilidades, con signo",
     implemented_in="gcperros.engine.signals",
@@ -110,8 +130,9 @@ WATERMARK = Term(
     name="Marca de agua",
     definition=(
         "Instante del partido hasta el que el motor da por llegado todo lo que tenía que "
-        f"llegar: el evento más tardío visto, menos un margen de {DEFAULT_ALLOWED_LATENESS_S:g}"
-        " s. Lo que llega por detrás de ella se descarta y se cuenta."
+        "llegar: el evento más tardío visto, menos un margen de "
+        f"{DEFAULT_ALLOWED_LATENESS_S:g} s en fútbol y {BASKETBALL_ALLOWED_LATENESS_S:g} s en "
+        "baloncesto. Lo que llega por detrás de ella se descarta y se cuenta."
     ),
     unit="instante del partido",
     implemented_in="gcperros.engine.watermark",
@@ -128,6 +149,71 @@ LINEAGE = Term(
     implemented_in="gcperros.core.lineage",
 )
 
+BASKETBALL_POSSESSION = Term(
+    key="basketball_possession",
+    name="Posesión en baloncesto",
+    definition=(
+        "Fracción del tiempo de juego en que un equipo tuvo el balón, como en fútbol, con "
+        f"otro corte: un hueco de más de {BASKETBALL_MAX_IN_PLAY_GAP_S:g} s entre eventos es "
+        f"juego detenido, porque ninguna posesión viva supera el reloj de {court.SHOT_CLOCK_S}"
+        " s. Cuántas veces tuvo el balón es otra cosa: el ritmo."
+    ),
+    unit="proporción del tiempo en juego, entre 0 y 1",
+    implemented_in="gcperros.engine.basketball_state",
+    sports=(BASKETBALL,),
+)
+
+EXPECTED_POINTS = Term(
+    key="expected_points",
+    name="Puntos esperados",
+    definition=(
+        "Lo que vale de media un tiro: su valor, 2 o 3, por la probabilidad de anotarlo "
+        f"según su distancia al aro, con el modelo {expected_points.MODEL_VERSION}. Un tiro "
+        f"libre vale 1 y entra con probabilidad {expected_points.FREE_THROW_PROBABILITY:g}. "
+        "Los de un equipo son la suma: el xG del baloncesto."
+    ),
+    unit="puntos; por tiro, entre 0 y 3",
+    implemented_in="gcperros.core.expected_points",
+    sports=(BASKETBALL,),
+)
+
+PACE = Term(
+    key="pace",
+    name="Ritmo",
+    definition=(
+        "Cuántas posesiones tiene un equipo en un partido: cuántas veces tuvo el balón, no "
+        f"cuánto tiempo. El reglamentario son {court.REGULATION_PERIODS} cuartos de "
+        f"{court.PERIOD_DURATION_S // 60} minutos; con prórroga hay más posesiones."
+    ),
+    unit="posesiones por partido",
+    implemented_in="gcperros.core.basketball_stats",
+    sports=(BASKETBALL,),
+)
+
+MONEYLINE = Term(
+    key="moneyline",
+    name="Ganador sin empate",
+    definition=(
+        "Mercado de dos resultados, local o visitante. No hay empate porque la prórroga "
+        f"decide: su probabilidad sale del modelo {basketball_odds.MODEL_VERSION}."
+    ),
+    unit="probabilidad entre 0 y 1; las dos suman 1",
+    implemented_in="gcperros.core.basketball_odds",
+    sports=(BASKETBALL,),
+)
+
+TOTAL_POINTS = Term(
+    key="total_points",
+    name="Total de puntos",
+    definition=(
+        "Mercado de si los dos equipos sumarán más o menos puntos que la línea que trae la "
+        "propia cuota. Una cuota de este mercado sin línea incumple el contrato."
+    ),
+    unit="puntos de los dos equipos; la probabilidad, entre 0 y 1",
+    implemented_in="gcperros.core.basketball_odds",
+    sports=(BASKETBALL,),
+)
+
 #: El glosario completo, en el orden en que se presenta.
 GLOSSARY: tuple[Term, ...] = (
     POSSESSION,
@@ -137,6 +223,11 @@ GLOSSARY: tuple[Term, ...] = (
     DISCREPANCY_SIGNAL,
     WATERMARK,
     LINEAGE,
+    BASKETBALL_POSSESSION,
+    EXPECTED_POINTS,
+    PACE,
+    MONEYLINE,
+    TOTAL_POINTS,
 )
 
 

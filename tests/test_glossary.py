@@ -11,10 +11,13 @@ import importlib
 
 import pytest
 
-from gcperros.core import xg
+from gcperros.core import court, expected_points, xg
+from gcperros.engine.basketball_market import BASKETBALL_THRESHOLD
+from gcperros.engine.basketball_state import BASKETBALL_ALLOWED_LATENESS_S
 from gcperros.engine.signals import DEFAULT_THRESHOLD
+from gcperros.engine.sport_harness import SPORTS as ENGINE_SPORTS
 from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
-from gcperros.governance.glossary import GLOSSARY, Term, term
+from gcperros.governance.glossary import GLOSSARY, SPORTS, Term, term
 
 #: Los cinco términos que la historia nombra uno por uno.
 REQUIRED = (
@@ -23,6 +26,12 @@ REQUIRED = (
     "implied_probability",
     "operator_margin",
     "discrepancy_signal",
+    # Los del baloncesto que nombra #97.
+    "basketball_possession",
+    "expected_points",
+    "pace",
+    "moneyline",
+    "total_points",
 )
 
 
@@ -52,6 +61,23 @@ def test_the_figures_come_from_the_code_not_from_a_copy() -> None:
     assert f"{DEFAULT_THRESHOLD:g}" in term("discrepancy_signal").definition
     assert f"{DEFAULT_ALLOWED_LATENESS_S:g} s" in term("watermark").definition
     assert xg.MODEL_VERSION in term("xg").definition
+    assert f"{BASKETBALL_THRESHOLD:g}" in term("discrepancy_signal").definition
+    assert f"{BASKETBALL_ALLOWED_LATENESS_S:g} s" in term("watermark").definition
+    assert expected_points.MODEL_VERSION in term("expected_points").definition
+    assert f"{court.SHOT_CLOCK_S} s" in term("basketball_possession").definition
+
+
+def test_the_glossary_knows_every_sport_the_engine_runs() -> None:
+    """Un tercer deporte en el motor sin vocabulario rompe la construcción."""
+    assert set(SPORTS) == set(ENGINE_SPORTS)
+    for sport in SPORTS:
+        assert any(entry.sports == (sport,) for entry in GLOSSARY)
+    assert all(set(entry.sports) <= set(SPORTS) for entry in GLOSSARY)
+
+
+def test_what_does_not_depend_on_the_sport_is_defined_once_for_both() -> None:
+    for key in ("operator_margin", "implied_probability", "lineage"):
+        assert term(key).sports == SPORTS
 
 
 def test_implied_probability_warns_against_the_shortcut() -> None:
