@@ -466,3 +466,24 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
 .badge-shared { background: rgb(79 192 141 / 15%); color: var(--ok); border: 1px solid rgb(79 192 141 / 30%); }
 .badge-own { background: rgb(242 138 46 / 15%); color: #f28a2e; border: 1px solid rgb(242 138 46 / 30%); }
 @media (max-width: 760px) { .sport-diff { grid-template-columns: 1fr; } }
+
+/* Móvil: la cabecera se parte en dos filas, el marcador se centra y el reloj
+   puede saltar de línea; las gráficas se encogen en vez de empujar la página. */
+.bar { flex-wrap: wrap; row-gap: 8px; }
+/* Un hijo de la rejilla no puede ser más ancho que ella: así una tabla ancha se
+   desplaza dentro de su panel en vez de ensanchar la página entera. */
+.wrap > * { min-width: 0; }
+.nav a, .sports a { white-space: nowrap; }
+@media (max-width: 520px) {
+  .wrap { padding: 16px 12px 48px; }
+  .bar { padding: 10px 12px; gap: 8px 10px; }
+  .match { display: none; }
+  .score { justify-self: center; }
+  .clock { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 6px; }
+  .state { margin-right: 0; }
+  .chart svg { min-width: 0; }
+  .panel { padding: 14px; }
+  .trace { padding: 18px 16px; }
+  .trace-events li { grid-template-columns: 36px 1fr 72px; }
+  .kpi b { font-size: 1.6rem; }
+}
