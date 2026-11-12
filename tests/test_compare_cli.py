@@ -56,8 +56,9 @@ def test_the_cli_writes_its_report_and_is_a_gate(
     )
 
     assert code == 0
-    assert "| | football | basketball |" in capsys.readouterr().out
+    assert "| | football | basketball | american_football |" in capsys.readouterr().out
     assert [row["sport"] for row in json.loads(report.read_text(encoding="utf-8"))] == [
         "football",
         "basketball",
+        "american_football",
     ]

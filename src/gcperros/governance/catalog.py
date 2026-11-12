@@ -163,12 +163,14 @@ INDICATORS: tuple[Asset, ...] = (
         "possessions",
         "Veces que un equipo tuvo el balón. No es la posesión; en baloncesto es el ritmo.",
         "pace",
+        "drive",
     ),
     _indicator(
         "possession_share",
         "Posesión acumulada y en la ventana móvil, por equipo.",
         "possession",
         "basketball_possession",
+        "gridiron_possession",
         "watermark",
     ),
     _indicator("points", "Puntos de un equipo: 2 o 3 por canasta y 1 por tiro libre."),
@@ -187,6 +189,18 @@ INDICATORS: tuple[Asset, ...] = (
     _indicator("defensive_rebounds", "Rebotes en el aro propio: el balón cambia de manos."),
     _indicator("turnovers", "Pérdidas: robos, malos pases, saques fuera y violaciones."),
     _indicator("timeouts", "Tiempos muertos pedidos por un equipo."),
+    # Los del fútbol americano (sección 22).
+    _indicator(
+        "kick_expected_points",
+        "Suma de los puntos esperados de los goles de campo y las conversiones.",
+        "kick_expected_points",
+    ),
+    _indicator("touchdowns", "Touchdowns de un equipo: seis puntos cada uno."),
+    _indicator("field_goals_attempted", "Goles de campo intentados."),
+    _indicator("field_goals_made", "Goles de campo anotados: tres puntos cada uno."),
+    _indicator("plays", "Jugadas de ataque: carreras, pases y capturas."),
+    _indicator("yards", "Yardas ganadas en jugada, netas de las perdidas."),
+    _indicator("punts", "Despejes de un equipo."),
 )
 
 #: Lo que el sistema le muestra al usuario para decidir.

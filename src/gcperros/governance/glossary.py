@@ -22,8 +22,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from gcperros.core import basketball_odds, court, expected_points, xg
+from gcperros.core import basketball_odds, court, expected_points, gridiron, kicking, xg
 from gcperros.core.possession import MAX_IN_PLAY_GAP_S, POSSESSION_WINDOW_S
+from gcperros.engine.american_football_state import (
+    AMERICAN_FOOTBALL_ALLOWED_LATENESS_S,
+    AMERICAN_FOOTBALL_MAX_IN_PLAY_GAP_S,
+)
 from gcperros.engine.basketball_market import BASKETBALL_THRESHOLD
 from gcperros.engine.basketball_state import (
     BASKETBALL_ALLOWED_LATENESS_S,
@@ -34,9 +38,13 @@ from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
 
 FOOTBALL = "football"
 BASKETBALL = "basketball"
+AMERICAN_FOOTBALL = "american_football"
 
 #: Los deportes del sistema, con los mismos nombres que ``--sport``.
-SPORTS: tuple[str, ...] = (FOOTBALL, BASKETBALL)
+SPORTS: tuple[str, ...] = (FOOTBALL, BASKETBALL, AMERICAN_FOOTBALL)
+
+#: Los que tienen mercado de cuotas: el fútbol americano todavía no.
+MARKET_SPORTS: tuple[str, ...] = (FOOTBALL, BASKETBALL)
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +106,7 @@ OPERATOR_MARGIN = Term(
     ),
     unit="proporción; 1,06 es un margen del 6 %",
     implemented_in="gcperros.core.odds",
+    sports=MARKET_SPORTS,
 )
 
 IMPLIED_PROBABILITY = Term(
@@ -109,6 +118,7 @@ IMPLIED_PROBABILITY = Term(
     ),
     unit="probabilidad entre 0 y 1; las de un mercado suman 1",
     implemented_in="gcperros.core.odds",
+    sports=MARKET_SPORTS,
 )
 
 DISCREPANCY_SIGNAL = Term(
@@ -123,6 +133,7 @@ DISCREPANCY_SIGNAL = Term(
     ),
     unit="diferencia de probabilidades, con signo",
     implemented_in="gcperros.engine.signals",
+    sports=MARKET_SPORTS,
 )
 
 WATERMARK = Term(
@@ -131,8 +142,9 @@ WATERMARK = Term(
     definition=(
         "Instante del partido hasta el que el motor da por llegado todo lo que tenía que "
         "llegar: el evento más tardío visto, menos un margen de "
-        f"{DEFAULT_ALLOWED_LATENESS_S:g} s en fútbol y {BASKETBALL_ALLOWED_LATENESS_S:g} s en "
-        "baloncesto. Lo que llega por detrás de ella se descarta y se cuenta."
+        f"{DEFAULT_ALLOWED_LATENESS_S:g} s en fútbol, {BASKETBALL_ALLOWED_LATENESS_S:g} s en "
+        f"baloncesto y {AMERICAN_FOOTBALL_ALLOWED_LATENESS_S:g} s en fútbol americano. Lo que "
+        "llega por detrás de ella se descarta y se cuenta."
     ),
     unit="instante del partido",
     implemented_in="gcperros.engine.watermark",
@@ -214,6 +226,47 @@ TOTAL_POINTS = Term(
     sports=(BASKETBALL,),
 )
 
+GRIDIRON_POSSESSION = Term(
+    key="gridiron_possession",
+    name="Posesión en fútbol americano",
+    definition=(
+        "Fracción del tiempo de juego con el balón, con el corte de este deporte: un hueco "
+        f"de más de {AMERICAN_FOOTBALL_MAX_IN_PLAY_GAP_S:g} s entre eventos es juego detenido. "
+        f"Entre jugada y jugada corre el reloj de {gridiron.PLAY_CLOCK_S} s; los parones tras "
+        "una anotación pasan del minuto."
+    ),
+    unit="proporción del tiempo en juego, entre 0 y 1",
+    implemented_in="gcperros.engine.american_football_state",
+    sports=(AMERICAN_FOOTBALL,),
+)
+
+DRIVE = Term(
+    key="drive",
+    name="Serie ofensiva",
+    definition=(
+        f"Cada vez que un equipo tiene el balón: {gridiron.DOWNS} downs para avanzar diez "
+        "yardas, y si las avanza, otros cuatro. Acaba en touchdown, gol de campo, despeje o "
+        "pérdida. El motor la cuenta como posesiones."
+    ),
+    unit="series por partido",
+    implemented_in="gcperros.core.american_football_stats",
+    sports=(AMERICAN_FOOTBALL,),
+)
+
+KICK_EXPECTED_POINTS = Term(
+    key="kick_expected_points",
+    name="Puntos esperados de las patadas",
+    definition=(
+        "Lo que vale de media un gol de campo o una conversión: su valor por la probabilidad de "
+        f"meterla, con el modelo {kicking.MODEL_VERSION}. Un gol de campo de 30 yardas entra "
+        f"con probabilidad {kicking.field_goal_probability(30):g}; una conversión pateada, "
+        f"{kicking.EXTRA_POINT_PROBABILITY:g}."
+    ),
+    unit="puntos; por patada, entre 0 y 3",
+    implemented_in="gcperros.core.kicking",
+    sports=(AMERICAN_FOOTBALL,),
+)
+
 #: El glosario completo, en el orden en que se presenta.
 GLOSSARY: tuple[Term, ...] = (
     POSSESSION,
@@ -228,6 +281,9 @@ GLOSSARY: tuple[Term, ...] = (
     PACE,
     MONEYLINE,
     TOTAL_POINTS,
+    GRIDIRON_POSSESSION,
+    DRIVE,
+    KICK_EXPECTED_POINTS,
 )
 
 

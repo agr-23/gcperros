@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from gcperros.engine.american_football_state import AmericanFootballLiveState
 from gcperros.engine.basketball_state import BasketballLiveState
 from gcperros.governance import catalog_cli
 from gcperros.governance.catalog import CATALOG, INDICATORS, AssetKind, asset
@@ -19,6 +20,7 @@ def test_every_indicator_the_engine_explains_is_catalogued() -> None:
 
     assert set(TEAM_INDICATORS) | set(MATCH_INDICATORS) <= catalogued
     assert set(BasketballLiveState.team_indicators) <= catalogued
+    assert set(AmericanFootballLiveState.team_indicators) <= catalogued
 
 
 def test_the_signal_and_every_glossary_term_are_in_use() -> None:

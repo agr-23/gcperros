@@ -75,9 +75,12 @@ def test_the_glossary_knows_every_sport_the_engine_runs() -> None:
     assert all(set(entry.sports) <= set(SPORTS) for entry in GLOSSARY)
 
 
-def test_what_does_not_depend_on_the_sport_is_defined_once_for_both() -> None:
-    for key in ("operator_margin", "implied_probability", "lineage"):
+def test_what_does_not_depend_on_the_sport_is_defined_once_for_all() -> None:
+    for key in ("lineage", "watermark"):
         assert term(key).sports == SPORTS
+    # El mercado es de los deportes con cuotas, no de todos.
+    for key in ("operator_margin", "implied_probability", "discrepancy_signal"):
+        assert "american_football" not in term(key).sports
 
 
 def test_implied_probability_warns_against_the_shortcut() -> None:
