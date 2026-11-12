@@ -76,13 +76,51 @@ const SPORTS = {
   },
 };
 
+// El fútbol americano (sección 22) no tiene cuotas: `market: false` esconde el
+// mercado y las señales en vez de enseñarlos vacíos.
+SPORTS.american_football = {
+  label: "Fútbol americano",
+  icon: "🏈",
+  market: false,
+  headline: "points",
+  estimate: "kick_expected_points",
+  estimateTitle: "Puntos esperados de las patadas, acumulados",
+  estimateName: "Puntos esperados de patadas",
+  estimateStep: 3,
+  estimateDigits: 1,
+  minutes: 60,
+  ticks: [0, 15, 30, 45, 60],
+  outcomes: [],
+  lateness: 15,
+  signalHint: "",
+  markets: {},
+  outcomeNames: {},
+  halftimeAfter: 2,
+  phases: { previa: "saque inicial", descanso: "entre cuartos", final: "final" },
+  clock: (clock) => {
+    const left = clock.phase === "descanso" ? 0 : Math.max(0, Math.round(clock.game_clock_s ?? 0));
+    const period = clock.period > 4 ? "PR" : `Q${clock.period}`;
+    return `${period} · ${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`;
+  },
+  stats: [
+    ["Puntos esperados de patadas", (s) => s.kick_expected_points.toFixed(1), "kick_expected_points"],
+    ["Touchdowns", (s) => s.touchdowns, "touchdowns"],
+    ["Goles de campo", (s) => `${s.field_goals_made}/${s.field_goals_attempted}`, "field_goals_made"],
+    ["Jugadas", (s) => s.plays, "plays"],
+    ["Yardas", (s) => s.yards, "yards"],
+    ["Pérdidas", (s) => s.turnovers, "turnovers"],
+    ["Despejes", (s) => s.punts, "punts"],
+    ["Tiempos muertos", (s) => s.timeouts, "timeouts"],
+  ],
+};
+
 // El partido que se está viendo. Lo fija app.js al arrancar; lo leen el resto.
 window.GCP = { matchId: null, sport: "football", config: SPORTS.football };
 
 function phaseLabel(config, clock) {
   if (config.phases[clock.phase]) {
     // En baloncesto, el descanso entre el segundo y el tercer cuarto es el largo.
-    if (clock.phase === "descanso" && GCP.sport === "basketball" && clock.period === 2) return "descanso";
+    if (clock.phase === "descanso" && (config.halftimeAfter ?? 2) === clock.period) return "descanso";
     return config.phases[clock.phase];
   }
   const [, number] = clock.phase.split("-");

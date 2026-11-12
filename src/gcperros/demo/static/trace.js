@@ -10,11 +10,15 @@ const NAMES = {
   three_made: "Triples anotados", free_throws_made: "Tiros libres anotados",
   offensive_rebounds: "Rebotes ofensivos", defensive_rebounds: "Rebotes defensivos",
   turnovers: "Pérdidas", timeouts: "Tiempos muertos",
+  kick_expected_points: "Puntos esperados de patadas", touchdowns: "Touchdowns",
+  field_goals_made: "Goles de campo", plays: "Jugadas", yards: "Yardas", punts: "Despejes",
 };
 const TYPES = {
   goal: "gol", shot: "remate", pass: "pase", foul: "falta", red_card: "roja",
   possession_change: "cambio de posesión", free_throw: "tiro libre", rebound: "rebote",
   turnover: "pérdida", timeout: "tiempo muerto",
+  play: "jugada", touchdown: "touchdown", conversion: "conversión", field_goal: "gol de campo",
+  punt: "despeje", safety: "safety",
 };
 // En baloncesto no se remata: se tira.
 const typeName = (type) => (GCP.sport === "basketball" && type === "shot" ? "tiro" : TYPES[type] ?? type);
@@ -92,7 +96,9 @@ async function openTrace(indicator, team) {
     header(team, NAMES[indicator] ?? indicator, trace.value.toFixed(digits), team),
     verdict(
       trace.verified,
-      `Huella verificada: estos ${trace.events.length} eventos son exactamente los que formaron el número.`,
+      trace.events.length === 1
+        ? "Huella verificada: este evento es exactamente el que formó el número."
+        : `Huella verificada: estos ${trace.events.length} eventos son exactamente los que formaron el número.`,
       "La huella no cuadra: los eventos reconstruidos no son los que contó el motor.",
     ),
     facts([

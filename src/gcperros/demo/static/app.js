@@ -112,6 +112,8 @@ function applySport(sport) {
   document.body.dataset.sport = sport;
   $("signal-hint").textContent = config.signalHint;
   $("estimate-title").textContent = config.estimateTitle;
+  // Sin cuotas no hay mercado ni señales que enseñar (fútbol americano).
+  for (const panel of document.querySelectorAll(".market, .signals-panel")) panel.hidden = config.market === false;
   $("held").title =
     `La marca de agua retiene cada evento hasta que llega otro más de ${config.lateness} s ` +
     "posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.";
