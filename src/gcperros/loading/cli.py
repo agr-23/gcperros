@@ -30,6 +30,7 @@ STREAM_TOPICS: dict[str, str] = {
     "odds": "odds-updates",
     "basketball": "basketball-events",
     "basketball-odds": "basketball-odds",
+    "american-football": "american-football-events",
 }
 
 #: Nombre corto -> tabla Raw que le corresponde. Coincide con
@@ -39,6 +40,7 @@ STREAM_TABLES: dict[str, str] = {
     "odds": "odds_updates_raw",
     "basketball": "basketball_events_raw",
     "basketball-odds": "basketball_odds_raw",
+    "american-football": "american_football_events_raw",
 }
 
 _DRY_RUN_NAMESPACE = "gcperros-load-raw-dry-run"

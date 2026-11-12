@@ -114,6 +114,7 @@ DATASETS: tuple[Asset, ...] = (
     *_stream_assets("odds-updates", "Las cuotas de cada operador"),
     *_stream_assets("basketball-events", "Las acciones del partido de baloncesto"),
     *_stream_assets("basketball-odds", "Las cuotas del baloncesto de cada operador"),
+    *_stream_assets("american-football-events", "Las jugadas del partido de fútbol americano"),
     Asset(
         "invalid-events",
         AssetKind.REPOSITORY,

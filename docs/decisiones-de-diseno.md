@@ -239,10 +239,47 @@ Lo que se sigue de ahí, y que se decide aparte porque cambia el diseño:
 
 - **La marca de agua necesita un latido.** Tiene que avanzar también con el
   reloj de pared, no sólo con las llegadas; si no, cualquier pausa retiene lo
-  último que pasó hasta que el juego se reanuda.
+  último que pasó hasta que el juego se reanuda. *Hecho: ver más abajo.*
 - **Publicar estado provisional al llegar y corregirlo al cerrar la ventana.**
   Es la única forma de cumplir 2 s en p95 conservando un margen de 10 s, y
-  obliga a que el consumidor tolere correcciones.
+  obliga a que el consumidor tolere correcciones. *Hecho: ver más abajo.*
+
+### El latido: la espera baja al margen, la corrección no cambia
+
+`StreamEngine.tick(ahora)` hace avanzar la marca de agua hasta `ahora` menos el
+margen aunque no llegue nada, y aplica lo que rebasó. En el servicio late cada
+segundo. En la simulación (`process_all(..., heartbeat_s=1)`) late entre una
+llegada y la siguiente sin pasar nunca de ella: como la marca de agua llegaría
+ahí de todos modos con esa llegada, **no descarta ni un evento más**. Sobre ocho
+partidos por deporte, en limpio y con desorden medio, el resumen, la posesión y
+los descartes son idénticos con y sin latido; sólo cambia la espera:
+
+| | p95 sin latido | p95 con latido | Máximo sin | Máximo con |
+|---|---|---|---|---|
+| Fútbol (margen 10 s) | 31,2 s | **10,9 s** | 927 s | **11 s** |
+| Baloncesto (margen 15 s) | 68,5 s | **15,9 s** | 920 s | **16 s** |
+
+El descanso deja de retener nada: cada evento sale en cuanto pasa su margen,
+más un latido como mucho. Lo que queda frente al SLA de 2 s es **el propio
+margen**, que no se puede bajar sin perder corrección (la tabla de arriba). Para
+eso está la segunda salida, el estado provisional.
+
+### La vista provisional: lo exacto, en cuanto llega
+
+`StreamEngine.provisional()` enseña lo aplicado más lo que espera a la marca de
+agua, sobre una copia del estado: un gol o una canasta aparece **al llegar**, con
+espera cero en tiempo del flujo, y lo que queda hasta el SLA de 2 s es sólo el
+transporte y el proceso (del orden de microsegundos por evento, más abajo). La
+definitiva sigue esperando su margen y es la que cierra ventanas y alimenta la
+auditoría.
+
+Lo que preocupaba de esta salida eran las correcciones. Para lo exacto no hay
+ninguna: contar no depende del orden, así que el marcador provisional es siempre
+el de todo lo aceptado hasta ese momento. Medido sobre ocho partidos por
+deporte, en limpio, con desorden medio y en el escenario hostil, más de 4.900
+comprobaciones —una por gol, tiro o tiro libre— y ninguna discrepancia; al
+cerrar la ventana, provisional y definitiva son idénticas. Lo que sí depende del
+orden, la posesión, se queda en la vista definitiva.
 
 ### Hasta dónde aguanta el motor: unos 85.000 eventos por segundo
 
@@ -1672,3 +1709,26 @@ el del motor, no el del deporte.
 **La máxima es el descanso en los dos.** Lo que se retiene durante el descanso
 largo sale al reanudarse, y es lo que fija la cola de la latencia en ambos
 deportes; no es un fallo del baloncesto, es el SLA que ya estaba pendiente.
+
+---
+
+## 22. Un tercer deporte: fútbol americano
+
+El baloncesto probó que el motor no depende del fútbol. Un tercer deporte
+prueba que tampoco depende de *dos*: que añadir uno es seguir un camino que las
+pruebas ya obligan a recorrer entero. El glosario exige vocabulario para cada
+deporte del motor; cada contrato, su topic, su tabla Raw y su entrada en el
+catálogo. Se eligió el fútbol americano porque es el más distinto: el juego se
+para entre jugada y jugada, los puntos llegan de cinco maneras y el campo se
+mide en yardas.
+
+### El contrato
+
+Reglas de la NFL en `core/gridiron.py`, y el mismo sobre en
+`american-football-events`, versionado aparte. Nueve tipos cerrados: cambio de
+posesión, jugada, touchdown, conversión, gol de campo, despeje, pérdida, safety
+y tiempo muerto. Como en baloncesto, los puntos los dice el propio evento: un
+touchdown vale seis, una conversión uno pateada y dos jugada si entra, un gol
+de campo tres y un safety dos. La frontera rechaza lo que el reglamento no
+permite —un quinto down, una jugada de más de 99 yardas, un gol de campo de
+más de 70— con su causa.
