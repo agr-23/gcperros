@@ -447,6 +447,9 @@ gcperros-validate-streaming --seed 65 --scenarios all --report informes/validaci
 gcperros-benchmark --seed 65 --report informes/carga.json
 gcperros-generate-match --seed 65 --out partido.jsonl
 gcperros-quality --stream match --in partido.jsonl --report informes/calidad.json
+gcperros-generate-match --sport basketball --seed 65 --out baloncesto.jsonl
+gcperros-quality --stream basketball --in baloncesto.jsonl --report informes/calidad-baloncesto.json
+gcperros-compare-sports --report informes/comparacion.json
 gcperros-demo --reports informes
 ```
 

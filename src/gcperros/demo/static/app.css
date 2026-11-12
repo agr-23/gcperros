@@ -426,3 +426,29 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
 .vs-num { font: 700 0.9rem ui-monospace, Consolas, monospace; text-align: right; }
 .vs-gap { margin: 2px 0 0; color: var(--muted); font-size: 0.8rem; }
 @media (prefers-reduced-motion: reduce) { .trace[open] { animation: none; } }
+
+/* «Por qué confiar» (#99): una cifra por pregunta arriba, y debajo el detalle. */
+.trust-hero {
+  padding: 26px 28px; border-radius: 12px; border: 1px solid var(--line);
+  background: linear-gradient(135deg, var(--panel) 0%, #1a2c4b 100%);
+}
+.trust-hero h1 { margin: 0 0 6px; font-size: clamp(1.4rem, 3vw, 1.9rem); letter-spacing: -0.01em; }
+.trust-hero > p { margin: 0 0 18px; color: var(--muted); max-width: 64ch; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.kpi {
+  display: grid; gap: 4px; padding: 14px 16px; border-radius: 10px; text-decoration: none; color: var(--ink);
+  background: var(--ground); border: 1px solid var(--line); border-top: 3px solid var(--muted);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.kpi:hover, .kpi:focus-visible { transform: translateY(-2px); border-color: var(--home); outline: none; }
+.kpi[data-state="ok"] { border-top-color: var(--ok); }
+.kpi[data-state="ko"] { border-top-color: var(--warn); }
+.kpi-label { font: 700 0.72rem/1 system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.kpi b { font: 800 2rem/1.1 ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.kpi[data-state="ok"] b { color: var(--ok); }
+.kpi[data-state="ko"] b { color: var(--warn); }
+.kpi small { color: var(--muted); font-size: 0.8rem; }
+.trust-page .trust { scroll-margin-top: 16px; }
+#comparacion .trust-table td:not(:first-child), #calidad .trust-table td:not(:first-child) { text-align: center; }
+#comparacion .trust-table th:not(:first-child), #calidad .trust-table th:not(:first-child) { text-align: center; }
+@media (prefers-reduced-motion: reduce) { .kpi { transition: none; } }
