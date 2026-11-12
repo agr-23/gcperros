@@ -321,7 +321,7 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
 /* Pulido de «En vivo» (#96): dos columnas en pantalla ancha, el estado del
    partido con palabras y color, y un marcador que se nota cuando cambia. */
 @media (min-width: 1100px) {
-  .wrap {
+  .wrap.live {
     max-width: 1240px;
     grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
     grid-template-areas:
