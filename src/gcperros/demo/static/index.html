@@ -39,7 +39,7 @@
 
     <section class="panel" aria-label="Señales">
       <h2>Señales <b id="signal-count">0</b></h2>
-      <p class="hint">Un operador se separa del modelo más de 5 puntos: casi siempre, un precio que no se actualizó tras un gol o una expulsión.</p>
+      <p class="hint" id="signal-hint">Un operador se separa del modelo más de 5 puntos: casi siempre, un precio que no se actualizó tras un gol o una expulsión.</p>
       <ol class="signals" id="signal-list"></ol>
     </section>
 
@@ -56,9 +56,9 @@
     </section>
 
     <section class="panel" aria-label="Goles esperados">
-      <h2>Goles esperados (xG) acumulados</h2>
+      <h2 id="estimate-title">Goles esperados (xG) acumulados</h2>
       <div class="chart"><svg id="xg-chart" viewBox="0 0 640 220" role="img"
-        aria-label="xG acumulado de cada equipo a lo largo del partido"></svg></div>
+        aria-label="Lo que cada equipo debería llevar marcado según la calidad de sus tiros, a lo largo del partido"></svg></div>
     </section>
 
     <section class="panel" aria-label="Estadísticas">
@@ -81,6 +81,7 @@
     <form method="dialog"><button class="trace-close">Cerrar</button></form>
   </dialog>
 
+  <script src="sport.js"></script>
   <script src="charts.js"></script>
   <script src="market.js"></script>
   <script src="trace.js"></script>

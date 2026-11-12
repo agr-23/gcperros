@@ -1,16 +1,8 @@
 // Pantalla «En vivo». Sólo conoce el contrato de /api: el documento de
-// Firestore más reloj, posesión y retenidos. No sabe nada del motor.
+// Firestore más reloj, posesión, retenidos y deporte. No sabe nada del motor.
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-
-const PHASES = {
-  previa: "previa",
-  "parte-1": "primera parte",
-  descanso: "descanso",
-  "parte-2": "segunda parte",
-  final: "final",
-};
 
 function setSplit(id, share, home, away) {
   const bar = $(id);
@@ -24,18 +16,20 @@ function setSplit(id, share, home, away) {
 }
 
 function render(state) {
+  const config = GCP.config;
   const [home, away] = state.teams.length === 2 ? state.teams : ["", ""];
-  const goals = (team) => state.indicators[team]?.goals ?? 0;
+  const score = (team) => state.indicators[team]?.[config.headline] ?? 0;
 
   $("match-id").textContent = state.match_id;
   $("home-name").textContent = home || "Local";
   $("away-name").textContent = away || "Visitante";
-  $("home-goals").textContent = goals(home);
-  $("away-goals").textContent = goals(away);
-  $("home-goals").dataset.team = home;
-  $("away-goals").dataset.team = away;
-  $("minute").textContent = `${state.clock.minute}'`;
-  $("phase").textContent = PHASES[state.clock.phase] ?? state.clock.phase;
+  for (const [id, team] of [["home-goals", home], ["away-goals", away]]) {
+    $(id).textContent = score(team);
+    $(id).dataset.team = team;
+    $(id).dataset.indicator = config.headline;
+  }
+  $("minute").textContent = config.clock(state.clock);
+  $("phase").textContent = phaseLabel(config, state.clock);
   $("pending").textContent = state.pending;
   setSplit("running", state.possession.running_share, home, away);
   setSplit("window", state.possession.window_share, home, away);
@@ -49,15 +43,30 @@ function setLink(state, text) {
   $("link").textContent = text;
 }
 
-async function start() {
-  const [matchId] = await (await fetch("/api/matches")).json();
-  const source = new EventSource(`/api/matches/${encodeURIComponent(matchId)}/stream`);
+function applySport(sport) {
+  const config = SPORTS[sport] ?? SPORTS.football;
+  Object.assign(GCP, { sport, config });
+  document.body.dataset.sport = sport;
+  $("signal-hint").textContent = config.signalHint;
+  $("estimate-title").textContent = config.estimateTitle;
+  $("held").title =
+    `La marca de agua retiene cada evento hasta que llega otro más de ${config.lateness} s ` +
+    "posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.";
+}
 
+async function start() {
+  const sports = await (await fetch("/api/sports")).json();
+  const wanted = new URLSearchParams(location.search).get("partido");
+  const chosen = sports.find((entry) => entry.match_id === wanted) ?? sports[0];
+  GCP.matchId = chosen.match_id;
+  applySport(chosen.sport);
+
+  const source = new EventSource(`/api/matches/${encodeURIComponent(GCP.matchId)}/stream`);
   source.onopen = () => setLink("live", "en vivo");
   source.onmessage = (message) => {
     const state = JSON.parse(message.data);
     render(state);
-    // El servidor cierra el canal al pitido final; sin esto el navegador
+    // El servidor cierra el canal al final; sin esto el navegador
     // reconectaría solo y repetiría el final una y otra vez.
     if (state.clock.phase === "final") {
       source.close();
