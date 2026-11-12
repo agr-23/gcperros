@@ -6,13 +6,20 @@ Hay un motor por partido, y cada entrega que cambia el estado reescribe su
 documento vivo en Firestore. Se contesta 204 a lo decidido —también a lo que
 incumple el contrato, que no mejora reintentándolo—, 400 a un sobre inválido y
 500 si Firestore falló, para que Pub/Sub reintente.
+
+Mientras la aplicación vive, un latido por segundo hace avanzar la marca de
+agua de cada partido aunque no llegue nada (sección 3): sin él, lo último antes
+de una pausa no se publicaría hasta que el juego se reanudara.
 """
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
-from collections.abc import Callable
+import contextlib
+import threading
+from collections.abc import AsyncIterator, Callable
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Response
@@ -42,6 +49,9 @@ ODDS_STREAMS = ("odds-updates", "basketball-odds")
 
 #: Sufijo de la suscripción push de cada flujo (``locals.tf``).
 ENGINE_SUBSCRIPTION_SUFFIX = "-engine"
+
+#: Cada cuánto late la marca de agua en el servicio (sección 3).
+HEARTBEAT_S = 1.0
 
 
 def stream_of(subscription: str) -> str:
@@ -74,7 +84,7 @@ def _payload(envelope: dict[str, object]) -> tuple[str, str]:
 class EngineService:
     """Un motor por partido y una frontera por flujo, detrás del endpoint push."""
 
-    __slots__ = ("_clock", "_dirty", "_engines", "_gates", "_odds", "_store")
+    __slots__ = ("_clock", "_dirty", "_engines", "_gates", "_lock", "_odds", "_store")
 
     def __init__(
         self,
@@ -90,6 +100,9 @@ class EngineService:
         # Partidos cuyo documento no se pudo escribir: el reintento de Pub/Sub
         # es una repetición que el motor descarta, así que hay que recordarlos.
         self._dirty: set[str] = set()
+        # Las entregas llegan por hilos y el latido por otro: el motor no es
+        # reentrante, así que se turnan.
+        self._lock = threading.Lock()
         self._gates: dict[str, IngestionGate[MatchEvent]] = {
             "match-events": match_event_gate(quarantine, clock),
             "basketball-events": basketball_event_gate(quarantine, clock),
@@ -105,6 +118,30 @@ class EngineService:
 
     def receive(self, stream: str, message: str) -> None:
         """Juzga una entrega, la aplica a su partido y reescribe su documento."""
+        with self._lock:
+            self._receive(stream, message)
+
+    def tick(self) -> int:
+        """El latido: aplica lo que cada marca de agua ya rebasó y lo publica.
+
+        Un documento que Firestore no acepta queda pendiente y lo reintenta el
+        siguiente latido; aquí no hay un Pub/Sub que vuelva a entregar nada.
+
+        Returns:
+            Cuántos eventos se aplicaron, sumando todos los partidos.
+        """
+        with self._lock:
+            now = self._clock()
+            released = 0
+            for match_id, engine in self._engines.items():
+                applied = engine.tick(now)
+                released += applied
+                if applied or match_id in self._dirty:
+                    with contextlib.suppress(DocumentStoreError):
+                        self._publish(match_id, engine)
+            return released
+
+    def _receive(self, stream: str, message: str) -> None:
         if stream in self._odds:
             self._odds[stream].admit(message)
             return
@@ -127,9 +164,23 @@ class EngineService:
         self._dirty.discard(match_id)
 
 
-def create_service(service: EngineService) -> FastAPI:
-    """La aplicación que sirve Cloud Run."""
-    app = FastAPI(title="GCPerros · motor")
+async def _heartbeat(service: EngineService, every_s: float) -> None:
+    while True:
+        await asyncio.sleep(every_s)
+        await asyncio.to_thread(service.tick)
+
+
+def create_service(service: EngineService, heartbeat_s: float | None = HEARTBEAT_S) -> FastAPI:
+    """La aplicación que sirve Cloud Run; ``heartbeat_s=None`` la deja sin latido."""
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        beat = asyncio.create_task(_heartbeat(service, heartbeat_s)) if heartbeat_s else None
+        yield
+        if beat is not None:
+            beat.cancel()
+
+    app = FastAPI(title="GCPerros · motor", lifespan=lifespan)
 
     @app.get("/healthz", response_model=None)
     def health() -> dict[str, JsonValue]:
