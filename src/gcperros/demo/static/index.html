@@ -15,12 +15,12 @@
     <span class="link" id="link" data-state="connecting">conectando</span>
   </header>
 
-  <main class="wrap">
+  <main class="wrap live">
     <section class="board" aria-label="Marcador">
       <div class="team home"><span class="name" id="home-name">Local</span></div>
       <div class="score">
         <span id="home-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale?">0</span><span class="dash">–</span><span id="away-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale?">0</span>
-        <span class="clock"><span id="minute">0'</span> · <span id="phase">previa</span></span>
+        <span class="clock"><span class="state" id="state" data-phase="paused">previa</span><span id="minute">0'</span> · <span id="phase">previa</span></span>
       </div>
       <div class="team away"><span class="name" id="away-name">Visitante</span></div>
       <table class="quarters" id="quarters" hidden aria-label="Puntos por cuarto">
@@ -41,13 +41,13 @@
       </div>
     </section>
 
-    <section class="panel" aria-label="Señales">
+    <section class="panel signals-panel" aria-label="Señales">
       <h2>Señales <b id="signal-count">0</b></h2>
       <p class="hint" id="signal-hint">Un operador se separa del modelo más de 5 puntos: casi siempre, un precio que no se actualizó tras un gol o una expulsión.</p>
       <ol class="signals" id="signal-list"></ol>
     </section>
 
-    <section class="panel" aria-label="Posesión">
+    <section class="panel possession-panel" aria-label="Posesión">
       <h2>Posesión</h2>
       <div class="row">
         <span class="label">Partido</span>
@@ -59,13 +59,13 @@
       </div>
     </section>
 
-    <section class="panel" aria-label="Goles esperados">
+    <section class="panel estimate-panel" aria-label="Goles esperados">
       <h2 id="estimate-title">Goles esperados (xG) acumulados</h2>
       <div class="chart"><svg id="xg-chart" viewBox="0 0 640 220" role="img"
         aria-label="Lo que cada equipo debería llevar marcado según la calidad de sus tiros, a lo largo del partido"></svg></div>
     </section>
 
-    <section class="panel" aria-label="Estadísticas">
+    <section class="panel stats-panel" aria-label="Estadísticas">
       <h2>Estadísticas</h2>
       <table class="stats"><tbody id="stats-body"></tbody></table>
     </section>

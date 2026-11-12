@@ -317,3 +317,61 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
 .quarters tbody th { text-align: left; }
 .quarters tbody th.home { color: var(--home); }
 .quarters tbody th.away { color: var(--away); }
+
+/* Pulido de «En vivo» (#96): dos columnas en pantalla ancha, el estado del
+   partido con palabras y color, y un marcador que se nota cuando cambia. */
+@media (min-width: 1100px) {
+  .wrap.live {
+    max-width: 1240px;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    grid-template-areas:
+      "board board" "market signals" "estimate possession" "estimate stats" "held held";
+    align-items: start;
+  }
+  .board { grid-area: board; }
+  .market { grid-area: market; }
+  .signals-panel { grid-area: signals; align-self: stretch; display: flex; flex-direction: column; }
+  .signals-panel .signals { max-height: none; flex: 1 1 0; min-height: 260px; }
+  .signals-panel .signals li { grid-template-columns: 44px 1fr; row-gap: 2px; }
+  .signals-panel .signals .nums { grid-column: 2; }
+  .estimate-panel { grid-area: estimate; }
+  .possession-panel { grid-area: possession; }
+  .stats-panel { grid-area: stats; }
+  .held { grid-area: held; }
+}
+
+.state {
+  display: inline-flex; align-items: center; gap: 6px; margin-right: 10px;
+  padding: 3px 9px; border-radius: 999px; font: 700 0.7rem/1 system-ui, sans-serif;
+  letter-spacing: 0.08em; text-transform: uppercase; vertical-align: 1px;
+  background: rgb(0 0 0 / 35%); color: var(--muted);
+}
+.state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.state[data-phase="live"] { color: var(--ok); }
+.state[data-phase="live"]::before { animation: pulse 1.6s ease-in-out infinite; }
+.state[data-phase="final"] { color: var(--ink); background: rgb(255 255 255 / 12%); }
+@keyframes pulse { 50% { opacity: 0.25; } }
+
+.score .bump { animation: bump 0.7s ease-out; }
+@keyframes bump {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.18); text-shadow: 0 0 24px var(--accent); }
+  100% { transform: scale(1); }
+}
+.team .name, .score > span[data-indicator] { transition: opacity 0.4s ease; }
+.board[data-winner="home"] .team.away .name,
+.board[data-winner="home"] #away-goals,
+.board[data-winner="away"] .team.home .name,
+.board[data-winner="away"] #home-goals { opacity: 0.45; }
+
+.chart text.end { font: 700 12px ui-monospace, Consolas, monospace; }
+.chart text.home { fill: var(--home); }
+.chart text.away { fill: var(--away); }
+
+.panel { border: 1px solid rgb(255 255 255 / 4%); box-shadow: 0 8px 24px rgb(0 0 0 / 18%); }
+.signals li { transition: background 0.2s ease; }
+.signals li[data-signal]:hover { background: var(--line); }
+
+@media (prefers-reduced-motion: reduce) {
+  .state[data-phase="live"]::before, .score .bump { animation: none; }
+}
