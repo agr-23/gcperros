@@ -30,7 +30,7 @@
         </li>
         <li>
           <div class="stage-tag"><span class="step-num">02</span> Transportar</div>
-          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/pubsub.tf" target="_blank" rel="noopener"><b>Pub/Sub <span class="ext">↗</span></b><span>Eventos y cuotas de cada deporte: cuatro flujos, cada uno con Dead Letter.</span></a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/pubsub.tf" target="_blank" rel="noopener"><b>Pub/Sub <span class="ext">↗</span></b><span>Eventos y cuotas de fútbol y baloncesto, y las jugadas del fútbol americano: 5 flujos, cada uno con Dead Letter.</span></a>
         </li>
         <li>
           <div class="stage-tag"><span class="step-num">03</span> Procesar</div>
@@ -120,11 +120,12 @@
     <section class="panel" aria-label="Infraestructura">
       <h2>Infraestructura como código (Terraform)</h2>
       <div class="infra-grid">
-        <div class="infra-card"><span class="infra-icon">📨</span><div><b>Mensajería (Pub/Sub)</b><p>4 topics, eventos y cuotas de cada deporte, con dead letter aislada.</p></div></div>
+        <div class="infra-card"><span class="infra-icon">📨</span><div><b>Mensajería (Pub/Sub)</b><p>5 topics de partido (fútbol, baloncesto y fútbol americano), cada uno con dead letter aislada.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📊</span><div><b>Almacén Analítico (BigQuery)</b><p>2 datasets (Raw append-only y Analítico dimensional particionado).</p></div></div>
         <div class="infra-card"><span class="infra-icon">⚡</span><div><b>Estado en Vivo (Firestore)</b><p>1 base de datos nativa para persistir el documento vivo de cada partido.</p></div></div>
         <div class="infra-card"><span class="infra-icon">🛡️</span><div><b>Seguridad e Identidad (IAM)</b><p>5 cuentas de servicio con mínimos privilegios, sin credenciales estáticas; la de los datos de usuario no puede leer lo que publica.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📦</span><div><b>Registro de Artefactos</b><p>Artifact Registry para la imagen del motor en contenedor (Cloud Run).</p></div></div>
+        <div class="infra-card"><span class="infra-icon">🚀</span><div><b>El motor (Cloud Run)</b><p>Recibe Pub/Sub por push y escribe el documento vivo en Firestore. Se despliega al indicar <code>engine_image</code>.</p></div></div>
       </div>
       <p class="aside">Todo declarado en Terraform y validado en CI. Sin dependencias opacas y con migraciones reproducibles.</p>
     </section>
