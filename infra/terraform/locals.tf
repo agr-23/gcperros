@@ -47,6 +47,12 @@ locals {
       producer         = "Generador de cuotas de baloncesto (#90)"
       description      = "Cuotas de ganador y total de puntos, reactivas a las canastas."
     }
+
+    "american-football-events" = {
+      contract_version = "v1"
+      producer         = "Generador de partidos de fútbol americano"
+      description      = "Jugadas, touchdowns, conversiones, goles de campo, despejes y pérdidas."
+    }
   }
 
   # El motor solo se conecta por push cuando ya existe su URL de Cloud Run.

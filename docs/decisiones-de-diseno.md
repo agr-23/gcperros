@@ -1672,3 +1672,26 @@ el del motor, no el del deporte.
 **La máxima es el descanso en los dos.** Lo que se retiene durante el descanso
 largo sale al reanudarse, y es lo que fija la cola de la latencia en ambos
 deportes; no es un fallo del baloncesto, es el SLA que ya estaba pendiente.
+
+---
+
+## 22. Un tercer deporte: fútbol americano
+
+El baloncesto probó que el motor no depende del fútbol. Un tercer deporte
+prueba que tampoco depende de *dos*: que añadir uno es seguir un camino que las
+pruebas ya obligan a recorrer entero. El glosario exige vocabulario para cada
+deporte del motor; cada contrato, su topic, su tabla Raw y su entrada en el
+catálogo. Se eligió el fútbol americano porque es el más distinto: el juego se
+para entre jugada y jugada, los puntos llegan de cinco maneras y el campo se
+mide en yardas.
+
+### El contrato
+
+Reglas de la NFL en `core/gridiron.py`, y el mismo sobre en
+`american-football-events`, versionado aparte. Nueve tipos cerrados: cambio de
+posesión, jugada, touchdown, conversión, gol de campo, despeje, pérdida, safety
+y tiempo muerto. Como en baloncesto, los puntos los dice el propio evento: un
+touchdown vale seis, una conversión uno pateada y dos jugada si entra, un gol
+de campo tres y un safety dos. La frontera rechaza lo que el reglamento no
+permite —un quinto down, una jugada de más de 99 yardas, un gol de campo de
+más de 70— con su causa.
