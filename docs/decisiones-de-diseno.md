@@ -1551,6 +1551,12 @@ avanza cuando llega algo, avanza menos a menudo, y **el p95 se duplica**. Es el
 mismo mecanismo que la sección 3 encontró en el fútbol, visto desde el otro
 lado: la latencia no la pone el motor, la pone la densidad del flujo.
 
+**Sobre el p90 del umbral.** La sección 20 mide la discrepancia incluyendo las
+reevaluaciones de los precios vigentes tras cada evento, con el mismo método en
+los dos deportes; por eso el p90 del fútbol sale en 0,036 y no en el 0,0144 de
+la sección 2, que medía sólo las cuotas recién publicadas. Lo que importa para
+comparar es que la vara sea la misma, y lo es.
+
 **La capacidad no cambia**, porque el motor es el mismo: el coste por evento es
 el del motor, no el del deporte.
 
