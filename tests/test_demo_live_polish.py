@@ -28,6 +28,8 @@ def test_each_panel_has_its_place_in_the_wide_layout() -> None:
         assert f"panel {panel}" in page
         assert f".{panel} {{ grid-area:" in css
     assert "grid-template-areas" in css
+    # Sólo «En vivo»: las otras pantallas siguen en una columna.
+    assert '<main class="wrap live">' in page and ".wrap.live {" in css
 
 
 def test_a_score_change_is_noticed_and_the_winner_is_shown() -> None:
