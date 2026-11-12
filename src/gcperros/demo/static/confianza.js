@@ -55,7 +55,7 @@ function validacion(report) {
   ];
 }
 
-const SPORT_NAMES = { football: "Fútbol", basketball: "Baloncesto", american_football: "Fútbol americano" };
+const SPORT_NAMES = { football: "Fútbol", basketball: "Baloncesto" };
 
 // La tabla de B5: cada deporte en una columna, cada cifra en una fila (#99).
 function comparacion(report) {

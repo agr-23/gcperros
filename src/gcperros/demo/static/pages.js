@@ -13,7 +13,11 @@
         const config = SPORTS[sport] ?? SPORTS.football;
         const link = document.createElement("a");
         link.href = `/?partido=${encodeURIComponent(matchId)}`;
-        link.textContent = `${config.icon} ${config.label}`;
+        link.dataset.sportType = sport;
+        link.innerHTML = `
+          <span class="ball-graphic ball-${sport}"></span>
+          <span class="label">${config.label}</span>
+        `;
         return link;
       }),
     );
