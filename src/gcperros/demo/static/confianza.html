@@ -7,12 +7,27 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <header class="bar">
-    <span class="brand">GCPerros</span>
-    <nav class="nav"><a href="/">En vivo</a><a href="confianza.html" aria-current="page">Por qué confiar</a><a href="bajo-el-capo.html">Bajo el capó</a></nav>
+  <header class="masthead">
+    <div class="masthead-meta">
+      <span class="brand">GCPERROS</span>
+      <span class="meta-sep">/</span>
+      <span class="edition">ANÁLISIS DE DATOS Y SEÑALES DEPORTIVAS</span>
+      <span class="meta-sep">/</span>
+      <span class="match">AUDITORÍA</span>
+    </div>
+
+    <div></div>
+
+    <div class="masthead-nav">
+      <nav class="nav" aria-label="Navegación principal">
+        <a href="/">En vivo</a>
+        <a href="confianza.html" aria-current="page">Por qué confiar</a>
+        <a href="bajo-el-capo.html">Bajo el capó</a>
+      </nav>
+    </div>
   </header>
 
-  <main class="wrap trust-page">
+  <main class="wrap trust-page doc-wrap">
     <section class="trust-hero" aria-label="Resumen">
       <h1>Por qué confiar en los números</h1>
       <p>Tres preguntas, contestadas con los informes que escriben las propias herramientas. Nada se recalcula en la página.</p>
@@ -24,21 +39,21 @@
     </section>
 
     <section class="panel trust" id="validacion" aria-label="Correcto">
-      <h2>Correcto</h2>
+      <div class="section-lead"><span class="section-num">01</span><h2>Correcto</h2></div>
       <p class="claim">El motor en vivo da lo mismo que recalcular el partido entero, aunque la red duplique y desordene los mensajes.</p>
       <div class="body"></div>
       <p class="source">Fuente: <code>gcperros-validate-streaming --report validacion.json</code></p>
     </section>
 
     <section class="panel trust" id="comparacion" aria-label="Dos deportes">
-      <h2>Dos deportes, la misma vara</h2>
+      <div class="section-lead"><span class="section-num">02</span><h2>Dos deportes, la misma vara</h2></div>
       <p class="claim">El mismo motor, sin cambiar una línea de deduplicación ni de marca de agua, con fútbol y con baloncesto.</p>
       <div class="body"></div>
       <p class="source">Fuente: <code>gcperros-compare-sports --report comparacion.json</code></p>
     </section>
 
     <section class="panel trust" id="carga" aria-label="Rápido">
-      <h2>Rápido</h2>
+      <div class="section-lead"><span class="section-num">03</span><h2>Rápido</h2></div>
       <p class="claim">Cuántos eventos por segundo aguanta el motor antes de que se le acumulen.</p>
       <div class="body"></div>
       <p class="note">
@@ -51,7 +66,7 @@
     </section>
 
     <section class="panel trust" id="calidad" aria-label="Limpio">
-      <h2>Limpio</h2>
+      <div class="section-lead"><span class="section-num">04</span><h2>Limpio</h2></div>
       <p class="claim">Cada ingestión se mide contra umbrales declarados, con numerador y denominador, en los dos deportes.</p>
       <div class="body"></div>
       <p class="source">Fuente: <code>gcperros-quality --report calidad.json</code> y <code>calidad-baloncesto.json</code></p>
