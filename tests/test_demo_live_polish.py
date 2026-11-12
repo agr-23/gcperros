@@ -49,3 +49,17 @@ def test_each_line_of_the_chart_names_its_team() -> None:
 def test_between_quarters_the_clock_reads_zero() -> None:
     """Entre cuartos el reloj no se queda en el último evento del cuarto."""
     assert 'clock.phase === "descanso" ? 0' in CLIENT.get("/sport.js").text
+
+
+def test_on_a_phone_nothing_pushes_the_page_sideways() -> None:
+    """Medido a 390 px: la cabecera se parte, el reloj salta de línea y las tablas se desplazan."""
+    css = CLIENT.get("/app.css").text
+
+    assert ".wrap > * { min-width: 0; }" in css
+    assert ".bar { flex-wrap: wrap;" in css
+    assert ".chart svg { min-width: 0; }" in css
+
+
+def test_the_trust_page_counts_every_sport_it_compares() -> None:
+    assert "Tres deportes, la misma vara" in CLIENT.get("/confianza.html").text
+    assert "Los ${report.length} deportes cumplen" in CLIENT.get("/confianza.js").text

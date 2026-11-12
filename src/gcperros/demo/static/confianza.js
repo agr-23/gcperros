@@ -71,12 +71,12 @@ function comparacion(report) {
   ];
   const all = report.every((r) => r.passed);
   return [
-    cell("p", all ? "Los dos deportes cumplen todos sus escenarios comprometidos, medidos con la misma vara." : "Algún deporte no cumple un escenario comprometido.", all ? "headline ok" : "headline ko"),
+    cell("p", all ? `Los ${report.length} deportes cumplen todos sus escenarios comprometidos, medidos con la misma vara.` : "Algún deporte no cumple un escenario comprometido.", all ? "headline ok" : "headline ko"),
     table(
       ["", ...report.map((r) => SPORT_NAMES[r.sport] ?? r.sport)],
       metrics.map(([label, value, ok]) => [[label], ...report.map((r) => [value(r), ok ? (ok(r) ? "ok" : "ko") : undefined])]),
     ),
-    cell("p", "El baloncesto manda menos de la mitad de eventos por minuto, así que la marca de agua avanza menos a menudo y la latencia se duplica: la pone la densidad del flujo, no el motor.", "aside"),
+    cell("p", "Cuantos menos eventos por minuto, menos a menudo avanza la marca de agua sin latido, y más espera cada evento: la latencia la pone la densidad del flujo, no el motor.", "aside"),
   ];
 }
 
