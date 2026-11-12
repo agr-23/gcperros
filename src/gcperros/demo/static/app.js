@@ -105,9 +105,16 @@ async function start() {
 
   const source = new EventSource(`/api/matches/${encodeURIComponent(GCP.matchId)}/stream`);
   source.onopen = () => setLink("live", "en vivo");
+  let seeded = false;
   source.onmessage = (message) => {
     const state = JSON.parse(message.data);
     render(state);
+    // Quien llega tarde ve las gráficas desde el principio (#96): el primer
+    // estado ya llevó al servidor hasta ahora, así que su historia está entera.
+    if (!seeded) {
+      seeded = true;
+      loadHistory();
+    }
     // El servidor cierra el canal al final; sin esto el navegador
     // reconectaría solo y repetiría el final una y otra vez.
     if (state.clock.phase === "final") {
@@ -118,6 +125,13 @@ async function start() {
   source.onerror = () => {
     if (source.readyState !== EventSource.CLOSED) setLink("lost", "reconectando");
   };
+}
+
+async function loadHistory() {
+  const response = await fetch(`/api/matches/${encodeURIComponent(GCP.matchId)}/history`);
+  if (!response.ok) return;
+  const points = await response.json();
+  document.dispatchEvent(new CustomEvent("gcperros:history", { detail: points }));
 }
 
 start().catch(() => setLink("lost", "sin conexión con el servidor"));

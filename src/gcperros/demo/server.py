@@ -36,6 +36,10 @@ from gcperros.demo.trace import Trace, trace_indicator
 #: minutos y medio con el descanso: bastante para seguirlo, poco para aburrir.
 DEFAULT_SPEED = 30.0
 
+#: Cada cuánto tiempo de partido se guarda un punto de la historia (#96): un
+#: minuto, la misma resolución con la que la página dibuja sus gráficas.
+HISTORY_STEP_S = 60.0
+
 #: Segundos reales entre dos envíos del canal en vivo. A velocidad 30 son
 #: quince segundos de partido: la página se mueve sin saturar al navegador.
 DEFAULT_POLL_S = 0.5
@@ -57,7 +61,7 @@ REPORTS = {
 class LiveSource:
     """Lleva la repetición al segundo de partido que toca según el reloj de pared."""
 
-    __slots__ = ("_clock", "_market", "_replay", "_speed", "_started")
+    __slots__ = ("_clock", "_history", "_market", "_replay", "_sampled_s", "_speed", "_started")
 
     def __init__(
         self,
@@ -82,6 +86,10 @@ class LiveSource:
         # El partido empieza cuando alguien lo mira, no al lanzar el servidor:
         # si no, quien tarda un minuto en abrir la página se pierde media parte.
         self._started: float | None = None
+        # Un punto por minuto de partido, para que quien llega tarde vea las
+        # gráficas desde el principio y no desde que abrió la página (#96).
+        self._history: list[dict[str, JsonValue]] = []
+        self._sampled_s = 0.0
 
     @property
     def match_id(self) -> str:
@@ -98,11 +106,29 @@ class LiveSource:
         now = self._clock()
         if self._started is None:
             self._started = now
-        self._replay.advance_to((now - self._started) * self._speed)
+        target = (now - self._started) * self._speed
+        # Se avanza minuto a minuto hasta ahora, guardando cada uno: un salto
+        # de media parte deja igualmente su historia.
+        while self._sampled_s + HISTORY_STEP_S <= min(target, self._replay.duration_s):
+            self._sampled_s += HISTORY_STEP_S
+            self._advance(self._sampled_s)
+            self._history.append(_history_point(self._snapshot()))
+        self._advance(target)
+        return self._snapshot()
+
+    def _advance(self, elapsed_s: float) -> None:
+        self._replay.advance_to(elapsed_s)
+        if self._market is not None:
+            self._market.advance_to(self._replay.now)
+
+    def _snapshot(self) -> LiveSnapshot:
         if self._market is None:
             return take_snapshot(self._replay)
-        self._market.advance_to(self._replay.now)
         return take_snapshot(self._replay, self._market.view())
+
+    def history(self) -> list[dict[str, JsonValue]]:
+        """Lo que ya pasó, un punto por minuto: indicadores y, si hay, el mercado."""
+        return list(self._history)
 
     def trace(self, indicator: str, scope: str) -> Trace:
         """De dónde sale un indicador en el estado que la página ya está viendo.
@@ -116,6 +142,19 @@ class LiveSource:
         if self._market is None:
             raise IndexError("esta demostración no lleva mercado")
         return trace_signal(self._market, index, self._replay.minute_at)
+
+
+def _history_point(snapshot: LiveSnapshot) -> dict[str, JsonValue]:
+    """Lo que las gráficas necesitan de un instante, y nada más."""
+    payload = snapshot.to_json()
+    point: dict[str, JsonValue] = {
+        "minute": snapshot.clock.minute,
+        "indicators": payload["indicators"],
+    }
+    if snapshot.market is not None:
+        point["model"] = dict(snapshot.market.model)
+        point["operators"] = {op: dict(book) for op, book in snapshot.market.operators.items()}
+    return point
 
 
 async def stream_snapshots(
@@ -188,6 +227,11 @@ def create_app(
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache"},
         )
+
+    @app.get("/api/matches/{match_id}/history", response_model=None)
+    def history(match_id: str) -> list[JsonValue]:
+        """Un punto por minuto de lo ya jugado, para dibujar las gráficas enteras (#96)."""
+        return list(_source(match_id).history())
 
     @app.get("/api/matches/{match_id}/trace/{indicator}/{scope}", response_model=None)
     def trace(match_id: str, indicator: str, scope: str) -> dict[str, JsonValue]:

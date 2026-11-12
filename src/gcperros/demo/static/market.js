@@ -102,10 +102,21 @@ function drawSignals(market) {
   );
 }
 
+let lastOperators = [];
+
+// Lo que el mercado ya hizo antes de abrir la página (#96), delante de la cinta.
+document.addEventListener("gcperros:history", ({ detail: points }) => {
+  const first = tape.length ? tape[0].minute : Infinity;
+  const earlier = points.filter((point) => point.model && point.minute < first);
+  tape.unshift(...earlier.filter((p, i) => earlier[i + 1]?.minute !== p.minute));
+  if (lastOperators.length) drawWinChart(lastOperators);
+});
+
 document.addEventListener("gcperros:state", ({ detail: state }) => {
   const market = state.market;
   if (!market) return;
   const operators = Object.keys(market.operators);
+  lastOperators = operators;
   const point = { minute: state.clock.minute, model: market.model, operators: market.operators };
   if (tape.length && tape.at(-1).minute === point.minute) tape[tape.length - 1] = point;
   else tape.push(point);
