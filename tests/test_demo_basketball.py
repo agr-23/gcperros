@@ -58,6 +58,7 @@ def test_one_server_serves_both_sports() -> None:
         (["--sport", "ambos", "--seed", "7"], ["demo-7", "demo-bkb-65"]),
         (["--sport", "american_football", "--seed", "3"], ["demo-nfl-3"]),
         (["--sport", "basketball", "--seed", "3"], ["demo-bkb-3"]),
+        (["--seed", "7", "--basketball-seed", "43"], ["demo-7", "demo-bkb-43", "demo-nfl-65"]),
         (["--sport", "football", "--seed", "7"], ["demo-7"]),
     ],
 )
@@ -74,3 +75,20 @@ def test_the_cli_serves_the_sports_it_is_asked_for(
     app = served["app"]
     assert isinstance(app, FastAPI)
     assert TestClient(app).get("/api/matches").json() == expected
+
+
+def test_cli_random_seeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    served: dict[str, object] = {}
+
+    def fake_run(app: FastAPI, **_options: object) -> None:
+        served["app"] = app
+
+    monkeypatch.setattr(uvicorn, "run", fake_run)
+    assert cli.main(["--random-seeds"]) == 0
+    app = served["app"]
+    assert isinstance(app, FastAPI)
+    matches = TestClient(app).get("/api/matches").json()
+    assert len(matches) == 3
+    assert matches[0] != "demo-65"
+    assert matches[1] != "demo-bkb-65"
+    assert matches[2] != "demo-nfl-65"
