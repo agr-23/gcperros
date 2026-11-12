@@ -1732,3 +1732,23 @@ touchdown vale seis, una conversión uno pateada y dos jugada si entra, un gol
 de campo tres y un safety dos. La frontera rechaza lo que el reglamento no
 permite —un quinto down, una jugada de más de 99 yardas, un gol de campo de
 más de 70— con su causa.
+
+### El generador y su calibración
+
+Como en los otros dos deportes, el partido es una secuencia —aquí de series
+ofensivas: cuatro downs para avanzar diez yardas— y todo el azar sale de una
+semilla. Cada serie acaba en touchdown y conversión, gol de campo, despeje,
+pérdida o pérdida en downs; en cuarto y corto en campo rival se arriesga la
+mitad de las veces. Las patadas comparten modelo con el motor
+(`core/kicking.py`, `kick-1.0.0`): un gol de campo de 30 yardas entra el 89 % de
+las veces y uno de 50 el 65 %; una conversión pateada, el 94 %.
+
+Medias por equipo sobre 200 partidos, contra la NFL: 20,6 puntos (unos 22),
+2,3 touchdowns (2,4), 1,5 goles de campo (1,6), 62 jugadas (62), 4,7 despejes
+(4,3) y 11 posesiones (11). `tests/test_american_football_generator.py` las
+vuelve a comprobar con rangos anchos.
+
+Lo que lo hace la prueba más dura para la marca de agua es **el ritmo**: un
+evento cada 30-40 segundos, y parones de uno o dos minutos tras cada anotación.
+Los huecos vivos no pasan del reloj de jugada (40 s) y los parones empiezan
+pasados los 55: hay una banda vacía, como la que el fútbol tenía entre 8 y 14 s.

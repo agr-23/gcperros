@@ -16,7 +16,12 @@ import argparse
 import sys
 from pathlib import Path
 
+from gcperros.core.american_football_stats import summarize_american_football
 from gcperros.core.basketball_stats import summarize_basketball
+from gcperros.generators.american_football import (
+    AmericanFootballConfig,
+    simulate_american_football,
+)
 from gcperros.generators.basketball import BasketballConfig, simulate_basketball
 from gcperros.generators.basketball_odds import simulate_basketball_odds
 from gcperros.generators.match import MatchConfig, simulate_match, summarize_match
@@ -46,10 +51,12 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_sport_argument(parser: argparse.ArgumentParser) -> None:
+def _add_sport_argument(
+    parser: argparse.ArgumentParser, sports: tuple[str, ...] = ("football", "basketball")
+) -> None:
     parser.add_argument(
         "--sport",
-        choices=("football", "basketball"),
+        choices=sports,
         default="football",
         help="Deporte del partido. El baloncesto viaja por sus propios flujos (#87, #90).",
     )
@@ -82,7 +89,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Genera un partido sintético determinista en formato JSON Lines.",
     )
     _add_common_arguments(parser)
-    _add_sport_argument(parser)
+    _add_sport_argument(parser, ("football", "basketball", "american_football"))
     return parser
 
 
@@ -105,6 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.sport == "basketball":
         return _basketball(args)
+    if args.sport == "american_football":
+        return _american_football(args)
 
     events = simulate_match(args.seed, _config_from(args))
     _write("".join(event.to_json() + "\n" for event in events), args.out)
@@ -138,6 +147,28 @@ def _basketball(args: argparse.Namespace) -> int:
             f"puntos_esperados={summary.expected_points} "
             f"triples={summary.three_made} "
             f"posesiones={summary.possessions}",
+            file=sys.stderr,
+        )
+
+    return 0
+
+
+def _american_football(args: argparse.Namespace) -> int:
+    """El mismo comando, para el tercer deporte (sección 22). No tiene cuotas."""
+    config = AmericanFootballConfig(
+        match_id=args.match_id, home_team=args.home, away_team=args.away
+    )
+    events = simulate_american_football(args.seed, config)
+    _write("".join(event.to_json() + "\n" for event in events), args.out)
+
+    if args.summary:
+        summary = summarize_american_football(events)
+        print(
+            f"eventos={summary.event_count} "
+            f"puntos={summary.points} "
+            f"touchdowns={summary.touchdowns} "
+            f"goles_de_campo={summary.field_goals_made} "
+            f"yardas={summary.yards}",
             file=sys.stderr,
         )
 

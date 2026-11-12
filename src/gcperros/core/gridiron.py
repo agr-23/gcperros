@@ -17,6 +17,8 @@ EXTRA_POINT = 1
 TWO_POINT = 2
 
 REGULATION_PERIODS = 4
+#: El tercer cuarto abre la segunda parte, tras el descanso largo.
+SECOND_HALF_START = 3
 PERIOD_DURATION_S = 15 * 60
 OVERTIME_DURATION_S = 10 * 60
 #: Los cuatro cuartos y una prórroga.
