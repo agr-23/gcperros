@@ -1247,6 +1247,16 @@ frente a baloncesto de la sección 21, leída del informe de
 escenarios de estrés no se aprueban ni se suspenden, porque no se prometieron:
 se dice si el motor aguantó o se rompió.
 
+### «Bajo el capó», con el segundo deporte (#96)
+
+La pantalla de arquitectura enseña ahora lo que el baloncesto compartió sin
+cambiar una línea —deduplicación, marca de agua, posesión, frontera, linaje y
+calidad— frente a lo que trajo —contrato y flujos, estado, mercado, umbral,
+margen y corte—: la tesis de la sección 21 en dos columnas. El recorrido, el
+modelo estrella y la infraestructura cuentan los cuatro flujos, `dim_sport` y
+las cinco cuentas de servicio; una prueba cuenta las del Terraform para que la
+pantalla no se desfase.
+
 ---
 
 ## 15. Catálogo y glosario (historia #24)
