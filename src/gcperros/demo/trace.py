@@ -31,6 +31,9 @@ class TracedEvent:
     minute: int
     event_type: str
     team: str
+    #: Cuánto movió el número, solo, sobre un estado vacío: +3 un triple, el xG
+    #: de un remate (#99). Sumados dan el número.
+    contribution: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,17 +54,21 @@ class Trace:
                 "minute": event.minute,
                 "event_type": event.event_type,
                 "team": event.team,
+                "contribution": event.contribution,
             }
             for event in self.events
         ]
         return payload
 
 
-def _contributes(
+def _contribution(
     scratch: SportState[object], event: MatchEvent, indicator: str, scope: str
-) -> bool:
+) -> float | None:
+    """Lo que el evento, solo, aporta al indicador; ``None`` si no lo toca."""
     scratch.apply(event)
-    return scratch.lineage(indicator, scope).event_count > 0
+    if scratch.lineage(indicator, scope).event_count == 0:
+        return None
+    return explain(scratch, indicator, scope).value
 
 
 def trace_indicator(replay: Replay[object], indicator: str, scope: str) -> Trace:
@@ -73,19 +80,22 @@ def trace_indicator(replay: Replay[object], indicator: str, scope: str) -> Trace
     """
     explanation = explain(replay.engine.state, indicator, scope)
     # Cada evento, en un estado vacío del mismo deporte: no se copian las reglas.
-    applied = [
-        e for e in replay.delivered if _contributes(replay.fresh_state(), e, indicator, scope)
-    ][: explanation.lineage.event_count]
+    touched = (
+        (e, _contribution(replay.fresh_state(), e, indicator, scope)) for e in replay.delivered
+    )
+    applied = [(e, value) for e, value in touched if value is not None][
+        : explanation.lineage.event_count
+    ]
 
     fold = LineageAccumulator()
-    for event in applied:
+    for event, _ in applied:
         fold.add(event.event_id)
 
     return Trace(
         explanation=explanation,
         events=tuple(
-            TracedEvent(e.event_id, replay.minute_at(e.event_time), e.event_type, e.team)
-            for e in applied
+            TracedEvent(e.event_id, replay.minute_at(e.event_time), e.event_type, e.team, value)
+            for e, value in applied
         ),
         verified=fold.digest == explanation.lineage.digest
         and fold.count == explanation.lineage.event_count,
