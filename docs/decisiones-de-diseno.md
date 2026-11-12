@@ -731,6 +731,19 @@ ejecutar sobre datos ya guardados: es el propio camino del dato el que produce l
 medición. Un paso del pipeline lo ejecuta con `--strict` sobre el flujo de
 referencia, de modo que una regresión de calidad rompe la construcción.
 
+### Las mismas cinco dimensiones para el baloncesto (#98)
+
+Las reglas y sus umbrales no cambian con el deporte; cambian el contrato que
+juzga la frontera y los indicadores con los que se mide la consistencia. La
+validez es la del contrato del baloncesto: un tiro que diga valer otra cosa que
+dos o tres, o una falta con más de tres tiros libres, se rechaza como fuera de
+dominio y se escala a quien el catálogo declara para `basketball-events`. La
+consistencia usa la vara del harness de cada deporte (sección 21): puntos, que
+como los goles no admiten margen; puntos esperados; posesión; y la contabilidad
+de eventos. Son cuatro comprobaciones, igual que en el fútbol, así que un punto
+perdido entre los dos planos es un fallo crítico. La CI mide los dos flujos del
+baloncesto con `--strict`, junto a los del fútbol.
+
 ---
 
 ## 9. Trazabilidad de los indicadores

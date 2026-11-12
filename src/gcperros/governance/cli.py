@@ -33,10 +33,15 @@ from pathlib import Path
 
 from gcperros.core.contracts import MatchEvent, OddsUpdate
 from gcperros.core.divergence import PlaneResult, batch_result, measure
+from gcperros.engine.basketball_state import basketball_engine
 from gcperros.engine.pipeline import MatchEngine
+from gcperros.engine.sport_harness import BASKETBALL, SportPlane
+from gcperros.engine.sport_harness import measure as measure_sport
 from gcperros.governance.escalation import escalate
 from gcperros.governance.gate import (
     IngestionGate,
+    basketball_event_gate,
+    basketball_odds_gate,
     match_event_gate,
     odds_update_gate,
 )
@@ -54,10 +59,15 @@ from gcperros.governance.quarantine import (
 from gcperros.governance.traceability import audit, explain
 
 #: Nombre corto de cada flujo en la línea de comandos.
-STREAMS = ("match", "odds")
+STREAMS = ("match", "odds", "basketball", "basketball-odds")
 
 #: Identificador del flujo, tal como lo nombra el contrato.
-STREAM_NAMES = {"match": "match-events", "odds": "odds-updates"}
+STREAM_NAMES = {
+    "match": "match-events",
+    "odds": "odds-updates",
+    "basketball": "basketball-events",
+    "basketball-odds": "basketball-odds",
+}
 
 
 ###############################################################################
@@ -145,7 +155,17 @@ def _build_gate(
     stream: str, store: InvalidEventStore
 ) -> IngestionGate[MatchEvent] | IngestionGate[OddsUpdate]:
     """Elige la frontera del flujo indicado."""
-    return match_event_gate(store) if stream == "match" else odds_update_gate(store)
+    if stream in ("match", "basketball"):
+        return _event_gate(stream, store)
+    return _odds_gate(stream, store)
+
+
+def _event_gate(stream: str, store: InvalidEventStore) -> IngestionGate[MatchEvent]:
+    return basketball_event_gate(store) if stream == "basketball" else match_event_gate(store)
+
+
+def _odds_gate(stream: str, store: InvalidEventStore) -> IngestionGate[OddsUpdate]:
+    return basketball_odds_gate(store) if stream == "basketball-odds" else odds_update_gate(store)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -255,8 +275,50 @@ def _match_evidence(
     return evidence, {event.match_id for event in admitted.values()}
 
 
-def _odds_evidence(
+def _basketball_evidence(
     lines: list[str], store: InvalidEventStore
+) -> tuple[IngestionEvidence, set[str]]:
+    """Ingiere el baloncesto por su frontera y el mismo motor, con su estado (#98).
+
+    La consistencia se mide con la vara del harness de cada deporte: puntos,
+    puntos esperados, posesión y contabilidad de eventos.
+    """
+    gate = basketball_event_gate(store)
+    engine = basketball_engine()
+    admitted: dict[str, MatchEvent] = {}
+    try:
+        for line in lines:
+            event = gate.admit(line)
+            if event is not None:
+                engine.process(event)
+                admitted.setdefault(event.event_id, event)
+        engine.flush()
+    finally:
+        gate.close()
+
+    result = engine.result()
+    summary = result.summary
+    reference = BASKETBALL.batch(
+        sorted(admitted.values(), key=lambda e: (e.event_time, e.event_id))
+    )
+    observed = SportPlane(
+        exact=sum(summary.points.values()),
+        estimate=summary.expected_points,
+        possession_seconds=result.possession.running_seconds,
+        event_count=summary.event_count,
+        dropped_late=result.watermark.dropped_late,
+    )
+    evidence = IngestionEvidence(
+        gate=gate.stats,
+        dedup=engine.dedup_stats,
+        watermark=engine.watermark_stats,
+        divergence=measure_sport(reference, observed),
+    )
+    return evidence, {event.match_id for event in admitted.values()}
+
+
+def _odds_evidence(
+    lines: list[str], store: InvalidEventStore, stream: str = "odds"
 ) -> tuple[IngestionEvidence, set[str]]:
     """Ingiere el flujo de cuotas, que no pasa por el motor.
 
@@ -264,7 +326,7 @@ def _odds_evidence(
     dimensiones se quedan sin medir. El informe lo dice en lugar de darlas por
     buenas.
     """
-    gate = odds_update_gate(store)
+    gate = _odds_gate(stream, store)
     try:
         admitted = gate.admit_all(lines)
     finally:
@@ -301,9 +363,12 @@ def quality_main(argv: list[str] | None = None) -> int:
 
     lines = _read_lines(args.source)
     store = _build_store(args.invalid)
-    evidence, matches = (
-        _match_evidence(lines, store) if args.stream == "match" else _odds_evidence(lines, store)
-    )
+    if args.stream == "match":
+        evidence, matches = _match_evidence(lines, store)
+    elif args.stream == "basketball":
+        evidence, matches = _basketball_evidence(lines, store)
+    else:
+        evidence, matches = _odds_evidence(lines, store, args.stream)
 
     # Por defecto el alcance nombra el partido, para que la serie de informes
     # distinga un partido de otro (historia #26).
