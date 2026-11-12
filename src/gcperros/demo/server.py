@@ -55,6 +55,9 @@ REPORTS = {
     "validacion": "validacion.json",
     "carga": "carga.json",
     "calidad": "calidad.json",
+    # El segundo deporte (#99): su calidad y la comparación con el fútbol.
+    "calidad-baloncesto": "calidad-baloncesto.json",
+    "comparacion": "comparacion.json",
 }
 
 

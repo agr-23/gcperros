@@ -1238,6 +1238,15 @@ extremos y el resto queda en el título. El diálogo de una señal dibuja el
 modelo frente al precio del operador en dos barras, con la separación en puntos
 frente al umbral del deporte.
 
+### «Por qué confiar», con los dos deportes (#99)
+
+Arriba, una cifra por pregunta —escenarios dentro de los umbrales, eventos por
+segundo, reglas de calidad— que lleva a su detalle. Debajo, la tabla fútbol
+frente a baloncesto de la sección 21, leída del informe de
+`gcperros-compare-sports`, y la calidad de los dos deportes lado a lado. Los
+escenarios de estrés no se aprueban ni se suspenden, porque no se prometieron:
+se dice si el motor aguantó o se rompió.
+
 ---
 
 ## 15. Catálogo y glosario (historia #24)

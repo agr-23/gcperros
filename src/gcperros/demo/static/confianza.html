@@ -12,12 +12,29 @@
     <nav class="nav"><a href="/">En vivo</a><a href="confianza.html" aria-current="page">Por qué confiar</a><a href="bajo-el-capo.html">Bajo el capó</a></nav>
   </header>
 
-  <main class="wrap">
+  <main class="wrap trust-page">
+    <section class="trust-hero" aria-label="Resumen">
+      <h1>Por qué confiar en los números</h1>
+      <p>Tres preguntas, contestadas con los informes que escriben las propias herramientas. Nada se recalcula en la página.</p>
+      <div class="kpis" id="kpis">
+        <a class="kpi" href="#validacion" data-report="validacion"><span class="kpi-label">Correcto</span><b>—</b><small>escenarios dentro de los umbrales</small></a>
+        <a class="kpi" href="#carga" data-report="carga"><span class="kpi-label">Rápido</span><b>—</b><small>eventos por segundo antes de saturar</small></a>
+        <a class="kpi" href="#calidad" data-report="calidad"><span class="kpi-label">Limpio</span><b>—</b><small>reglas de calidad por encima del mínimo</small></a>
+      </div>
+    </section>
+
     <section class="panel trust" id="validacion" aria-label="Correcto">
       <h2>Correcto</h2>
       <p class="claim">El motor en vivo da lo mismo que recalcular el partido entero, aunque la red duplique y desordene los mensajes.</p>
       <div class="body"></div>
       <p class="source">Fuente: <code>gcperros-validate-streaming --report validacion.json</code></p>
+    </section>
+
+    <section class="panel trust" id="comparacion" aria-label="Dos deportes">
+      <h2>Dos deportes, la misma vara</h2>
+      <p class="claim">El mismo motor, sin cambiar una línea de deduplicación ni de marca de agua, con fútbol y con baloncesto.</p>
+      <div class="body"></div>
+      <p class="source">Fuente: <code>gcperros-compare-sports --report comparacion.json</code></p>
     </section>
 
     <section class="panel trust" id="carga" aria-label="Rápido">
@@ -26,18 +43,18 @@
       <div class="body"></div>
       <p class="note">
         Lo que todavía no cumplimos, dicho aquí y no en letra pequeña: para ordenar bien los eventos,
-        el motor espera a que llegue uno más de 10 s posterior. En las pausas del juego no llega nadie,
-        y el p95 de espera es de 31 s frente a los 2 s que declaramos. Las dos salidas están escritas
-        en el documento de decisiones, sección 3.
+        el motor espera a que llegue uno más de 10 s posterior (15 s en baloncesto). En las pausas del
+        juego no llega nadie, y el p95 de espera es de 31 s en fútbol frente a los 2 s que declaramos.
+        Las dos salidas están escritas en el documento de decisiones, sección 3.
       </p>
       <p class="source">Fuente: <code>gcperros-benchmark --report carga.json</code></p>
     </section>
 
     <section class="panel trust" id="calidad" aria-label="Limpio">
       <h2>Limpio</h2>
-      <p class="claim">Cada ingestión se mide contra umbrales declarados, con numerador y denominador.</p>
+      <p class="claim">Cada ingestión se mide contra umbrales declarados, con numerador y denominador, en los dos deportes.</p>
       <div class="body"></div>
-      <p class="source">Fuente: <code>gcperros-quality --report calidad.json</code></p>
+      <p class="source">Fuente: <code>gcperros-quality --report calidad.json</code> y <code>calidad-baloncesto.json</code></p>
     </section>
   </main>
 
