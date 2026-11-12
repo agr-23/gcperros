@@ -8,6 +8,7 @@ que en casa.
 from __future__ import annotations
 
 import argparse
+import secrets
 import sys
 from pathlib import Path
 
@@ -69,6 +70,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Carpeta con los informes JSON de validacion, carga y calidad.",
     )
+    parser.add_argument(
+        "--random-seeds",
+        action="store_true",
+        help="Genera partidos con semillas aleatorias en todos los deportes.",
+    )
+    parser.add_argument("--basketball-seed", type=int, help="Semilla específica del baloncesto.")
+    parser.add_argument(
+        "--american-football-seed",
+        type=int,
+        help="Semilla específica del fútbol americano.",
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     return parser
@@ -80,6 +92,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.speed <= 0.0:
         parser.error("la velocidad debe ser positiva")
+
+    if args.random_seeds:
+        args.seed = secrets.randbelow(90000) + 1000
+        if args.basketball_seed is None:
+            args.basketball_seed = secrets.randbelow(90000) + 1000
+        if args.american_football_seed is None:
+            args.american_football_seed = secrets.randbelow(90000) + 1000
 
     sources: list[LiveSource] = []
     if args.sport in {"todos", "ambos", "football"}:
@@ -109,7 +128,11 @@ def _football(args: argparse.Namespace) -> LiveSource:
 def _basketball(args: argparse.Namespace) -> LiveSource:
     """El partido de baloncesto, al mismo ritmo de cuarto que el fútbol de parte."""
     teams = (args.basketball_home, args.basketball_away)
-    seed = args.seed if args.sport == "basketball" else BASKETBALL_SHOWCASE_SEED
+    seed = (
+        args.basketball_seed
+        if args.basketball_seed is not None
+        else (args.seed if args.sport == "basketball" else BASKETBALL_SHOWCASE_SEED)
+    )
     config = BasketballConfig(match_id=f"demo-bkb-{seed}", home_team=teams[0], away_team=teams[1])
     events = simulate_basketball(seed, config)
     market = MarketTape(
@@ -123,7 +146,11 @@ def _basketball(args: argparse.Namespace) -> LiveSource:
 
 def _american_football(args: argparse.Namespace) -> LiveSource:
     """El tercer deporte, sin cuotas: el marcador, la posesión y lo esperado (sección 22)."""
-    seed = args.seed if args.sport == "american_football" else AMERICAN_FOOTBALL_SHOWCASE_SEED
+    seed = (
+        args.american_football_seed
+        if args.american_football_seed is not None
+        else (args.seed if args.sport == "american_football" else AMERICAN_FOOTBALL_SHOWCASE_SEED)
+    )
     teams = ("KC", "BUF")
     config = AmericanFootballConfig(f"demo-nfl-{seed}", *teams)
     events = simulate_american_football(seed, config)
