@@ -17,11 +17,17 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from gcperros.core.american_football_stats import summarize_american_football
 from gcperros.core.basketball_stats import summarize_basketball
 from gcperros.core.contracts import MatchEvent
 from gcperros.core.divergence import Breach, Thresholds
 from gcperros.core.possession import MAX_IN_PLAY_GAP_S, PossessionTracker
 from gcperros.core.stats import summarize_events
+from gcperros.engine.american_football_state import (
+    AMERICAN_FOOTBALL_ALLOWED_LATENESS_S,
+    AMERICAN_FOOTBALL_MAX_IN_PLAY_GAP_S,
+    american_football_engine,
+)
 from gcperros.engine.basketball_state import (
     BASKETBALL_ALLOWED_LATENESS_S,
     BASKETBALL_MAX_IN_PLAY_GAP_S,
@@ -31,6 +37,7 @@ from gcperros.engine.harness import DEFAULT_SCENARIOS, Scenario, degrade
 from gcperros.engine.latency import LatencyStats
 from gcperros.engine.pipeline import EngineResult, MatchEngine, StreamEngine
 from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
+from gcperros.generators.american_football import simulate_american_football
 from gcperros.generators.basketball import simulate_basketball
 from gcperros.generators.match import simulate_match
 
@@ -137,6 +144,23 @@ def _basketball_stream(events: list[MatchEvent], allowed_lateness_s: float) -> S
     return _run(result, sum(summary.points.values()), summary.expected_points, summary.event_count)
 
 
+def _american_football_batch(events: list[MatchEvent]) -> SportPlane:
+    summary = summarize_american_football(events)
+    return SportPlane(
+        exact=sum(summary.points.values()),
+        estimate=summary.kick_expected_points,
+        possession_seconds=_possession(events, AMERICAN_FOOTBALL_MAX_IN_PLAY_GAP_S),
+        event_count=summary.event_count,
+    )
+
+
+def _american_football_stream(events: list[MatchEvent], allowed_lateness_s: float) -> SportRun:
+    result = american_football_engine(allowed_lateness_s).process_all(events)
+    summary = result.summary
+    exact = sum(summary.points.values())
+    return _run(result, exact, summary.kick_expected_points, summary.event_count)
+
+
 FOOTBALL = SportProfile(
     "football",
     "goals",
@@ -156,7 +180,19 @@ BASKETBALL = SportProfile(
     BASKETBALL_ALLOWED_LATENESS_S,
     basketball_engine,
 )
-SPORTS: dict[str, SportProfile] = {sport.name: sport for sport in (FOOTBALL, BASKETBALL)}
+AMERICAN_FOOTBALL = SportProfile(
+    "american_football",
+    "points",
+    "kick_expected_points",
+    simulate_american_football,
+    _american_football_batch,
+    _american_football_stream,
+    AMERICAN_FOOTBALL_ALLOWED_LATENESS_S,
+    american_football_engine,
+)
+SPORTS: dict[str, SportProfile] = {
+    sport.name: sport for sport in (FOOTBALL, BASKETBALL, AMERICAN_FOOTBALL)
+}
 
 
 @dataclass(frozen=True, slots=True)

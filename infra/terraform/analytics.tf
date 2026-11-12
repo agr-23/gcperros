@@ -34,7 +34,7 @@ resource "google_bigquery_table" "dim_sport" {
   labels              = local.common_labels
 
   schema = jsonencode([
-    { name = "sport", type = "STRING", mode = "REQUIRED", description = "Clave del deporte (football, basketball), la de --sport." },
+    { name = "sport", type = "STRING", mode = "REQUIRED", description = "Clave del deporte (football, basketball, american_football), la de --sport." },
     { name = "sport_name", type = "STRING", mode = "REQUIRED", description = "Nombre del deporte." },
     { name = "events_stream", type = "STRING", mode = "REQUIRED", description = "Flujo de sus eventos (match-events, basketball-events)." },
     { name = "odds_stream", type = "STRING", mode = "REQUIRED", description = "Flujo de sus cuotas (odds-updates, basketball-odds)." },

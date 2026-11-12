@@ -17,7 +17,7 @@ def test_basketball_holds_every_committed_scenario_with_its_margin(seed: int) ->
 
 
 def test_each_sport_declares_its_indicators_and_the_margin_its_data_chose() -> None:
-    assert SPORTS == {"football": FOOTBALL, "basketball": BASKETBALL}
+    assert {"football": FOOTBALL, "basketball": BASKETBALL}.items() <= SPORTS.items()
     assert (FOOTBALL.allowed_lateness_s, BASKETBALL.allowed_lateness_s) == (10.0, 15.0)
     assert (BASKETBALL.exact_label, BASKETBALL.estimate_label) == ("points", "expected_points")
 

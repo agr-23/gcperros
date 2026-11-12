@@ -1752,3 +1752,29 @@ Lo que lo hace la prueba más dura para la marca de agua es **el ritmo**: un
 evento cada 30-40 segundos, y parones de uno o dos minutos tras cada anotación.
 Los huecos vivos no pasan del reloj de jugada (40 s) y los parones empiezan
 pasados los 55: hay una banda vacía, como la que el fútbol tenía entre 8 y 14 s.
+
+### El motor, sin cambiar una línea
+
+`engine/american_football_state.py` es lo único que hubo que escribir del lado
+del motor: el estado vivo, que aplica cada evento con las **mismas funciones**
+que el resumen batch (`scoring` y `kick_value`), así que proyectarse igual no
+depende de que dos implementaciones coincidan. Deduplicación, marca de agua y
+posesión siguen intactas por tercera vez. El perfil entra en
+`sport_harness.SPORTS`, y con él las pruebas exigieron el resto: vocabulario
+propio en el glosario (la posesión con su corte, la serie ofensiva y los puntos
+esperados de las patadas), sus indicadores en el catálogo y el deporte en
+`dim_sport`. Los términos del mercado dejan de ser «de todos los deportes»: el
+fútbol americano todavía no tiene cuotas.
+
+Dos parámetros, medidos como en los otros dos:
+
+- **Corte de juego parado: 50 s**, en mitad de la banda vacía entre el reloj de
+  jugada (40 s) y el primer parón (55 s).
+- **Margen de la marca de agua: 15 s.** Sobre 12 partidos bastaría con 2 s —con
+  un evento cada 37 s casi nada se adelanta—, pero sobre 60, con 10 s un gol de
+  campo del escenario hostil llega tarde y se pierde. Con 15 s, ninguno de 360.
+
+`gcperros-compare-sports` lo pone junto a los otros dos: 72/72 escenarios
+comprometidos, oportunidad del 100 %. Y deja ver lo que el latido arregla: con
+1,6 eventos por minuto, sin latido el p95 de espera es de 96 s; es el deporte
+donde la marca de agua más necesita avanzar con el reloj (sección 3).
