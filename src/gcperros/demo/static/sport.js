@@ -95,10 +95,10 @@ const SPORTS = {
         { home: "PHX", away: "GSW", score: "122 — 118", date: "Hace 2 días", xg: "xP 119.5 vs 120.1" },
       ],
       upcoming: [
-        { home: "BOS", away: "GSW", date: "Hoy · 20:30", meta: "TD Garden", odds: "1.65 | 2.30" },
-        { home: "LAL", away: "LAC", date: "Mañana · 22:00", meta: "Crypto Arena", odds: "1.92 | 1.92" },
-        { home: "DAL", away: "OKC", date: "Viernes · 20:00", meta: "American Airlines", odds: "2.15 | 1.74" },
-        { home: "MIN", away: "DEN", date: "Sábado · 21:00", meta: "Target Center", odds: "1.80 | 2.05" },
+        { home: "BOS", away: "GSW", date: "Hoy · 20:30", meta: "Boston", odds: "1.65 | 2.30" },
+        { home: "LAL", away: "LAC", date: "Mañana · 22:00", meta: "Los Ángeles", odds: "1.92 | 1.92" },
+        { home: "DAL", away: "OKC", date: "Viernes · 20:00", meta: "Dallas", odds: "2.15 | 1.74" },
+        { home: "MIN", away: "DEN", date: "Sábado · 21:00", meta: "Minneapolis", odds: "1.80 | 2.05" },
       ]
     }
   },

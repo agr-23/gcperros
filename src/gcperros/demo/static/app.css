@@ -1431,3 +1431,9 @@ body[data-sport="basketball"] .board {
 #comparacion .trust-table td:not(:first-child), #calidad .trust-table td:not(:first-child) { text-align: center; }
 #comparacion .trust-table th:not(:first-child), #calidad .trust-table th:not(:first-child) { text-align: center; }
 @media (prefers-reduced-motion: reduce) { .kpi { transition: none; } }
+
+/* Las barras laterales son decorado: se dice, para no confundirlas con datos. */
+.sidebar-note { margin: 4px 0 0; color: var(--muted); font-size: 0.72rem; font-style: italic; }
+
+/* Sobre el parqué, los colores de equipo no se leen: los nombres van en claro. */
+.quarters tbody th.home, .quarters tbody th.away { color: rgb(255 255 255 / 92%); }
