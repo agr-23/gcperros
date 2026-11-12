@@ -9,18 +9,28 @@
 <body>
   <header class="masthead">
     <div class="masthead-meta">
-      <span class="brand">GCPERROS</span>
+      <a href="/" class="brand-link" style="text-decoration: none; color: inherit;"><span class="brand">GCPERROS</span></a>
       <span class="meta-sep">/</span>
       <span class="edition">ANÁLISIS DE DATOS Y SEÑALES DEPORTIVAS</span>
       <span class="meta-sep">/</span>
       <span class="match">ARQUITECTURA</span>
     </div>
 
-    <div></div>
+    <!-- Selector de deporte: acceso directo a la acción en vivo de cada deporte -->
+    <nav class="sports-folio sports" aria-label="Seleccionar deporte">
+      <a href="/" data-sport-type="football">
+        <span class="ball-graphic ball-football"></span>
+        <span class="label">Fútbol</span>
+      </a>
+      <a href="/?partido=basket-0065" data-sport-type="basketball">
+        <span class="ball-graphic ball-basketball"></span>
+        <span class="label">Baloncesto</span>
+      </a>
+    </nav>
 
     <div class="masthead-nav">
       <nav class="nav" aria-label="Navegación principal">
-        <a href="/">En vivo</a>
+        <a href="/">← En vivo</a>
         <a href="confianza.html">Por qué confiar</a>
         <a href="bajo-el-capo.html" aria-current="page">Bajo el capó</a>
       </nav>
