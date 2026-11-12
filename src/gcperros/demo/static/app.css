@@ -375,3 +375,18 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
 @media (prefers-reduced-motion: reduce) {
   .state[data-phase="live"]::before, .score .bump { animation: none; }
 }
+
+/* «Bajo el capó» (#96): lo que el segundo deporte comparte y lo que trae. */
+.sport-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+.diff-card { background: var(--ground); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+.diff-card.shared { border-top: 3px solid var(--ok); }
+.diff-card.own { border-top: 3px solid #f28a2e; }
+.diff-card h3 { margin: 0 0 10px; font-size: 1rem; display: flex; gap: 8px; align-items: center; }
+.diff-card ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
+.diff-card b { color: var(--ink); font-weight: 600; }
+.diff-card code { font: 0.85em ui-monospace, Consolas, monospace; color: var(--ink); }
+.badge-shared { background: rgb(79 192 141 / 15%); color: var(--ok); border: 1px solid rgb(79 192 141 / 30%); }
+.badge-own { background: rgb(242 138 46 / 15%); color: #f28a2e; border: 1px solid rgb(242 138 46 / 30%); }
+@media (max-width: 760px) { .sport-diff { grid-template-columns: 1fr; } }
+
+

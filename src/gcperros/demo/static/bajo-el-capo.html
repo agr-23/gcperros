@@ -16,7 +16,7 @@
     <section class="panel page-hero" aria-label="Introducción">
       <div class="hero-badge">Arquitectura & Datos</div>
       <h1 class="hero-title">Bajo el capó de GCPerros</h1>
-      <p class="hero-desc">El pipeline reactivo de eventos en streaming, almacenamiento dual optimizado y modelo estrella analítico en GCP.</p>
+      <p class="hero-desc">El pipeline reactivo de eventos en streaming, almacenamiento dual optimizado y modelo estrella analítico en GCP. El mismo motor, para fútbol y para baloncesto.</p>
     </section>
 
     <section class="panel" aria-label="Recorrido de un evento">
@@ -24,16 +24,16 @@
       <ol class="flow">
         <li>
           <div class="stage-tag"><span class="step-num">01</span> Producir</div>
-          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/generators/match.py" target="_blank" rel="noopener"><b>Partido <span class="ext">↗</span></b><span>Posesiones, pases y remates; determinista por semilla.</span></a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/generators/match.py" target="_blank" rel="noopener"><b>Partido <span class="ext">↗</span></b><span>Fútbol o baloncesto, con sus reglas; determinista por semilla.</span></a>
           <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/generators/odds.py" target="_blank" rel="noopener"><b>Cuotas <span class="ext">↗</span></b><span>Tres operadores de mercado con latencia y desfases.</span></a>
         </li>
         <li>
           <div class="stage-tag"><span class="step-num">02</span> Transportar</div>
-          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/pubsub.tf" target="_blank" rel="noopener"><b>Pub/Sub <span class="ext">↗</span></b><span><code>match-events</code> y <code>odds-updates</code>, cada uno con Dead Letter.</span></a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/infra/terraform/pubsub.tf" target="_blank" rel="noopener"><b>Pub/Sub <span class="ext">↗</span></b><span>Eventos y cuotas de cada deporte: cuatro flujos, cada uno con Dead Letter.</span></a>
         </li>
         <li>
           <div class="stage-tag"><span class="step-num">03</span> Procesar</div>
-          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/engine/pipeline.py" target="_blank" rel="noopener"><b>Motor con estado <span class="ext">↗</span></b><span>Deduplica → reordena por marca de agua (10 s) → aplica.</span></a>
+          <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/engine/pipeline.py" target="_blank" rel="noopener"><b>Motor con estado <span class="ext">↗</span></b><span>Deduplica → reordena por marca de agua (10 s; 15 s en baloncesto) → aplica.</span></a>
           <a class="node" href="https://github.com/agr-23/gcperros/blob/main/src/gcperros/engine/signals.py" target="_blank" rel="noopener"><b>Detector de señales <span class="ext">↗</span></b><span>Modelo propio frente a cuota vigente del operador.</span></a>
         </li>
         <li>
@@ -44,6 +44,33 @@
         </li>
       </ol>
       <p class="aside">Lo que ves en «En vivo» es el documento de Firestore tal cual, más reloj y posesión. La web se programa contra el contrato, no contra el motor: al desplegar en GCP solo cambia la fuente y la página no.</p>
+    </section>
+
+    <section class="panel" aria-label="Un segundo deporte">
+      <h2>Un segundo deporte: qué se comparte y qué cambia</h2>
+      <p class="aside">La tesis del proyecto es que deduplicar, reordenar y aplicar no dependen del fútbol. El baloncesto lo puso a prueba: lo de la izquierda no cambió ni una línea; lo de la derecha es todo lo que hubo que añadir, y cada pieza se inyecta en una que ya existía.</p>
+      <div class="sport-diff">
+        <div class="diff-card shared">
+          <h3><span class="badge badge-shared">Compartido</span> El motor y la gobernanza</h3>
+          <ul>
+            <li><b>Deduplicación</b> por <code>event_id</code></li>
+            <li><b>Marca de agua</b> sobre <code>event_time</code></li>
+            <li><b>Posesión</b> en tiempo, con el corte de cada deporte</li>
+            <li><b>Frontera de contrato</b> e inválidos con su causa</li>
+            <li><b>Linaje</b> de cada número y auditoría</li>
+            <li><b>Calidad</b> en cinco dimensiones y su escalado</li>
+          </ul>
+        </div>
+        <div class="diff-card own">
+          <h3><span class="badge badge-own">Específico</span> Lo que trajo el baloncesto</h3>
+          <ul>
+            <li>Flujos <code>basketball-events</code> y <code>basketball-odds</code></li>
+            <li>Cuotas: <b>ganador sin empate</b> y total de puntos</li>
+            <li>Umbral de la señal en <b>0,10</b></li>
+            <li><b>Margen</b> de 15 s y corte de juego en el reloj de <b>24 s</b></li>
+          </ul>
+        </div>
+      </div>
     </section>
 
     <section class="panel" aria-label="Dos bases de datos">
@@ -71,6 +98,7 @@
         <tbody>
           <tr><td><code>fact_match_events</code></td><td><span class="tag tag-fact">hechos</span></td><td>Día de <code>event_time</code></td><td><code>match_id, event_type</code></td></tr>
           <tr><td><code>fact_market_signals</code></td><td><span class="tag tag-fact">hechos</span></td><td>Día de <code>event_time</code></td><td><code>match_id, market</code></td></tr>
+          <tr><td><code>dim_sport</code></td><td><span class="tag tag-dim">dimensión</span></td><td>—</td><td>—</td></tr>
           <tr><td><code>dim_match</code></td><td><span class="tag tag-dim">dimensión</span></td><td>—</td><td>—</td></tr>
           <tr><td><code>dim_market</code></td><td><span class="tag tag-dim">dimensión</span></td><td>—</td><td>—</td></tr>
           <tr><td><code>dim_operator</code></td><td><span class="tag tag-dim">dimensión</span></td><td>—</td><td>—</td></tr>
@@ -89,10 +117,10 @@
     <section class="panel" aria-label="Infraestructura">
       <h2>Infraestructura como código (Terraform)</h2>
       <div class="infra-grid">
-        <div class="infra-card"><span class="infra-icon">📨</span><div><b>Mensajería (Pub/Sub)</b><p>2 topics (<code>match-events</code> y <code>odds-updates</code>) con dead letter aislada.</p></div></div>
+        <div class="infra-card"><span class="infra-icon">📨</span><div><b>Mensajería (Pub/Sub)</b><p>4 topics, eventos y cuotas de cada deporte, con dead letter aislada.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📊</span><div><b>Almacén Analítico (BigQuery)</b><p>2 datasets (Raw append-only y Analítico dimensional particionado).</p></div></div>
         <div class="infra-card"><span class="infra-icon">⚡</span><div><b>Estado en Vivo (Firestore)</b><p>1 base de datos nativa para persistir el documento vivo de cada partido.</p></div></div>
-        <div class="infra-card"><span class="infra-icon">🛡️</span><div><b>Seguridad e Identidad (IAM)</b><p>4 cuentas de servicio con mínimos privilegios, sin credenciales estáticas.</p></div></div>
+        <div class="infra-card"><span class="infra-icon">🛡️</span><div><b>Seguridad e Identidad (IAM)</b><p>5 cuentas de servicio con mínimos privilegios, sin credenciales estáticas; la de los datos de usuario no puede leer lo que publica.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📦</span><div><b>Registro de Artefactos</b><p>Artifact Registry para la imagen del motor en contenedor (Cloud Run).</p></div></div>
       </div>
       <p class="aside">Todo declarado en Terraform y validado en CI. Sin dependencias opacas y con migraciones reproducibles.</p>
