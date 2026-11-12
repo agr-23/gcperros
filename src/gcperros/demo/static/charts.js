@@ -73,8 +73,27 @@ function drawStats(teams, indicators) {
   );
 }
 
+let lastTeams = [];
+
+// La historia que el servidor guardó antes de abrir la página (#96): va
+// delante de lo que ya se dibujó en vivo, sin pisarlo.
+document.addEventListener("gcperros:history", ({ detail: points }) => {
+  if (lastTeams.length !== 2) return;
+  const first = history.length ? history[0].minute : Infinity;
+  const estimate = GCP.config.estimate;
+  const earlier = points
+    .filter((point) => point.minute < first && lastTeams.every((t) => point.indicators[t]))
+    .map((point) => ({
+      minute: point.minute,
+      xg: Object.fromEntries(lastTeams.map((t) => [t, point.indicators[t][estimate]])),
+    }));
+  history.unshift(...earlier.filter((p, i) => earlier[i + 1]?.minute !== p.minute));
+  drawXg(lastTeams);
+});
+
 document.addEventListener("gcperros:state", ({ detail: state }) => {
   if (state.teams.length !== 2) return;
+  lastTeams = state.teams;
   const estimate = GCP.config.estimate;
   const xg = Object.fromEntries(state.teams.map((t) => [t, state.indicators[t][estimate]]));
   const last = history.at(-1);

@@ -1191,6 +1191,17 @@ retenidos por la marca de agua se cuentan en la de en vivo, y las cifras de
 particionamiento se presentan como estimación, porque salen de un modelo de
 costes y no de un plan de ejecución de BigQuery.
 
+### Quien llega tarde ve el partido entero (#96)
+
+Las gráficas se dibujaban con lo que llegaba por el canal en vivo: quien abría
+la página en el minuto 60 veía sesenta minutos en blanco. Como la repetición
+avanza cuando alguien pregunta, ahora avanza **minuto a minuto** hasta el
+instante pedido y guarda un punto por minuto —indicadores y, si hay, modelo y
+operadores—, también cuando el reloj salta media parte de golpe. La página lo
+pide con `/api/matches/{id}/history` al llegar el primer estado y lo pone por
+delante de lo que ya dibujó. Es el mismo cálculo del estado vivo, sólo que
+muestreado: el último punto coincide con el estado que se está viendo.
+
 ---
 
 ## 15. Catálogo y glosario (historia #24)
