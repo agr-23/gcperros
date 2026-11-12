@@ -1232,6 +1232,18 @@ tiempo, y confundirlas es el error que la HU-20 corrigió.
 `gcperros-catalog` lo consulta por rol o por clase, y con `--glossary` saca el
 glosario: «¿de quién es esto?» y «¿qué significa?» sin abrir el código.
 
+### El vocabulario del segundo deporte (#97)
+
+Cada término dice a qué deportes se aplica. Lo que no depende del deporte —el
+margen, la probabilidad implícita, el linaje— se define una vez para los dos;
+la señal y la marca de agua también, con la cifra de cada deporte leída de su
+constante. Lo que sí depende tiene su término: la posesión del baloncesto corta
+en el reloj de 24 s y no en 10, los puntos esperados son su xG, el ritmo cuenta
+posesiones y no tiempo, y sus dos mercados, ganador sin empate y total de
+puntos, no existen en el fútbol. Una prueba exige que el glosario conozca cada
+deporte que corre el motor: un tercero sin vocabulario rompe la construcción.
+`gcperros-catalog --glossary --sport basketball` saca sólo lo que vale en uno.
+
 ---
 
 ## 16. Datos de usuario (historia #27)

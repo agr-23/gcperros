@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from gcperros.engine.basketball_state import BasketballLiveState
 from gcperros.governance import catalog_cli
 from gcperros.governance.catalog import CATALOG, INDICATORS, AssetKind, asset
 from gcperros.governance.glossary import GLOSSARY
@@ -17,6 +18,7 @@ def test_every_indicator_the_engine_explains_is_catalogued() -> None:
     catalogued = {entry.name for entry in INDICATORS}
 
     assert set(TEAM_INDICATORS) | set(MATCH_INDICATORS) <= catalogued
+    assert set(BasketballLiveState.team_indicators) <= catalogued
 
 
 def test_the_signal_and_every_glossary_term_are_in_use() -> None:
@@ -54,6 +56,17 @@ def test_the_glossary_comes_out_whole(capsys: pytest.CaptureFixture[str]) -> Non
 
     assert [t["key"] for t in terms] == [t.key for t in GLOSSARY]
     assert "Probabilidad implícita [implied_probability]" in text
+
+
+def test_the_glossary_answers_what_a_sport_means(capsys: pytest.CaptureFixture[str]) -> None:
+    catalog_cli.main(["--glossary", "--sport", "basketball", "--json"])
+    keys = {t["key"] for t in json.loads(capsys.readouterr().out)}
+    catalog_cli.main(["--glossary", "--sport", "football"])
+    text = capsys.readouterr().out
+
+    assert {"expected_points", "pace", "lineage"} <= keys
+    assert "xg" not in keys
+    assert "Goles esperados" in text and "Puntos esperados" not in text
 
 
 def test_an_unknown_role_is_refused() -> None:

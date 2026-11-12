@@ -6,6 +6,7 @@ Responde a «¿de quién es esto?» y a «¿qué significa esto?» sin abrir el 
 gcperros-catalog                       # todos los activos con su responsable
 gcperros-catalog --owner governance    # lo que le toca a un rol
 gcperros-catalog --glossary            # el glosario de negocio
+gcperros-catalog --glossary --sport basketball   # sólo lo que vale en un deporte
 gcperros-catalog --access              # quién puede ver qué (historia #27)
 gcperros-catalog --json                # lo mismo, para otra herramienta
 ```
@@ -20,7 +21,7 @@ import sys
 from gcperros.core.contracts import JsonValue
 from gcperros.governance.access import MATRIX, Principal
 from gcperros.governance.catalog import CATALOG, OWNERS, Asset, AssetKind, Role
-from gcperros.governance.glossary import GLOSSARY, Term
+from gcperros.governance.glossary import GLOSSARY, SPORTS, Term
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--kind", choices=[kind.value for kind in AssetKind], help="Filtra por clase."
     )
+    parser.add_argument("--sport", choices=SPORTS, help="Filtra el glosario por deporte (#97).")
     parser.add_argument("--json", action="store_true", help="Salida en JSON.")
     return parser
 
@@ -57,6 +59,7 @@ def _term_dict(entry: Term) -> dict[str, JsonValue]:
         "definition": entry.definition,
         "unit": entry.unit,
         "implemented_in": entry.implemented_in,
+        "sports": list(entry.sports),
     }
 
 
@@ -69,6 +72,7 @@ def _term_lines(entry: Term) -> str:
     return (
         f"{entry.name} [{entry.key}]\n  {entry.definition}\n"
         f"  unidad: {entry.unit}\n  en: {entry.implemented_in}\n"
+        f"  deportes: {', '.join(entry.sports)}\n"
     )
 
 
@@ -93,10 +97,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.glossary:
+        terms = [t for t in GLOSSARY if args.sport is None or args.sport in t.sports]
         if args.json:
-            output = json.dumps([_term_dict(t) for t in GLOSSARY], ensure_ascii=False, indent=2)
+            output = json.dumps([_term_dict(t) for t in terms], ensure_ascii=False, indent=2)
         else:
-            output = "\n".join(_term_lines(t) for t in GLOSSARY)
+            output = "\n".join(_term_lines(t) for t in terms)
         sys.stdout.write(output + "\n")
         return 0
 
