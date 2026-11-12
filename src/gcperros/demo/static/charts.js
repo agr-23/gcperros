@@ -65,7 +65,8 @@ function drawEndLabels(svg, teams, x, y) {
   const end = x(last.minute) > W - 90;
   for (const { team, index, at } of labels) {
     const value = (last.xg[team] ?? 0).toFixed(GCP.config.estimateDigits);
-    const attrs = { x: x(last.minute) + (end ? -6 : 6), y: Math.max(PAD.top + 10, at + 4) };
+    // Al borde derecho la etiqueta va encima de la línea, no sobre ella.
+    const attrs = { x: x(last.minute) + (end ? -6 : 6), y: Math.max(PAD.top + 10, at + (end ? -7 : 4)) };
     Object.assign(attrs, { class: `end ${index === 0 ? "home" : "away"}`, "text-anchor": end ? "end" : "start" });
     svg.append(el("text", attrs, `${team} ${value}`));
   }

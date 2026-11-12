@@ -1797,3 +1797,12 @@ Dos parámetros, medidos como en los otros dos:
 comprometidos, oportunidad del 100 %. Y deja ver lo que el latido arregla: con
 1,6 eventos por minuto, sin latido el p95 de espera es de 96 s; es el deporte
 donde la marca de agua más necesita avanzar con el reloj (sección 3).
+
+### En la demo, también en vivo
+
+`gcperros-demo` sirve los tres deportes por defecto (`--sport ambos` deja los
+dos de siempre). El fútbol americano se repite con su reloj de cuartos, su
+marcador por cuartos y su césped con las líneas de cada diez yardas. Como no
+tiene cuotas, la página **esconde** el mercado y las señales en vez de
+enseñarlos vacíos, y sube lo esperado junto a la posesión. Pulsar el marcador
+abre sus touchdowns, conversiones y goles de campo, cada uno con lo que aportó.

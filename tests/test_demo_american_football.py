@@ -71,3 +71,12 @@ def test_by_default_the_demo_serves_the_three_sports(monkeypatch: pytest.MonkeyP
     cli.main([])
 
     assert served == ["football", "basketball", "american_football"]
+
+
+def test_the_page_knows_the_third_sport_and_hides_what_it_does_not_have() -> None:
+    client = _client()
+    sport = client.get("/sport.js").text
+
+    assert "SPORTS.american_football" in sport and "market: false" in sport
+    assert "config.market === false" in client.get("/app.js").text
+    assert 'body[data-sport="american_football"] .board' in client.get("/app.css").text
