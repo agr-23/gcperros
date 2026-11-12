@@ -68,6 +68,15 @@ const SPORTS = {
       ["Faltas", (s) => s.fouls, "fouls"],
       ["Rojas", (s) => s.red_cards, "red_cards"],
     ],
+    h2h: {
+      homeWins: 5,
+      draws: 2,
+      awayWins: 3,
+      homeAvg: "2.1",
+      awayAvg: "1.4",
+      unit: "goles/p",
+      insight: "El Real Madrid ha marcado primero en 7 de los últimos 10 clásicos directos. Tasa de 'Ambos Marcan': 80%.",
+    },
     pastMatches: [
       { home: "ATM", away: "SEV", score: "2 – 0", date: "Ayer", venue: "Metropolitano, Madrid" },
       { home: "BET", away: "VAL", score: "1 – 1", date: "10 Nov", venue: "Benito Villamarín, Sevilla" },
@@ -119,6 +128,15 @@ const SPORTS = {
       ["Faltas", (s) => s.fouls, "fouls"],
       ["Tiempos muertos", (s) => s.timeouts, "timeouts"],
     ],
+    h2h: {
+      homeWins: 6,
+      draws: 0,
+      awayWins: 4,
+      homeAvg: "108.4",
+      awayAvg: "103.2",
+      unit: "pts/p",
+      insight: "Boston promedia +5.2 rebotes ofensivos jugando en el TD Garden en los últimos 10 choques directos.",
+    },
     pastMatches: [
       { home: "DEN", away: "GSW", score: "114 – 109", date: "Ayer", venue: "Ball Arena, Denver" },
       { home: "MIL", away: "PHI", score: "118 – 116", date: "10 Nov", venue: "Fiserv Forum, Milwaukee" },
@@ -171,6 +189,15 @@ SPORTS.american_football = {
     ["Despejes", (s) => s.punts, "punts"],
     ["Tiempos muertos", (s) => s.timeouts, "timeouts"],
   ],
+  h2h: {
+    homeWins: 5,
+    draws: 0,
+    awayWins: 3,
+    homeAvg: "27.5",
+    awayAvg: "24.1",
+    unit: "pts/p",
+    insight: "Kansas City ha cubierto la línea en 4 de las últimas 5 visitas de Buffalo a Arrowhead.",
+  },
   pastMatches: [
     { home: "BAL", away: "CIN", score: "35 – 34", date: "Jueves", venue: "M&T Bank, Baltimore" },
     { home: "DET", away: "GB", score: "24 – 14", date: "10 Nov", venue: "Ford Field, Detroit" },

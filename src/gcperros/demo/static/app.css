@@ -349,7 +349,7 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
     max-width: 1240px;
     grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
     grid-template-areas:
-      "board board" "market signals" "estimate possession" "estimate stats" "held held";
+      "board board" "market signals" "estimate possession" "estimate stats" "h2h h2h" "held held";
     align-items: start;
   }
   .board { grid-area: board; }
@@ -361,6 +361,7 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
   .estimate-panel { grid-area: estimate; }
   .possession-panel { grid-area: possession; }
   .stats-panel { grid-area: stats; }
+  .h2h-panel { grid-area: h2h; }
   .held { grid-area: held; }
 }
 
@@ -526,7 +527,7 @@ body[data-sport="american_football"] .board {
 }
 @media (min-width: 1100px) {
   body[data-sport="american_football"] .wrap.live {
-    grid-template-areas: "board board" "estimate possession" "estimate stats" "held held";
+    grid-template-areas: "board board" "estimate possession" "estimate stats" "h2h h2h" "held held";
   }
 }
 /* Un panel escondido se esconde también en la rejilla ancha, que le da display. */
@@ -633,4 +634,40 @@ body[data-sport="american_football"] .board {
 @media (max-width: 960px) {
   .stage-container { flex-direction: column; align-items: center; }
   .side-column { width: 100%; max-width: 880px; position: static; }
+}
+
+/* Histórico cara a cara (H2H) con contexto de BigQuery */
+.h2h-panel { padding: 16px 20px; }
+.h2h-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.h2h-header h2 { margin: 0; }
+.h2h-badge {
+  font: 600 0.72rem/1 ui-monospace, Consolas, monospace;
+  color: #70b0ff;
+  background: rgba(79, 143, 240, 0.12);
+  border: 1px solid rgba(79, 143, 240, 0.3);
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.h2h-summary { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-bottom: 10px; }
+.h2h-col { display: flex; flex-direction: column; gap: 2px; }
+.h2h-col.home { text-align: left; }
+.h2h-col.away { text-align: right; }
+.h2h-name { font-size: 0.85rem; font-weight: 700; color: var(--ink); }
+.h2h-wins { font: 800 1.5rem/1 ui-monospace, Consolas, monospace; }
+.h2h-col.home .h2h-wins { color: var(--home); }
+.h2h-col.away .h2h-wins { color: var(--away); }
+.h2h-avg { font: 0.75rem ui-monospace, Consolas, monospace; color: var(--muted); }
+.h2h-draws { text-align: center; color: var(--muted); padding: 0 8px; }
+.h2h-draws-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; }
+.h2h-draws-val { font: 700 1.15rem ui-monospace, Consolas, monospace; color: var(--ink); }
+.h2h-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); margin-bottom: 10px; }
+.h2h-seg { height: 100%; transition: width 0.3s ease; }
+.h2h-seg.home { background: var(--home); }
+.h2h-seg.draw { background: var(--line); border-left: 1px solid var(--panel); border-right: 1px solid var(--panel); }
+.h2h-seg.away { background: var(--away); }
+.h2h-insight {
+  margin: 0; font-size: 0.85rem; color: var(--muted);
+  border-left: 3px solid var(--home); padding-left: 10px; line-height: 1.4;
 }
