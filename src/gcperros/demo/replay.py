@@ -21,10 +21,15 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Generic, TypeVar
 
-from gcperros.core import court
+from gcperros.core import court, gridiron
+from gcperros.core.american_football_stats import AmericanFootballSummary
 from gcperros.core.basketball_stats import BasketballSummary
 from gcperros.core.contracts import MatchEvent
 from gcperros.core.stats import MatchSummary
+from gcperros.engine.american_football_state import (
+    AmericanFootballLiveState,
+    american_football_engine,
+)
 from gcperros.engine.basketball_state import BasketballLiveState, basketball_engine
 from gcperros.engine.pipeline import MatchEngine, StreamEngine
 from gcperros.engine.sport import SportState
@@ -220,30 +225,28 @@ class MatchReplay(Replay[MatchSummary]):
         return int((current - 1) * HALF_DURATION_S / 60 + offset_s / 60)
 
 
-class BasketballReplay(Replay[BasketballSummary]):
-    """Un partido de baloncesto: cuartos, descansos y prórrogas, con reloj de juego."""
+class _QuarterReplay(Replay[S_co]):
+    """Un deporte de cuartos con reloj de juego: el baloncesto y el fútbol americano.
+
+    Cada subclase declara su reglamento —cuántos cuartos, cuánto dura cada uno y
+    cuánto la prórroga— y su motor; el reloj y el minuto se leen igual.
+    """
 
     __slots__ = ("_times", "teams")
-    sport = "basketball"
+    regulation_periods: int
+    period_s: int
+    overtime_s: int
 
-    def __init__(self, events: list[MatchEvent], teams: tuple[str, str] | None = None) -> None:
-        """Prepara la repetición en el salto inicial, con el motor del baloncesto.
-
-        Args:
-            events: Eventos del partido.
-            teams: ``(local, visitante)``. El salto inicial no dice quién es
-                local: el primero en aparecer es quien lo gana.
-
-        Raises:
-            ValueError: Si no hay eventos que repetir.
-        """
-        super().__init__(events, basketball_engine())
+    def __init__(
+        self,
+        events: list[MatchEvent],
+        engine: StreamEngine[S_co],
+        teams: tuple[str, str] | None = None,
+    ) -> None:
+        """Prepara la repetición. El primer evento no dice quién es local: ``teams`` sí."""
+        super().__init__(events, engine)
         self.teams = teams
         self._times = [event.event_time for event in self._events]
-
-    def fresh_state(self) -> BasketballLiveState:
-        """Un estado de baloncesto vacío."""
-        return BasketballLiveState()
 
     def _last_at(self, instant: datetime) -> MatchEvent | None:
         index = bisect_right(self._times, instant)
@@ -253,7 +256,7 @@ class BasketballReplay(Replay[BasketballSummary]):
         """Cuarto, reloj de juego y fase en el instante actual."""
         last = self._last_at(self._now)
         period = _period(last) if last is not None else 1
-        game_clock = _clock(last) if last is not None else float(court.PERIOD_DURATION_S)
+        game_clock = _clock(last) if last is not None else float(self.period_s)
         return ReplayClock(
             elapsed_s=round(self.elapsed_s, 1),
             period=period,
@@ -268,14 +271,46 @@ class BasketballReplay(Replay[BasketballSummary]):
         if last is None:
             return 0
         period = _period(last)
-        regulation = min(period - 1, court.REGULATION_PERIODS) * court.PERIOD_DURATION_S
-        overtimes = max(period - 1 - court.REGULATION_PERIODS, 0) * court.OVERTIME_DURATION_S
-        length = (
-            court.PERIOD_DURATION_S
-            if period <= court.REGULATION_PERIODS
-            else court.OVERTIME_DURATION_S
-        )
+        regulation = min(period - 1, self.regulation_periods) * self.period_s
+        overtimes = max(period - 1 - self.regulation_periods, 0) * self.overtime_s
+        length = self.period_s if period <= self.regulation_periods else self.overtime_s
         return int((regulation + overtimes + length - _clock(last)) / 60)
+
+
+class BasketballReplay(_QuarterReplay[BasketballSummary]):
+    """Un partido de baloncesto: cuartos, descansos y prórrogas, con reloj de juego."""
+
+    __slots__ = ()
+    sport = "basketball"
+    regulation_periods = court.REGULATION_PERIODS
+    period_s = court.PERIOD_DURATION_S
+    overtime_s = court.OVERTIME_DURATION_S
+
+    def __init__(self, events: list[MatchEvent], teams: tuple[str, str] | None = None) -> None:
+        """Prepara la repetición en el salto inicial, con el motor del baloncesto."""
+        super().__init__(events, basketball_engine(), teams)
+
+    def fresh_state(self) -> BasketballLiveState:
+        """Un estado de baloncesto vacío."""
+        return BasketballLiveState()
+
+
+class AmericanFootballReplay(_QuarterReplay[AmericanFootballSummary]):
+    """Un partido de fútbol americano: cuatro cuartos de quince minutos y prórroga."""
+
+    __slots__ = ()
+    sport = "american_football"
+    regulation_periods = gridiron.REGULATION_PERIODS
+    period_s = gridiron.PERIOD_DURATION_S
+    overtime_s = gridiron.OVERTIME_DURATION_S
+
+    def __init__(self, events: list[MatchEvent], teams: tuple[str, str] | None = None) -> None:
+        """Prepara la repetición en el saque inicial, con el motor del fútbol americano."""
+        super().__init__(events, american_football_engine(), teams)
+
+    def fresh_state(self) -> AmericanFootballLiveState:
+        """Un estado de fútbol americano vacío."""
+        return AmericanFootballLiveState()
 
 
 def _clock(event: MatchEvent) -> float:

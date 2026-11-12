@@ -54,7 +54,9 @@ def test_one_server_serves_both_sports() -> None:
 @pytest.mark.parametrize(
     ("argv", "expected"),
     [
-        (["--seed", "7"], ["demo-7", "demo-bkb-65"]),
+        (["--seed", "7"], ["demo-7", "demo-bkb-65", "demo-nfl-65"]),
+        (["--sport", "ambos", "--seed", "7"], ["demo-7", "demo-bkb-65"]),
+        (["--sport", "american_football", "--seed", "3"], ["demo-nfl-3"]),
         (["--sport", "basketball", "--seed", "3"], ["demo-bkb-3"]),
         (["--sport", "football", "--seed", "7"], ["demo-7"]),
     ],

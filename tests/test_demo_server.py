@@ -95,8 +95,8 @@ def test_the_cli_serves_the_match_of_the_seed(monkeypatch: pytest.MonkeyPatch) -
     app = served["app"]
     assert isinstance(app, FastAPI)
     client = TestClient(app)
-    # Por defecto sirve los dos deportes, el fútbol primero (#92).
-    assert client.get("/api/matches").json() == ["demo-7", "demo-bkb-65"]
+    # Por defecto sirve los tres deportes, el fútbol primero (#92, sección 22).
+    assert client.get("/api/matches").json() == ["demo-7", "demo-bkb-65", "demo-nfl-65"]
     # La CLI monta el mercado: el estado trae cuotas de los tres operadores.
     state = client.get("/api/matches/demo-7/state").json()
     assert sorted(state["market"]["operators"]) == ["OP-A", "OP-B", "OP-C"]

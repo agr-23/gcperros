@@ -9,10 +9,12 @@ de GCP la fuente pasa a ser un listener de Firestore sin que la página cambie.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
+from gcperros.core.american_football_stats import scoring
 from gcperros.core.basketball_matchstate import points_scored
-from gcperros.core.contracts import JsonValue
+from gcperros.core.contracts import JsonValue, MatchEvent
 from gcperros.demo.market import MarketView
 from gcperros.demo.replay import Replay, ReplayClock
 from gcperros.firestore.document import LiveMatchDocument
@@ -91,6 +93,13 @@ def _market_json(view: MarketView) -> dict[str, JsonValue]:
     }
 
 
+#: Lo que suma cada evento al marcador, en los deportes de cuartos.
+_POINTS: dict[str, Callable[[MatchEvent], int]] = {
+    "basketball": points_scored,
+    "american_football": lambda event: scoring(event).get("points", 0),
+}
+
+
 def _points_by_period(replay: Replay[object]) -> dict[str, list[int]]:
     """Puntos por cuarto de lo que el motor ya aplicó.
 
@@ -103,7 +112,7 @@ def _points_by_period(replay: Replay[object]) -> dict[str, list[int]]:
     last = max((_period_of(e.attrs.get("period")) for e in applied), default=1)
     periods = {team: [0] * last for team in teams}
     for event in applied:
-        scored = points_scored(event)
+        scored = _POINTS[replay.sport](event)
         if scored and event.team in periods:
             periods[event.team][_period_of(event.attrs.get("period")) - 1] += scored
     return periods
@@ -132,5 +141,5 @@ def take_snapshot(replay: Replay[object], market: MarketView | None = None) -> L
         pending=engine.pending,
         market=market,
         sport=replay.sport,
-        periods=_points_by_period(replay) if replay.sport == "basketball" else None,
+        periods=_points_by_period(replay) if replay.sport in _POINTS else None,
     )
