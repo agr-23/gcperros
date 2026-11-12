@@ -21,8 +21,9 @@ usaba.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Generic, TypeVar
 
@@ -184,10 +185,45 @@ class StreamEngine(Generic[S_co]):
 
         return Outcome.ACCEPTED if accepted else Outcome.DROPPED_LATE
 
+    def tick(self, now: datetime) -> int:
+        """Latido del reloj de pared: aplica lo que la marca de agua ya rebasó.
+
+        En el servicio se llama cada pocos segundos, llegue o no algo. Es lo que
+        impide que una pausa del juego retenga lo último que pasó (sección 3).
+
+        Returns:
+            Cuántos eventos se aplicaron con este latido.
+        """
+        if self._clock is None:
+            return 0
+        clock = max(self._clock, now)
+        self._clock = clock
+        released = self._reorderer.tick(clock)
+        for ready in released:
+            self._apply(ready, clock)
+        watermark = self._reorderer.watermark
+        if watermark is not None:
+            self._closed_windows.extend(self._possession.close_through(watermark))
+        return len(released)
+
     def _apply(self, event: MatchEvent, at: datetime) -> None:
         self._state.apply(event)
         self._possession.apply(event)
         self._latency.applied(event, at)
+
+    def provisional(self) -> S_co:
+        """La vista provisional: lo aplicado más lo que espera a la marca de agua.
+
+        Un gol o una canasta aparece aquí en cuanto llega, sin esperar al
+        margen; es la segunda salida de la sección 3 para el SLA. Lo exacto no
+        se corrige nunca —contar no depende del orden—, y cuando la ventana se
+        cierra la vista definitiva da lo mismo. El estado vivo no se toca: se
+        trabaja sobre una copia.
+        """
+        view = copy.deepcopy(self._state)
+        for event in self._reorderer.pending():
+            view.apply(event)
+        return view.summary()
 
     def flush(self) -> None:
         """Aplica lo que quedaba retenido y cierra las ventanas que faltaban.
@@ -208,9 +244,23 @@ class StreamEngine(Generic[S_co]):
         if final is not None:
             self._closed_windows.extend(self._possession.close_through(final))
 
-    def process_all(self, events: list[MatchEvent]) -> EngineResult[S_co]:
-        """Procesa un flujo completo, lo vacía y devuelve el resultado."""
+    def process_all(
+        self, events: list[MatchEvent], heartbeat_s: float | None = None
+    ) -> EngineResult[S_co]:
+        """Procesa un flujo completo, lo vacía y devuelve el resultado.
+
+        Con ``heartbeat_s``, simula el latido: entre una llegada y la
+        siguiente late cada ``heartbeat_s`` segundos de flujo, sin pasar nunca
+        del instante de la siguiente. Como la marca de agua llegaría ahí de
+        todos modos con esa llegada, los descartes no cambian: sólo la espera.
+        """
+        step = timedelta(seconds=heartbeat_s) if heartbeat_s else None
         for event in events:
+            if step is not None and self._clock is not None:
+                beat = self._clock + step
+                while beat < event.event_time:
+                    self.tick(beat)
+                    beat += step
             self.process(event)
         self.flush()
         return self.result()

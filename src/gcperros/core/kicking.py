@@ -5,7 +5,7 @@ comparten el generador, que decide cada patada muestreando ``Bernoulli(p)``, y
 el motor, que acumula los puntos esperados de cada equipo. La probabilidad de
 un gol de campo cae en línea recta con la distancia; las de las conversiones
 son fijas. Valores de referencia de la NFL, que verifica
-``tests/test_american_football_summary.py``:
+``tests/test_american_football_generator.py``:
 
     gol de campo de 30 yardas   -> ~0.89
     gol de campo de 50 yardas   -> ~0.65

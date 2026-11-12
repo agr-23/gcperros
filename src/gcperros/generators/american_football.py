@@ -13,7 +13,7 @@ avanzaba con las llegadas.
 
 Todo el azar sale de un único ``random.Random(seed)``: la misma semilla da el
 mismo partido. La calibración contra la NFL está en
-``tests/test_american_football_summary.py`` y en la sección 22.
+``tests/test_american_football_generator.py`` y en la sección 22.
 """
 
 from __future__ import annotations
