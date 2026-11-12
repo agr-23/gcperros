@@ -60,9 +60,9 @@ resource "google_service_account" "pubsub_invoker" {
   depends_on = [google_project_service.this]
 }
 
-# Permite que Pub/Sub invoque el endpoint de push del motor. El servicio de
-# Cloud Run se declara en la historia que despliega el motor; hasta entonces
-# esta autorización no tiene destino y por eso viaja junto a la SA.
+# Permite que Pub/Sub invoque el endpoint de push del motor: el servicio que
+# esta raíz despliega con `engine_image` (cloud_run.tf) o uno desplegado aparte
+# (`engine_service_name`).
 resource "google_cloud_run_v2_service_iam_member" "engine_invoker" {
   count = local.push_enabled && local.engine_service_name != null ? 1 : 0
 
@@ -71,4 +71,8 @@ resource "google_cloud_run_v2_service_iam_member" "engine_invoker" {
   name     = local.engine_service_name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${local.pubsub_invoker_email}"
+
+  # El nombre es un texto, no una referencia: sin esto Terraform podría dar el
+  # permiso antes de que exista el servicio al que se lo da.
+  depends_on = [google_cloud_run_v2_service.engine]
 }
