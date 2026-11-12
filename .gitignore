@@ -20,6 +20,7 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 *.jsonl
+reports/
 
 # Sistema operativo / editores
 .DS_Store

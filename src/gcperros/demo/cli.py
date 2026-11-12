@@ -113,7 +113,8 @@ def main(argv: list[str] | None = None) -> int:
             f"estado=http://{args.host}:{args.port}/api/matches/{source.match_id}/state",
             file=sys.stderr,
         )
-    app = create_app(sources, reports_dir=args.reports)
+    reports_dir = args.reports or (Path("reports") if Path("reports").is_dir() else None)
+    app = create_app(sources, reports_dir=reports_dir)
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     return 0
 
