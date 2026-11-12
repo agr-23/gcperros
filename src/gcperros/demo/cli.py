@@ -14,9 +14,13 @@ from pathlib import Path
 import uvicorn
 
 from gcperros.demo.market import MarketTape
-from gcperros.demo.replay import BasketballReplay, MatchReplay
+from gcperros.demo.replay import AmericanFootballReplay, BasketballReplay, MatchReplay
 from gcperros.demo.server import DEFAULT_SPEED, LiveSource, create_app
 from gcperros.engine.basketball_market import BASKETBALL_THRESHOLD, BasketballMarketReader
+from gcperros.generators.american_football import (
+    AmericanFootballConfig,
+    simulate_american_football,
+)
 from gcperros.generators.basketball import BasketballConfig, simulate_basketball
 from gcperros.generators.basketball_odds import simulate_basketball_odds
 from gcperros.generators.match import MatchConfig, simulate_match
@@ -33,6 +37,9 @@ SHOWCASE_SEED = 65
 #: el último cuarto.
 BASKETBALL_SHOWCASE_SEED = 65
 
+#: El partido de fútbol americano de la demo: igualado hasta el último cuarto.
+AMERICAN_FOOTBALL_SHOWCASE_SEED = 65
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Construye el analizador de argumentos."""
@@ -45,8 +52,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--away", default="BAR", help="Equipo visitante.")
     parser.add_argument(
         "--sport",
-        choices=("ambos", "football", "basketball"),
-        default="ambos",
+        choices=("todos", "ambos", "football", "basketball", "american_football"),
+        default="todos",
         help="Qué deporte servir. Con los dos, la página trae un selector (#92).",
     )
     parser.add_argument("--basketball-home", default="BOS", help="Local del baloncesto.")
@@ -75,10 +82,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("la velocidad debe ser positiva")
 
     sources: list[LiveSource] = []
-    if args.sport in {"ambos", "football"}:
+    if args.sport in {"todos", "ambos", "football"}:
         sources.append(_football(args))
-    if args.sport in {"ambos", "basketball"}:
+    if args.sport in {"todos", "ambos", "basketball"}:
         sources.append(_basketball(args))
+    if args.sport in {"todos", "american_football"}:
+        sources.append(_american_football(args))
     for source in sources:
         print(
             f"partido={source.match_id} deporte={source.sport} velocidad=x{args.speed:g} "
@@ -110,6 +119,15 @@ def _basketball(args: argparse.Namespace) -> LiveSource:
         reader=BasketballMarketReader(*teams),
     )
     return LiveSource(BasketballReplay(events, teams), speed=args.speed, market=market)
+
+
+def _american_football(args: argparse.Namespace) -> LiveSource:
+    """El tercer deporte, sin cuotas: el marcador, la posesión y lo esperado (sección 22)."""
+    seed = args.seed if args.sport == "american_football" else AMERICAN_FOOTBALL_SHOWCASE_SEED
+    teams = ("KC", "BUF")
+    config = AmericanFootballConfig(f"demo-nfl-{seed}", *teams)
+    events = simulate_american_football(seed, config)
+    return LiveSource(AmericanFootballReplay(events, teams), speed=args.speed)
 
 
 if __name__ == "__main__":
