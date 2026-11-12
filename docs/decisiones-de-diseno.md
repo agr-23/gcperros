@@ -239,10 +239,30 @@ Lo que se sigue de ahí, y que se decide aparte porque cambia el diseño:
 
 - **La marca de agua necesita un latido.** Tiene que avanzar también con el
   reloj de pared, no sólo con las llegadas; si no, cualquier pausa retiene lo
-  último que pasó hasta que el juego se reanuda.
+  último que pasó hasta que el juego se reanuda. *Hecho: ver más abajo.*
 - **Publicar estado provisional al llegar y corregirlo al cerrar la ventana.**
   Es la única forma de cumplir 2 s en p95 conservando un margen de 10 s, y
   obliga a que el consumidor tolere correcciones.
+
+### El latido: la espera baja al margen, la corrección no cambia
+
+`StreamEngine.tick(ahora)` hace avanzar la marca de agua hasta `ahora` menos el
+margen aunque no llegue nada, y aplica lo que rebasó. En el servicio late cada
+segundo. En la simulación (`process_all(..., heartbeat_s=1)`) late entre una
+llegada y la siguiente sin pasar nunca de ella: como la marca de agua llegaría
+ahí de todos modos con esa llegada, **no descarta ni un evento más**. Sobre ocho
+partidos por deporte, en limpio y con desorden medio, el resumen, la posesión y
+los descartes son idénticos con y sin latido; sólo cambia la espera:
+
+| | p95 sin latido | p95 con latido | Máximo sin | Máximo con |
+|---|---|---|---|---|
+| Fútbol (margen 10 s) | 31,2 s | **10,9 s** | 927 s | **11 s** |
+| Baloncesto (margen 15 s) | 68,5 s | **15,9 s** | 920 s | **16 s** |
+
+El descanso deja de retener nada: cada evento sale en cuanto pasa su margen,
+más un latido como mucho. Lo que queda frente al SLA de 2 s es **el propio
+margen**, que no se puede bajar sin perder corrección (la tabla de arriba). Para
+eso está la segunda salida, el estado provisional.
 
 ### Hasta dónde aguanta el motor: unos 85.000 eventos por segundo
 
