@@ -20,6 +20,31 @@ class SLALimits:
     min_throughput_ev_per_s: float = 1000.0
     max_backlog: int = 50
     max_rejection_rate: float = 0.05  # máximo 5% de mensajes rechazados
+    max_backlog_age_s: float = 300.0  # máximo 5 minutos sin confirmar (#95)
+
+
+def limits_for_sport(sport: str = "football") -> SLALimits:
+    """Devuelve límites de SLA calibrados según la densidad del deporte (#95).
+
+    En fútbol (11,1 ev/min), 50 eventos equivalen a 4,5 minutos de cola.
+    En baloncesto (4,8 ev/min), 50 eventos tardarían más de 10 minutos en acumularse,
+    por lo que un umbral de 24 eventos equivale a los mismos ~300 s (5 min) de antigüedad.
+    """
+    if sport == "basketball":
+        return SLALimits(
+            max_p95_latency_ms=2000.0,
+            min_throughput_ev_per_s=1000.0,
+            max_backlog=24,  # 300 s * (4.8 ev / 60 s) = 24 eventos
+            max_rejection_rate=0.05,
+            max_backlog_age_s=300.0,
+        )
+    return SLALimits(
+        max_p95_latency_ms=2000.0,
+        min_throughput_ev_per_s=1000.0,
+        max_backlog=50,
+        max_rejection_rate=0.05,
+        max_backlog_age_s=300.0,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +67,7 @@ class OperationalReport:
     max_backlog: int
     rejection_rate: float
     alerts: tuple[Alert, ...]
+    backlog_age_s: float | None = None
 
     @property
     def healthy(self) -> bool:
@@ -49,16 +75,18 @@ class OperationalReport:
         return not any(a.severity in ("WARNING", "CRITICAL") for a in self.alerts)
 
 
-def evaluate_operations(
+def evaluate_operations(  # noqa: PLR0913
     *,
     p95_latency_ms: float,
     throughput_ev_per_s: float,
     max_backlog: int,
     rejection_rate: float,
+    backlog_age_s: float | None = None,
     limits: SLALimits | None = None,
+    sport: str | None = None,
 ) -> OperationalReport:
     """Evalúa métricas operativas observadas contra los límites de SLA."""
-    lim = limits or SLALimits()
+    lim = limits or (limits_for_sport(sport) if sport else SLALimits())
     alerts: list[Alert] = []
 
     if p95_latency_ms > lim.max_p95_latency_ms:
@@ -97,6 +125,21 @@ def evaluate_operations(
             )
         )
 
+    if backlog_age_s is not None and backlog_age_s > lim.max_backlog_age_s:
+        msg = (
+            f"Mensaje más antiguo ({backlog_age_s:.1f}s) excede límite "
+            f"({lim.max_backlog_age_s:.1f}s)"
+        )
+        alerts.append(
+            Alert(
+                metric="backlog_age",
+                observed=backlog_age_s,
+                threshold=lim.max_backlog_age_s,
+                severity="CRITICAL",
+                message=msg,
+            )
+        )
+
     if rejection_rate > lim.max_rejection_rate:
         msg = f"Tasa de rechazo {rejection_rate:.1%} excede umbral ({lim.max_rejection_rate:.1%})"
         alerts.append(
@@ -115,4 +158,5 @@ def evaluate_operations(
         max_backlog=max_backlog,
         rejection_rate=rejection_rate,
         alerts=tuple(alerts),
+        backlog_age_s=backlog_age_s,
     )
