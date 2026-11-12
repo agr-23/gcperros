@@ -7,37 +7,13 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <header class="masthead">
-    <div class="masthead-meta">
-      <a href="/" class="brand-link" style="text-decoration: none; color: inherit;"><span class="brand">GCPERROS</span></a>
-      <span class="meta-sep">/</span>
-      <span class="edition">ANÁLISIS DE DATOS Y SEÑALES DEPORTIVAS</span>
-      <span class="meta-sep">/</span>
-      <span class="match">AUDITORÍA</span>
-    </div>
-
-    <!-- Selector de deporte: acceso directo a la acción en vivo de cada deporte -->
-    <nav class="sports-folio sports" aria-label="Seleccionar deporte">
-      <a href="/" data-sport-type="football">
-        <span class="ball-graphic ball-football"></span>
-        <span class="label">Fútbol</span>
-      </a>
-      <a href="/?partido=basket-0065" data-sport-type="basketball">
-        <span class="ball-graphic ball-basketball"></span>
-        <span class="label">Baloncesto</span>
-      </a>
-    </nav>
-
-    <div class="masthead-nav">
-      <nav class="nav" aria-label="Navegación principal">
-        <a href="/">← En vivo</a>
-        <a href="confianza.html" aria-current="page">Por qué confiar</a>
-        <a href="bajo-el-capo.html">Bajo el capó</a>
-      </nav>
-    </div>
+  <header class="bar">
+    <span class="brand">GCPerros</span>
+    <nav class="nav"><a href="/">En vivo</a><a href="confianza.html" aria-current="page">Por qué confiar</a><a href="bajo-el-capo.html">Bajo el capó</a></nav>
+    <nav class="sports" id="sports" aria-label="Deporte" hidden></nav>
   </header>
 
-  <main class="wrap trust-page doc-wrap">
+  <main class="wrap trust-page">
     <section class="trust-hero" aria-label="Resumen">
       <h1>Por qué confiar en los números</h1>
       <p>Tres preguntas, contestadas con los informes que escriben las propias herramientas. Nada se recalcula en la página.</p>
@@ -49,34 +25,36 @@
     </section>
 
     <section class="panel trust" id="validacion" aria-label="Correcto">
-      <div class="section-lead"><span class="section-num">01</span><h2>Correcto</h2></div>
+      <h2>Correcto</h2>
       <p class="claim">El motor en vivo da lo mismo que recalcular el partido entero, aunque la red duplique y desordene los mensajes.</p>
       <div class="body"></div>
       <p class="source">Fuente: <code>gcperros-validate-streaming --report validacion.json</code></p>
     </section>
 
     <section class="panel trust" id="comparacion" aria-label="Dos deportes">
-      <div class="section-lead"><span class="section-num">02</span><h2>Dos deportes, la misma vara</h2></div>
+      <h2>Dos deportes, la misma vara</h2>
       <p class="claim">El mismo motor, sin cambiar una línea de deduplicación ni de marca de agua, con fútbol y con baloncesto.</p>
       <div class="body"></div>
       <p class="source">Fuente: <code>gcperros-compare-sports --report comparacion.json</code></p>
     </section>
 
     <section class="panel trust" id="carga" aria-label="Rápido">
-      <div class="section-lead"><span class="section-num">03</span><h2>Rápido</h2></div>
+      <h2>Rápido</h2>
       <p class="claim">Cuántos eventos por segundo aguanta el motor antes de que se le acumulen.</p>
       <div class="body"></div>
       <p class="note">
-        Lo que todavía no cumplimos, dicho aquí y no en letra pequeña: para ordenar bien los eventos,
-        el motor espera a que llegue uno más de 10 s posterior (15 s en baloncesto). En las pausas del
-        juego no llega nadie, y el p95 de espera es de 31 s en fútbol frente a los 2 s que declaramos.
-        Las dos salidas están escritas en el documento de decisiones, sección 3.
+        Lo que todavía no cumplimos, dicho aquí y no en letra pequeña: la vista definitiva espera su
+        margen para ordenar bien los eventos —10 s en fútbol, 15 s en baloncesto—, lejos de los 2 s que
+        declaramos. El latido de la marca de agua ya quitó lo peor: una pausa del juego no retiene nada y
+        el p95 de espera baja de 31,2 a 10,9 s en fútbol (de 68,5 a 15,9 s en baloncesto). Lo que queda
+        es el propio margen; para eso el motor tiene una vista provisional, que enseña el marcador al
+        llegar y que en más de 4.900 comprobaciones no hubo que corregir nunca. Decisiones, sección 3.
       </p>
       <p class="source">Fuente: <code>gcperros-benchmark --report carga.json</code></p>
     </section>
 
     <section class="panel trust" id="calidad" aria-label="Limpio">
-      <div class="section-lead"><span class="section-num">04</span><h2>Limpio</h2></div>
+      <h2>Limpio</h2>
       <p class="claim">Cada ingestión se mide contra umbrales declarados, con numerador y denominador, en los dos deportes.</p>
       <div class="body"></div>
       <p class="source">Fuente: <code>gcperros-quality --report calidad.json</code> y <code>calidad-baloncesto.json</code></p>
@@ -88,6 +66,8 @@
     GCPerros no ejecuta apuestas, no intermedia en el juego y no promete rentabilidad.
   </aside>
 
+  <script src="sport.js"></script>
+  <script src="pages.js"></script>
   <script src="confianza.js"></script>
 </body>
 </html>

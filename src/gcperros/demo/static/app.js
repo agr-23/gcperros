@@ -98,58 +98,12 @@ function renderSelector(sports, current) {
       const link = document.createElement("a");
       const config = SPORTS[sport] ?? SPORTS.football;
       link.href = `?partido=${encodeURIComponent(matchId)}`;
-      link.dataset.sportType = sport;
-      link.innerHTML = `
-        <span class="ball-graphic ball-${sport}"></span>
-        <span class="label">${config.label}</span>
-      `;
+      link.textContent = `${config.icon} ${config.label}`;
       if (matchId === current) link.setAttribute("aria-current", "true");
       return link;
     }),
   );
   $("sports").hidden = sports.length < 2;
-}
-
-function renderSidebars(config) {
-  const pastWrap = $("past-matches");
-  const upcomingWrap = $("upcoming-matches");
-  if (!pastWrap || !upcomingWrap || !config.fixtures) return;
-
-  pastWrap.replaceChildren(
-    ...config.fixtures.past.map((m) => {
-      const card = document.createElement("article");
-      card.className = "side-card";
-      card.innerHTML = `
-        <div class="side-card-top">
-          <span class="teams">${m.home} <em class="vs">vs</em> ${m.away}</span>
-          <span class="score">${m.score}</span>
-        </div>
-        <div class="side-card-bot">
-          <span class="date">${m.date}</span>
-          <span class="sub">${m.xg}</span>
-        </div>
-      `;
-      return card;
-    })
-  );
-
-  upcomingWrap.replaceChildren(
-    ...config.fixtures.upcoming.map((m) => {
-      const card = document.createElement("article");
-      card.className = "side-card upcoming";
-      card.innerHTML = `
-        <div class="side-card-top">
-          <span class="teams">${m.home} <em class="vs">vs</em> ${m.away}</span>
-          <span class="odds-pill">${m.odds}</span>
-        </div>
-        <div class="side-card-bot">
-          <span class="date">${m.date}</span>
-          <span class="meta">${m.meta}</span>
-        </div>
-      `;
-      return card;
-    })
-  );
 }
 
 function applySport(sport) {
@@ -161,7 +115,6 @@ function applySport(sport) {
   $("held").title =
     `La marca de agua retiene cada evento hasta que llega otro más de ${config.lateness} s ` +
     "posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.";
-  renderSidebars(config);
 }
 
 async function start() {

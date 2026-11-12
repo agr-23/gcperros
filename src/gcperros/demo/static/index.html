@@ -7,204 +7,79 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <!-- Encabezado editorial sobrio: sin cajas, flotando sobre el papel -->
-  <header class="masthead">
-    <div class="masthead-meta">
-      <a href="/" class="brand-link"><span class="brand">GCPERROS</span></a>
-      <span class="meta-sep">/</span>
-      <span class="edition">ANÁLISIS DE DATOS Y SEÑALES DEPORTIVAS</span>
-      <span class="meta-sep">/</span>
-      <span class="match" id="match-id">—</span>
-    </div>
-
-    <!-- Selector de deporte: concebido como botones interactivos con gráfico rodante -->
-    <nav class="sports-folio sports" id="sports" aria-label="Seleccionar deporte"></nav>
-
-    <!-- Navegación y estado de conexión como micro-tipografía -->
-    <div class="masthead-nav">
-      <nav class="nav" aria-label="Navegación principal">
-        <a href="/" aria-current="page">En vivo</a>
-        <a href="confianza.html">Por qué confiar</a>
-        <a href="bajo-el-capo.html">Bajo el capó</a>
-      </nav>
-      <span class="link" id="link" data-state="connecting">conectando</span>
-    </div>
+  <header class="bar">
+    <span class="brand">GCPerros</span>
+    <nav class="nav"><a href="/" aria-current="page">En vivo</a><a href="confianza.html">Por qué confiar</a><a href="bajo-el-capo.html">Bajo el capó</a></nav>
+    <nav class="sports" id="sports" aria-label="Deporte"></nav>
+    <span class="match" id="match-id">—</span>
+    <span class="link" id="link" data-state="connecting">conectando</span>
   </header>
 
   <main class="wrap live">
-    <!-- Barra lateral izquierda: Resultados anteriores de la jornada -->
-    <aside class="sidebar sidebar-left" aria-label="Resultados anteriores">
-      <header class="sidebar-header">
-        <span class="sidebar-badge">JORNADA 28</span>
-        <h3>Resultados Recientes</h3>
-        <p class="sidebar-note">Ilustrativo: estos partidos no salen del pipeline.</p>
-      </header>
-      <div class="match-cards-list" id="past-matches">
-        <!-- Renderizado dinámico según el deporte activo -->
+    <section class="board" aria-label="Marcador">
+      <div class="team home"><span class="name" id="home-name">Local</span></div>
+      <div class="score">
+        <span id="home-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale?">0</span><span class="dash">–</span><span id="away-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale?">0</span>
+        <span class="clock"><span class="state" id="state" data-phase="paused">previa</span><span id="minute">0'</span> · <span id="phase">previa</span></span>
       </div>
-    </aside>
+      <div class="team away"><span class="name" id="away-name">Visitante</span></div>
+      <table class="quarters" id="quarters" hidden aria-label="Puntos por cuarto">
+        <thead><tr id="quarters-head"></tr></thead><tbody id="quarters-body"></tbody>
+      </table>
+    </section>
 
-    <!-- Columna Central: El partido en vivo -->
-    <div class="main-stage">
-      <!-- Marcador con textura de cancha (césped segado / parqué de baloncesto) -->
-      <section class="board scoreboard" aria-label="Marcador en directo" aria-live="polite">
-        <div class="team home competitor">
-          <span class="name" id="home-name">Local</span>
-          <span class="side-tag">LOCAL</span>
-        </div>
-
-        <div class="score-core score">
-          <div class="score-numeral">
-            <span id="home-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale este número?">0</span>
-            <span class="dash">—</span>
-            <span id="away-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale este número?">0</span>
-          </div>
-          <div class="chronometer clock">
-            <span class="state" id="state" data-phase="paused">previa</span>
-            <span class="minute" id="minute">0'</span>
-            <span class="dot">·</span>
-            <span class="phase" id="phase">previa</span>
-          </div>
-        </div>
-
-        <div class="team away competitor">
-          <span class="name" id="away-name">Visitante</span>
-          <span class="side-tag">VISITANTE</span>
-        </div>
-
-        <!-- Baloncesto: tabla de cuartos sutil -->
-        <table class="quarters" id="quarters" hidden aria-label="Puntos por cuarto">
-          <thead><tr id="quarters-head"></tr></thead>
-          <tbody id="quarters-body"></tbody>
-        </table>
-      </section>
-
-      <!-- Divisorio editorial -->
-      <div class="rule-folio"><span>REGISTRO DEL PARTIDO</span></div>
-
-      <!-- Sección de Mercado y Señales: 2 columnas libres -->
-      <div class="editorial-split">
-        <!-- Mercado frente a modelo -->
-        <section class="panel market" aria-label="Mercado frente a modelo">
-          <header class="section-lead">
-            <span class="section-num">I</span>
-            <h2>Probabilidad de victoria frente al mercado</h2>
-          </header>
-          <p class="legend">
-            <span class="model">Modelo propio</span>
-            <span class="op-a">OP-A</span>
-            <span class="op-b">OP-B</span>
-            <span class="op-c">OP-C</span>
-            <span class="legend-note">Probabilidad de victoria local, descontado el margen del operador.</span>
-          </p>
-          <div class="chart">
-            <svg id="win-chart" viewBox="0 0 640 200" role="img"
-              aria-label="Probabilidad de victoria local según el modelo y según cada operador">
-              <title>Curva de probabilidad de victoria</title>
-              <desc>Comparativa en tiempo real entre el modelo interno y las casas de apuestas</desc>
-            </svg>
-          </div>
-          <div class="book-wrap">
-            <table class="book">
-              <caption>Cuotas implícitas vigentes frente al modelo</caption>
-              <thead><tr id="book-head"></tr></thead>
-              <tbody id="book-body"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- Feed de señales -->
-        <section class="panel signals-panel" aria-label="Señales">
-          <header class="section-lead">
-            <span class="section-num">II</span>
-            <h2>Señales de divergencia <em id="signal-count">0</em></h2>
-          </header>
-          <p class="hint" id="signal-hint">
-            Un operador se separa del modelo más de 5 puntos: casi siempre, un precio que no se actualizó tras un gol o una expulsión.
-          </p>
-          <ol class="signals" id="signal-list"></ol>
-        </section>
+    <section class="panel market" aria-label="Mercado frente a modelo">
+      <h2>¿Quién gana? El modelo frente al mercado</h2>
+      <p class="legend">
+        <span class="model">Modelo propio</span><span class="op-a">OP-A</span><span class="op-b">OP-B</span><span class="op-c">OP-C</span>
+        · probabilidad de victoria local, sin el margen del operador
+      </p>
+      <div class="chart"><svg id="win-chart" viewBox="0 0 640 200" role="img"
+        aria-label="Probabilidad de victoria local según el modelo y según cada operador"></svg></div>
+      <div class="book-wrap">
+        <table class="book"><thead><tr id="book-head"></tr></thead><tbody id="book-body"></tbody></table>
       </div>
+    </section>
 
-      <!-- Divisorio editorial -->
-      <div class="rule-folio"><span>MÉTRICAS Y CONTROL DE JUEGO</span></div>
+    <section class="panel signals-panel" aria-label="Señales">
+      <h2>Señales <b id="signal-count">0</b></h2>
+      <p class="hint" id="signal-hint">Un operador se separa del modelo más de 5 puntos: casi siempre, un precio que no se actualizó tras un gol o una expulsión.</p>
+      <ol class="signals" id="signal-list"></ol>
+    </section>
 
-      <div class="editorial-split">
-        <!-- Posesión & Estimación xG / xP -->
-        <section class="panel estimate-panel" aria-label="Goles esperados">
-          <header class="section-lead">
-            <span class="section-num">III</span>
-            <h2 id="estimate-title">Goles esperados (xG) acumulados</h2>
-          </header>
-          <div class="chart">
-            <svg id="xg-chart" viewBox="0 0 640 220" role="img"
-              aria-label="Expectativa acumulada a lo largo del partido">
-              <title>Expectativa acumulada de anotación</title>
-              <desc>Evolución de goles o puntos esperados por cada equipo</desc>
-            </svg>
-          </div>
-        </section>
-
-        <!-- Columna derecha: Posesión y Estadísticas acumuladas -->
-        <div class="stats-stack">
-          <section class="panel possession-panel" aria-label="Posesión">
-            <header class="section-lead">
-              <span class="section-num">IV</span>
-              <h2>Distribución de Posesión</h2>
-            </header>
-            <div class="possession-block">
-              <div class="row">
-                <span class="label">Partido</span>
-                <div class="split" id="running"><i class="home"></i><i class="away"></i></div>
-              </div>
-              <div class="row">
-                <span class="label">Últimos 5'</span>
-                <div class="split" id="window"><i class="home"></i><i class="away"></i></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel stats-panel" aria-label="Estadísticas">
-            <header class="section-lead">
-              <span class="section-num">V</span>
-              <h2>Estadísticas acumuladas</h2>
-            </header>
-            <table class="stats">
-              <caption>Comparativa de volumen y acierto entre ambos conjuntos</caption>
-              <tbody id="stats-body"></tbody>
-            </table>
-          </section>
-        </div>
+    <section class="panel possession-panel" aria-label="Posesión">
+      <h2>Posesión</h2>
+      <div class="row">
+        <span class="label">Partido</span>
+        <div class="split" id="running"><i class="home"></i><i class="away"></i></div>
       </div>
-
-      <!-- Transparencia del motor y retención -->
-      <div class="watermark-note">
-        <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
-          Retención de flujo: <b id="pending">0</b> eventos esperando a la marca de agua
-        </p>
+      <div class="row">
+        <span class="label">Últimos 5'</span>
+        <div class="split" id="window"><i class="home"></i><i class="away"></i></div>
       </div>
-    </div>
+    </section>
 
-    <!-- Barra lateral derecha: Próximos partidos programados -->
-    <aside class="sidebar sidebar-right" aria-label="Próximos partidos">
-      <header class="sidebar-header">
-        <span class="sidebar-badge">CALENDARIO</span>
-        <h3>Próximos Encuentros</h3>
-        <p class="sidebar-note">Ilustrativo: estos partidos no salen del pipeline.</p>
-      </header>
-      <div class="match-cards-list" id="upcoming-matches">
-        <!-- Renderizado dinámico según el deporte activo -->
-      </div>
-    </aside>
+    <section class="panel estimate-panel" aria-label="Goles esperados">
+      <h2 id="estimate-title">Goles esperados (xG) acumulados</h2>
+      <div class="chart"><svg id="xg-chart" viewBox="0 0 640 220" role="img"
+        aria-label="Lo que cada equipo debería llevar marcado según la calidad de sus tiros, a lo largo del partido"></svg></div>
+    </section>
+
+    <section class="panel stats-panel" aria-label="Estadísticas">
+      <h2>Estadísticas</h2>
+      <table class="stats"><tbody id="stats-body"></tbody></table>
+    </section>
+
+    <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
+      <b id="pending">0</b> eventos esperando a la marca de agua
+    </p>
   </main>
 
-  <!-- Aviso legal permanente de juego responsable en pie -->
   <aside class="disclaimer" role="note" aria-label="Uso responsable">
     <b>Uso responsable.</b> Proyecto académico con datos sintéticos. La señal informa, no recomienda apostar:
     GCPerros no ejecuta apuestas, no intermedia en el juego y no promete rentabilidad.
   </aside>
 
-  <!-- Diálogo nativo de trazabilidad: hoja de papel limpia -->
   <dialog id="trace" class="trace" aria-label="De dónde sale este número">
     <form method="dialog" class="trace-x"><button aria-label="Cerrar">×</button></form>
     <div class="trace-body"></div>

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -86,7 +87,11 @@ def test_under_the_hood_is_linked_and_honest_about_estimates() -> None:
         assert 'href="bajo-el-capo.html"' in client.get(linked_from).text
     # Las cifras de particionamiento salen de un modelo de costes, no de BigQuery.
     assert "estimación" in page.text
-    assert "<script" not in page.text
+    # Ningún script calcula nada: los únicos son los del selector de deporte.
+    assert re.findall(r"<script[^>]*>", page.text) == [
+        '<script src="sport.js">',
+        '<script src="pages.js">',
+    ]
 
 
 def test_every_page_shows_the_responsible_use_notice() -> None:

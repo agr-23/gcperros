@@ -7,45 +7,21 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <header class="masthead">
-    <div class="masthead-meta">
-      <a href="/" class="brand-link" style="text-decoration: none; color: inherit;"><span class="brand">GCPERROS</span></a>
-      <span class="meta-sep">/</span>
-      <span class="edition">ANÁLISIS DE DATOS Y SEÑALES DEPORTIVAS</span>
-      <span class="meta-sep">/</span>
-      <span class="match">ARQUITECTURA</span>
-    </div>
-
-    <!-- Selector de deporte: acceso directo a la acción en vivo de cada deporte -->
-    <nav class="sports-folio sports" aria-label="Seleccionar deporte">
-      <a href="/" data-sport-type="football">
-        <span class="ball-graphic ball-football"></span>
-        <span class="label">Fútbol</span>
-      </a>
-      <a href="/?partido=basket-0065" data-sport-type="basketball">
-        <span class="ball-graphic ball-basketball"></span>
-        <span class="label">Baloncesto</span>
-      </a>
-    </nav>
-
-    <div class="masthead-nav">
-      <nav class="nav" aria-label="Navegación principal">
-        <a href="/">← En vivo</a>
-        <a href="confianza.html">Por qué confiar</a>
-        <a href="bajo-el-capo.html" aria-current="page">Bajo el capó</a>
-      </nav>
-    </div>
+  <header class="bar">
+    <span class="brand">GCPerros</span>
+    <nav class="nav"><a href="/">En vivo</a><a href="confianza.html">Por qué confiar</a><a href="bajo-el-capo.html" aria-current="page">Bajo el capó</a></nav>
+    <nav class="sports" id="sports" aria-label="Deporte" hidden></nav>
   </header>
 
-  <main class="wrap doc-wrap">
+  <main class="wrap">
     <section class="panel page-hero" aria-label="Introducción">
-      <div class="hero-badge">Arquitectura &amp; Datos</div>
+      <div class="hero-badge">Arquitectura & Datos</div>
       <h1 class="hero-title">Bajo el capó de GCPerros</h1>
       <p class="hero-desc">El pipeline reactivo de eventos en streaming, almacenamiento dual optimizado y modelo estrella analítico en GCP. El mismo motor, para fútbol y para baloncesto.</p>
     </section>
 
     <section class="panel" aria-label="Recorrido de un evento">
-      <div class="section-lead"><span class="section-num">01</span><h2>El recorrido de un evento</h2></div>
+      <h2>El recorrido de un evento</h2>
       <ol class="flow">
         <li>
           <div class="stage-tag"><span class="step-num">01</span> Producir</div>
@@ -72,7 +48,7 @@
     </section>
 
     <section class="panel" aria-label="Un segundo deporte">
-      <div class="section-lead"><span class="section-num">02</span><h2>Un segundo deporte: qué se comparte y qué cambia</h2></div>
+      <h2>Un segundo deporte: qué se comparte y qué cambia</h2>
       <p class="aside">La tesis del proyecto es que deduplicar, reordenar y aplicar no dependen del fútbol. El baloncesto lo puso a prueba: lo de la izquierda no cambió ni una línea; lo de la derecha es todo lo que hubo que añadir, y cada pieza se inyecta en una que ya existía.</p>
       <div class="sport-diff">
         <div class="diff-card shared">
@@ -100,7 +76,7 @@
     </section>
 
     <section class="panel" aria-label="Dos bases de datos">
-      <div class="section-lead"><span class="section-num">03</span><h2>Dos bases de datos, dos responsabilidades</h2></div>
+      <h2>Dos bases de datos, dos responsabilidades</h2>
       <div class="db-grid">
         <div class="db-card">
           <div class="db-header"><span class="badge badge-firestore">OLTP · Tiempo Real</span><h3>Firestore</h3></div>
@@ -110,13 +86,13 @@
         <div class="db-card">
           <div class="db-header"><span class="badge badge-bigquery">OLAP · Histórico</span><h3>BigQuery</h3></div>
           <p class="db-desc">Para preguntar <em>qué pasó</em>. La capa Raw guarda cada mensaje inmutable sin interpretar; el motor nunca la lee: es la fuente para auditoría y recálculo.</p>
-          <div class="db-footer"><span class="prop">Consumo:</span> <code>Raw &amp; Star Schema</code></div>
+          <div class="db-footer"><span class="prop">Consumo:</span> <code>Raw & Star Schema</code></div>
         </div>
       </div>
     </section>
 
     <section class="panel" aria-label="Modelo estrella">
-      <div class="section-lead"><span class="section-num">04</span><h2>Modelo estrella de la capa analítica</h2></div>
+      <h2>Modelo estrella de la capa analítica</h2>
       <div class="table-wrap"><table class="trust-table">
         <thead>
           <tr><th scope="col">Tabla</th><th scope="col">Tipo</th><th scope="col">Partición</th><th scope="col">Agrupamiento (Clustering)</th></tr>
@@ -142,7 +118,7 @@
     </section>
 
     <section class="panel" aria-label="Infraestructura">
-      <div class="section-lead"><span class="section-num">05</span><h2>Infraestructura como código (Terraform)</h2></div>
+      <h2>Infraestructura como código (Terraform)</h2>
       <div class="infra-grid">
         <div class="infra-card"><span class="infra-icon">📨</span><div><b>Mensajería (Pub/Sub)</b><p>4 topics, eventos y cuotas de cada deporte, con dead letter aislada.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📊</span><div><b>Almacén Analítico (BigQuery)</b><p>2 datasets (Raw append-only y Analítico dimensional particionado).</p></div></div>
@@ -158,5 +134,7 @@
     <b>Uso responsable.</b> Proyecto académico con datos sintéticos. La señal informa, no recomienda apostar:
     GCPerros no ejecuta apuestas, no intermedia en el juego y no promete rentabilidad.
   </aside>
+  <script src="sport.js"></script>
+  <script src="pages.js"></script>
 </body>
 </html>

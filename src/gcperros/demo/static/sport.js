@@ -35,20 +35,6 @@ const SPORTS = {
       ["Faltas", (s) => s.fouls, "fouls"],
       ["Rojas", (s) => s.red_cards, "red_cards"],
     ],
-    fixtures: {
-      past: [
-        { home: "ATM", away: "SEV", score: "2 — 0", date: "Ayer · Finalizado", xg: "1.84 vs 0.62" },
-        { home: "BET", away: "VAL", score: "1 — 1", date: "Ayer · Finalizado", xg: "1.12 vs 0.98" },
-        { home: "RSO", away: "ATH", score: "0 — 1", date: "Hace 2 días", xg: "0.75 vs 1.40" },
-        { home: "VIL", away: "CEL", score: "3 — 1", date: "Hace 2 días", xg: "2.10 vs 0.88" },
-      ],
-      upcoming: [
-        { home: "RMA", away: "BAR", date: "Mañana · 21:00", meta: "El Clásico · J28", odds: "2.10 | 3.40 | 3.20" },
-        { home: "GIR", away: "MLL", date: "Sábado · 16:15", meta: "Montilivi", odds: "1.85 | 3.60 | 4.20" },
-        { home: "OSA", away: "ALV", date: "Sábado · 18:30", meta: "El Sadar", odds: "2.25 | 3.10 | 3.50" },
-        { home: "RAY", away: "GET", date: "Domingo · 14:00", meta: "Vallecas", odds: "2.40 | 3.00 | 3.10" },
-      ]
-    }
   },
   basketball: {
     label: "Baloncesto",
@@ -87,20 +73,6 @@ const SPORTS = {
       ["Faltas", (s) => s.fouls, "fouls"],
       ["Tiempos muertos", (s) => s.timeouts, "timeouts"],
     ],
-    fixtures: {
-      past: [
-        { home: "BOS", away: "MIA", score: "114 — 102", date: "Ayer · Finalizado", xg: "xP 111.4 vs 104.2" },
-        { home: "DEN", away: "LAL", score: "108 — 106", date: "Ayer · Finalizado", xg: "xP 107.8 vs 105.1" },
-        { home: "MIL", away: "NYK", score: "98 — 105", date: "Hace 2 días", xg: "xP 100.2 vs 103.9" },
-        { home: "PHX", away: "GSW", score: "122 — 118", date: "Hace 2 días", xg: "xP 119.5 vs 120.1" },
-      ],
-      upcoming: [
-        { home: "BOS", away: "GSW", date: "Hoy · 20:30", meta: "Boston", odds: "1.65 | 2.30" },
-        { home: "LAL", away: "LAC", date: "Mañana · 22:00", meta: "Los Ángeles", odds: "1.92 | 1.92" },
-        { home: "DAL", away: "OKC", date: "Viernes · 20:00", meta: "Dallas", odds: "2.15 | 1.74" },
-        { home: "MIN", away: "DEN", date: "Sábado · 21:00", meta: "Minneapolis", odds: "1.80 | 2.05" },
-      ]
-    }
   },
 };
 
