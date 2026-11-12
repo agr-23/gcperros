@@ -6,11 +6,20 @@
 const NAMES = {
   goals: "Goles", shots: "Remates", total_xg: "xG", passes: "Pases",
   completed_passes: "Pases completados", fouls: "Faltas", red_cards: "Rojas",
+  points: "Puntos", expected_points: "Puntos esperados", two_made: "Tiros de 2 anotados",
+  three_made: "Triples anotados", free_throws_made: "Tiros libres anotados",
+  offensive_rebounds: "Rebotes ofensivos", defensive_rebounds: "Rebotes defensivos",
+  turnovers: "Pérdidas", timeouts: "Tiempos muertos",
 };
 const TYPES = {
   goal: "gol", shot: "remate", pass: "pase", foul: "falta", red_card: "roja",
-  possession_change: "cambio de posesión",
+  possession_change: "cambio de posesión", free_throw: "tiro libre", rebound: "rebote",
+  turnover: "pérdida", timeout: "tiempo muerto",
 };
+// En baloncesto no se remata: se tira.
+const typeName = (type) => (GCP.sport === "basketball" && type === "shot" ? "tiro" : TYPES[type] ?? type);
+// El partido que se está viendo, no el primero: con el selector hay dos (#92).
+const currentMatch = () => encodeURIComponent(GCP.matchId);
 
 function line(text, cls) {
   const node = document.createElement("p");
@@ -22,17 +31,16 @@ function line(text, cls) {
 async function openTrace(indicator, team) {
   const dialog = document.getElementById("trace");
   const body = dialog.querySelector(".trace-body");
-  const [matchId] = await (await fetch("/api/matches")).json();
-  const url = `/api/matches/${encodeURIComponent(matchId)}/trace/${indicator}/${encodeURIComponent(team)}`;
+  const url = `/api/matches/${currentMatch()}/trace/${indicator}/${encodeURIComponent(team)}`;
   const trace = await (await fetch(url)).json();
 
-  const value = indicator === "total_xg" ? trace.value.toFixed(2) : trace.value;
+  const value = indicator === GCP.config.estimate ? trace.value.toFixed(GCP.config.estimateDigits) : trace.value;
   const models = Object.entries(trace.model_versions).map(([m, v]) => `${m} ${v}`).join(", ");
   const list = document.createElement("ol");
   list.className = "trace-events";
   for (const event of trace.events.slice(0, 40)) {
     const item = document.createElement("li");
-    item.textContent = `${event.minute}'  ${TYPES[event.event_type] ?? event.event_type}`;
+    item.textContent = `${event.minute}'  ${typeName(event.event_type)}`;
     list.append(item);
   }
 
@@ -53,8 +61,7 @@ async function openTrace(indicator, team) {
 
 async function openSignalTrace(index) {
   const dialog = document.getElementById("trace");
-  const [matchId] = await (await fetch("/api/matches")).json();
-  const response = await fetch(`/api/matches/${encodeURIComponent(matchId)}/signals/${Number(index)}/trace`);
+  const response = await fetch(`/api/matches/${currentMatch()}/signals/${Number(index)}/trace`);
   if (!response.ok) return;
   const trace = await response.json();
 
@@ -62,7 +69,7 @@ async function openSignalTrace(index) {
   list.className = "trace-events";
   for (const event of trace.events) {
     const item = document.createElement("li");
-    item.textContent = `${event.minute}'  ${TYPES[event.event_type] ?? event.event_type} ${event.team}`;
+    item.textContent = `${event.minute}'  ${typeName(event.event_type)} ${event.team}`;
     list.append(item);
   }
   const price = document.createElement("li");
@@ -70,7 +77,11 @@ async function openSignalTrace(index) {
   list.append(price);
 
   dialog.querySelector(".trace-body").replaceChildren(
-    line(`Señal · ${trace.operator} · ${trace.market} ${trace.outcome}`, "trace-title"),
+    line(
+      `Señal · ${trace.operator} · ${GCP.config.markets[trace.market] ?? trace.market} ` +
+        `${GCP.config.outcomeNames[trace.outcome] ?? trace.outcome}`,
+      "trace-title",
+    ),
     line(
       trace.verified
         ? `✓ Huella verificada: el modelo partió del estado que fijan estos eventos y la cuota de ${trace.operator}.`
