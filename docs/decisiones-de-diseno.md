@@ -244,6 +244,23 @@ Lo que se sigue de ahí, y que se decide aparte porque cambia el diseño:
   Es la única forma de cumplir 2 s en p95 conservando un margen de 10 s, y
   obliga a que el consumidor tolere correcciones.
 
+### La vista provisional: lo exacto, en cuanto llega
+
+`StreamEngine.provisional()` enseña lo aplicado más lo que espera a la marca de
+agua, sobre una copia del estado: un gol o una canasta aparece **al llegar**, con
+espera cero en tiempo del flujo, y lo que queda hasta el SLA de 2 s es sólo el
+transporte y el proceso (del orden de microsegundos por evento, más abajo). La
+definitiva sigue esperando su margen y es la que cierra ventanas y alimenta la
+auditoría.
+
+Lo que preocupaba de esta salida eran las correcciones. Para lo exacto no hay
+ninguna: contar no depende del orden, así que el marcador provisional es siempre
+el de todo lo aceptado hasta ese momento. Medido sobre ocho partidos por
+deporte, en limpio, con desorden medio y en el escenario hostil, más de 4.900
+comprobaciones —una por gol, tiro o tiro libre— y ninguna discrepancia; al
+cerrar la ventana, provisional y definitiva son idénticas. Lo que sí depende del
+orden, la posesión, se queda en la vista definitiva.
+
 ### Hasta dónde aguanta el motor: unos 85.000 eventos por segundo
 
 Se mide en dos pasos: primero **el coste real** de consumir cada evento, en

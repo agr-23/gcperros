@@ -121,6 +121,10 @@ class WatermarkReorderer:
             max_buffered=self._max_buffered,
         )
 
+    def pending(self) -> list[MatchEvent]:
+        """Lo que espera en el buffer, en orden, sin sacarlo (sección 3)."""
+        return [entry[2] for entry in sorted(self._buffer)]
+
     def push(self, event: MatchEvent) -> tuple[bool, list[MatchEvent]]:
         """Ofrece un evento y devuelve los que ya son seguros de aplicar.
 
