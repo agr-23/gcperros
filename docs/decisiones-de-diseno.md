@@ -1194,6 +1194,18 @@ cada línea de lo esperado lleva su equipo y su cifra al final, sin leyenda que
 buscar. Las animaciones se desactivan para quien las tiene desactivadas en su
 sistema.
 
+### Cada evento dice cuánto aportó (#99)
+
+El diálogo de un número enseñaba la lista de eventos y su huella, pero no por
+qué pesaba cada uno. Ahora cada evento lleva su aportación: se aplica solo a un
+estado vacío del mismo deporte —el mismo truco con el que ya se reconstruía la
+lista, sin copiar reglas del motor— y se lee cuánto movió el indicador. Un
+triple aporta 3, un tiro libre 1, un remate su xG. Sumadas dan el número, y una
+prueba lo exige en los dos deportes. La huella entera no se lee: se enseñan sus
+extremos y el resto queda en el título. El diálogo de una señal dibuja el
+modelo frente al precio del operador en dos barras, con la separación en puntos
+frente al umbral del deporte.
+
 ---
 
 ## 15. Catálogo y glosario (historia #24)
