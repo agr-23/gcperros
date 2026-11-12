@@ -71,7 +71,8 @@ const SPORTS = {
     outcomeNames: { home: "local", away: "visitante", over: "más de la línea", under: "menos de la línea" },
     phases: { previa: "salto inicial", descanso: "entre cuartos", final: "final" },
     clock: (clock) => {
-      const left = Math.max(0, Math.round(clock.game_clock_s ?? 0));
+      // Entre cuartos el reloj está a cero, no en el último evento del cuarto.
+      const left = clock.phase === "descanso" ? 0 : Math.max(0, Math.round(clock.game_clock_s ?? 0));
       const period = clock.period > 4 ? `PR${clock.period - 4}` : `Q${clock.period}`;
       return `${period} · ${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`;
     },

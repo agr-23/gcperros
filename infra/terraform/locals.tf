@@ -13,12 +13,15 @@ locals {
   }
 
   #############################################################################
-  # Capa de ingestión: los dos flujos de la arquitectura.
+  # Capa de ingestión: los flujos de la arquitectura, dos por deporte.
   #
   # Cada fuente tiene su propia dinámica temporal —los eventos de juego llegan
   # cada ~3 s de forma regular, las cuotas llegan en ráfagas reactivas— y por
   # eso viajan en topics separados y no en uno solo con un campo de tipo:
-  # se escalan, se retienen y se auditan por separado.
+  # se escalan, se retienen y se auditan por separado. El baloncesto (#87)
+  # trae los suyos por la misma razón: su vocabulario se versiona aparte y los
+  # contratos del fútbol no cambian ni un byte. Cada entrada crea su topic, su
+  # dead letter, sus suscripciones y su tabla Raw.
   #############################################################################
   streams = {
     "match-events" = {
@@ -31,6 +34,18 @@ locals {
       contract_version = "v1"
       producer         = "Generador de cuotas sintéticas (HU-9)"
       description      = "Actualizaciones de cuotas por mercado, reactivas a los eventos del partido."
+    }
+
+    "basketball-events" = {
+      contract_version = "v1"
+      producer         = "Generador de partidos de baloncesto (#88)"
+      description      = "Acciones del baloncesto: tiros, tiros libres, rebotes, pérdidas, faltas y tiempos muertos."
+    }
+
+    "basketball-odds" = {
+      contract_version = "v1"
+      producer         = "Generador de cuotas de baloncesto (#90)"
+      description      = "Cuotas de ganador y total de puntos, reactivas a las canastas."
     }
   }
 

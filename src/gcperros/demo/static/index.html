@@ -17,8 +17,8 @@
       <span class="match" id="match-id">—</span>
     </div>
 
-    <!-- Selector de deporte: concebido como lomos editoriales / índice -->
-    <nav class="sports-folio" id="sports" aria-label="Seleccionar deporte"></nav>
+    <!-- Selector de deporte: concebido como botones interactivos con gráfico rodante -->
+    <nav class="sports-folio sports" id="sports" aria-label="Seleccionar deporte"></nav>
 
     <!-- Navegación y estado de conexión como micro-tipografía -->
     <div class="masthead-nav">
@@ -31,7 +31,7 @@
     </div>
   </header>
 
-  <main class="viewport-layout">
+  <main class="wrap live">
     <!-- Barra lateral izquierda: Resultados anteriores de la jornada -->
     <aside class="sidebar sidebar-left" aria-label="Resultados anteriores">
       <header class="sidebar-header">
@@ -44,7 +44,7 @@
     </aside>
 
     <!-- Columna Central: El partido en vivo -->
-    <div class="wrap main-stage">
+    <div class="main-stage">
       <!-- Marcador con textura de cancha (césped segado / parqué de baloncesto) -->
       <section class="board scoreboard" aria-label="Marcador en directo" aria-live="polite">
         <div class="team home competitor">
@@ -59,6 +59,7 @@
             <span id="away-goals" data-indicator="goals" tabindex="0" title="¿De dónde sale este número?">0</span>
           </div>
           <div class="chronometer clock">
+            <span class="state" id="state" data-phase="paused">previa</span>
             <span class="minute" id="minute">0'</span>
             <span class="dot">·</span>
             <span class="phase" id="phase">previa</span>
@@ -83,7 +84,7 @@
       <!-- Sección de Mercado y Señales: 2 columnas libres -->
       <div class="editorial-split">
         <!-- Mercado frente a modelo -->
-        <section class="panel-flat market" aria-label="Mercado frente a modelo">
+        <section class="panel market" aria-label="Mercado frente a modelo">
           <header class="section-lead">
             <span class="section-num">I</span>
             <h2>Probabilidad de victoria frente al mercado</h2>
@@ -112,7 +113,7 @@
         </section>
 
         <!-- Feed de señales -->
-        <section class="panel-flat signals-column" aria-label="Señales de divergencia">
+        <section class="panel signals-panel" aria-label="Señales">
           <header class="section-lead">
             <span class="section-num">II</span>
             <h2>Señales de divergencia <em id="signal-count">0</em></h2>
@@ -129,7 +130,7 @@
 
       <div class="editorial-split">
         <!-- Posesión & Estimación xG / xP -->
-        <section class="panel-flat" aria-label="Control y expectativa">
+        <section class="panel estimate-panel" aria-label="Goles esperados">
           <header class="section-lead">
             <span class="section-num">III</span>
             <h2 id="estimate-title">Goles esperados (xG) acumulados</h2>
@@ -141,9 +142,14 @@
               <desc>Evolución de goles o puntos esperados por cada equipo</desc>
             </svg>
           </div>
+        </section>
 
+        <section class="panel possession-panel" aria-label="Posesión">
+          <header class="section-lead">
+            <span class="section-num">IV</span>
+            <h2>Distribución de Posesión</h2>
+          </header>
           <div class="possession-block">
-            <h3 class="sublead">Distribución de Posesión</h3>
             <div class="row">
               <span class="label">Partido</span>
               <div class="split" id="running"><i class="home"></i><i class="away"></i></div>
@@ -154,26 +160,26 @@
             </div>
           </div>
         </section>
-
-        <!-- Estadísticas de partido -->
-        <section class="panel-flat" aria-label="Estadísticas de partido">
-          <header class="section-lead">
-            <span class="section-num">IV</span>
-            <h2>Estadísticas acumuladas</h2>
-          </header>
-          <table class="stats">
-            <caption>Comparativa de volumen y acierto entre ambos conjuntos</caption>
-            <tbody id="stats-body"></tbody>
-          </table>
-
-          <!-- Transparencia del motor y retención -->
-          <div class="watermark-note">
-            <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
-              Retención de flujo: <b id="pending">0</b> eventos en cola de marca de agua
-            </p>
-          </div>
-        </section>
       </div>
+
+      <!-- Estadísticas de partido -->
+      <section class="panel stats-panel" aria-label="Estadísticas">
+        <header class="section-lead">
+          <span class="section-num">V</span>
+          <h2>Estadísticas acumuladas</h2>
+        </header>
+        <table class="stats">
+          <caption>Comparativa de volumen y acierto entre ambos conjuntos</caption>
+          <tbody id="stats-body"></tbody>
+        </table>
+
+        <!-- Transparencia del motor y retención -->
+        <div class="watermark-note">
+          <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
+            Retención de flujo: <b id="pending">0</b> eventos esperando a la marca de agua
+          </p>
+        </div>
+      </section>
     </div>
 
     <!-- Barra lateral derecha: Próximos partidos programados -->

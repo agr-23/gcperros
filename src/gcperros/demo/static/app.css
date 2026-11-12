@@ -1256,3 +1256,73 @@ body[data-sport="basketball"] .board {
 .infra-card { border: 1px solid var(--line); padding: var(--gap-sm) var(--gap-md); display: flex; gap: var(--gap-sm); align-items: flex-start; }
 .infra-card b { display: block; font-size: 0.85rem; color: var(--ink); margin-bottom: 2px; }
 .infra-card p { margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+
+/* --------------------------------------------------------------------------
+   Ajustes de Estado, Cuartos y «En vivo» (#96)
+   -------------------------------------------------------------------------- */
+.state {
+  display: inline-flex; align-items: center; gap: 6px; margin-right: 10px;
+  padding: 2px 8px; border-radius: 999px; font-family: var(--font-mono); font-size: 0.68rem;
+  font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; vertical-align: middle;
+  background: rgb(0 0 0 / 25%); color: var(--muted); border: 1px solid var(--line);
+}
+.state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.state[data-phase="live"] { color: var(--ok); }
+.state[data-phase="live"]::before { animation: pulse 1.6s ease-in-out infinite; }
+.state[data-phase="final"] { color: var(--ink); background: rgb(255 255 255 / 10%); }
+@keyframes pulse { 50% { opacity: 0.25; } }
+
+.score .bump { animation: bump 0.7s ease-out; }
+@keyframes bump {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.15); text-shadow: 0 0 20px var(--accent); }
+  100% { transform: scale(1); }
+}
+.team .name, .score > span[data-indicator] { transition: opacity 0.4s ease; }
+.board[data-winner="home"] .team.away .name,
+.board[data-winner="home"] #away-goals,
+.board[data-winner="away"] .team.home .name,
+.board[data-winner="away"] #home-goals { opacity: 0.45; }
+
+.chart text.end { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+.chart text.home { fill: var(--home); }
+.chart text.away { fill: var(--away); }
+
+.quarters {
+  grid-column: 1 / -1; justify-self: center; margin-top: 8px;
+  border-collapse: collapse; font-family: var(--font-mono); font-size: 0.85rem;
+  font-variant-numeric: tabular-nums; background: rgb(0 0 0 / 30%); border-radius: 4px;
+}
+.quarters th, .quarters td { padding: 4px 8px; text-align: center; }
+.quarters thead th { color: var(--muted); font-size: 0.7rem; font-weight: 600; }
+.quarters tbody th { text-align: left; }
+.quarters tbody th.home { color: var(--home); }
+.quarters tbody th.away { color: var(--away); }
+
+/* Soporte de rejilla para pruebas automáticas */
+.wrap.live {
+  grid-template-areas:
+    "board board" "market signals" "estimate possession" "estimate stats" "held held";
+}
+.signals-panel { grid-area: signals; }
+.estimate-panel { grid-area: estimate; }
+.possession-panel { grid-area: possession; }
+.stats-panel { grid-area: stats; }
+
+/* «Bajo el capó» (#96): lo que el segundo deporte comparte y lo que trae */
+.sport-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+.diff-card { background: var(--ground); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+.diff-card.shared { border-top: 3px solid var(--ok); }
+.diff-card.own { border-top: 3px solid var(--accent); }
+.diff-card h3 { margin: 0 0 10px; font-size: 1rem; display: flex; gap: 8px; align-items: center; }
+.diff-card ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
+.diff-card b { color: var(--ink); font-weight: 600; }
+.diff-card code { font: 0.85em var(--font-mono); color: var(--ink); }
+.badge-shared { background: rgb(79 192 141 / 15%); color: var(--ok); border: 1px solid rgb(79 192 141 / 30%); }
+.badge-own { background: rgb(242 138 46 / 15%); color: var(--accent); border: 1px solid rgb(242 138 46 / 30%); }
+@media (max-width: 760px) { .sport-diff { grid-template-columns: 1fr; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .state[data-phase="live"]::before, .score .bump { animation: none; }
+}
+

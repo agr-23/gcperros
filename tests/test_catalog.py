@@ -7,8 +7,10 @@ from pathlib import Path
 
 import pytest
 
+from gcperros.core.schema import SCHEMAS
 from gcperros.governance.catalog import CATALOG, OWNERS, Asset, AssetKind, asset
 from gcperros.governance.glossary import GLOSSARY
+from gcperros.loading.cli import STREAM_TABLES, STREAM_TOPICS
 
 TERRAFORM = Path(__file__).resolve().parent.parent / "infra" / "terraform"
 
@@ -41,8 +43,15 @@ def _analytics_tables() -> set[str]:
 
 def test_the_terraform_declares_what_the_tests_expect() -> None:
     """Si el formato del Terraform cambia, que fallen estas y no pasen las demás."""
-    assert _streams() == {"match-events", "odds-updates"}
+    assert _streams() == {"match-events", "odds-updates", "basketball-events", "basketball-odds"}
     assert len(_analytics_tables()) >= 5
+
+
+def test_every_contract_has_its_topic_and_its_raw_loader() -> None:
+    """Un flujo con contrato pero sin topic no tendría por dónde llegar (#97)."""
+    assert set(SCHEMAS) == _streams() == set(STREAM_TOPICS.values())
+    for key, stream in STREAM_TOPICS.items():
+        assert STREAM_TABLES[key] == f"{stream.replace('-', '_')}_raw"
 
 
 def test_every_stream_and_analytics_table_is_catalogued_once() -> None:

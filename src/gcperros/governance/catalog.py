@@ -112,6 +112,8 @@ def _analytics(table: str, description: str, terms: tuple[str, ...] = ()) -> Ass
 DATASETS: tuple[Asset, ...] = (
     *_stream_assets("match-events", "Las acciones del partido"),
     *_stream_assets("odds-updates", "Las cuotas de cada operador"),
+    *_stream_assets("basketball-events", "Las acciones del partido de baloncesto"),
+    *_stream_assets("basketball-odds", "Las cuotas del baloncesto de cada operador"),
     Asset(
         "invalid-events",
         AssetKind.REPOSITORY,
@@ -125,10 +127,13 @@ DATASETS: tuple[Asset, ...] = (
         "Un documento vivo por partido con sus indicadores y su linaje.",
         ("possession", "xg", "lineage"),
     ),
-    _analytics("dim_match", "Partidos: jornada, temporada, equipos y fecha."),
+    _analytics("dim_sport", "Deportes: sus flujos, sus periodos y su duración."),
+    _analytics("dim_match", "Partidos: jornada, temporada, equipos, fecha y deporte."),
     _analytics("dim_market", "Mercados de cuotas y sus resultados posibles."),
     _analytics("dim_operator", "Operadores de apuestas."),
-    _analytics("fact_match_events", "Un hecho por evento del partido.", ("xg",)),
+    _analytics(
+        "fact_match_events", "Un hecho por evento del partido, de cualquier deporte.", ("xg",)
+    ),
     _analytics(
         "fact_market_signals",
         "Una fila por señal de discrepancia emitida.",
@@ -142,7 +147,8 @@ def _indicator(name: str, description: str, *terms: str) -> Asset:
     return Asset(name, AssetKind.INDICATOR, Role.PIPELINES, description, (*terms, "lineage"))
 
 
-#: Los indicadores derivados que produce el motor.
+#: Los indicadores derivados que produce el motor. Los primeros son del fútbol o
+#: de los dos deportes; los que siguen a ``possession_share``, del baloncesto.
 INDICATORS: tuple[Asset, ...] = (
     _indicator("event_count", "Eventos aplicados al estado del partido."),
     _indicator("goals", "Goles de un equipo."),
@@ -152,13 +158,34 @@ INDICATORS: tuple[Asset, ...] = (
     _indicator("completed_passes", "Pases que llegaron a un compañero."),
     _indicator("fouls", "Faltas cometidas por un equipo."),
     _indicator("red_cards", "Expulsiones de un equipo."),
-    _indicator("possessions", "Veces que un equipo recuperó el balón. No es la posesión."),
+    _indicator(
+        "possessions",
+        "Veces que un equipo tuvo el balón. No es la posesión; en baloncesto es el ritmo.",
+        "pace",
+    ),
     _indicator(
         "possession_share",
         "Posesión acumulada y en la ventana móvil, por equipo.",
         "possession",
+        "basketball_possession",
         "watermark",
     ),
+    _indicator("points", "Puntos de un equipo: 2 o 3 por canasta y 1 por tiro libre."),
+    _indicator(
+        "expected_points",
+        "Suma de los puntos esperados de los tiros de un equipo.",
+        "expected_points",
+    ),
+    _indicator("two_attempted", "Tiros de dos intentados."),
+    _indicator("two_made", "Tiros de dos anotados."),
+    _indicator("three_attempted", "Triples intentados."),
+    _indicator("three_made", "Triples anotados."),
+    _indicator("free_throws_attempted", "Tiros libres intentados."),
+    _indicator("free_throws_made", "Tiros libres anotados."),
+    _indicator("offensive_rebounds", "Rebotes en el aro rival: el equipo conserva el balón."),
+    _indicator("defensive_rebounds", "Rebotes en el aro propio: el balón cambia de manos."),
+    _indicator("turnovers", "Pérdidas: robos, malos pases, saques fuera y violaciones."),
+    _indicator("timeouts", "Tiempos muertos pedidos por un equipo."),
 )
 
 #: Lo que el sistema le muestra al usuario para decidir.
@@ -168,7 +195,14 @@ SIGNALS: tuple[Asset, ...] = (
         AssetKind.SIGNAL,
         Role.PIPELINES,
         "Momento en que el modelo y el precio vigente de un operador se separan.",
-        ("discrepancy_signal", "implied_probability", "operator_margin", "xg"),
+        (
+            "discrepancy_signal",
+            "implied_probability",
+            "operator_margin",
+            "xg",
+            "moneyline",
+            "total_points",
+        ),
     ),
 )
 

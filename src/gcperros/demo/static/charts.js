@@ -47,6 +47,28 @@ function drawXg(teams) {
     });
     svg.append(el("path", { d: path, class: index === 0 ? "home" : "away" }));
   });
+  drawEndLabels(svg, teams, x, y);
+}
+
+// La leyenda va al final de cada línea: equipo y cifra, sin buscar colores. Si
+// las dos líneas acaban juntas, las etiquetas se separan para no pisarse.
+function drawEndLabels(svg, teams, x, y) {
+  const last = history.at(-1);
+  if (!last) return;
+  const labels = teams.map((team, index) => ({ team, index, at: y(last.xg[team] ?? 0) }));
+  const [high, low] = [...labels].sort((a, b) => a.at - b.at);
+  const gap = 15 - (low.at - high.at);
+  if (gap > 0) {
+    high.at -= gap / 2;
+    low.at += gap / 2;
+  }
+  const end = x(last.minute) > W - 90;
+  for (const { team, index, at } of labels) {
+    const value = (last.xg[team] ?? 0).toFixed(GCP.config.estimateDigits);
+    const attrs = { x: x(last.minute) + (end ? -6 : 6), y: Math.max(PAD.top + 10, at + 4) };
+    Object.assign(attrs, { class: `end ${index === 0 ? "home" : "away"}`, "text-anchor": end ? "end" : "start" });
+    svg.append(el("text", attrs, `${team} ${value}`));
+  }
 }
 
 // Las filas las pone el deporte (sport.js). El tercer campo es el indicador que
@@ -73,8 +95,27 @@ function drawStats(teams, indicators) {
   );
 }
 
+let lastTeams = [];
+
+// La historia que el servidor guardó antes de abrir la página (#96): va
+// delante de lo que ya se dibujó en vivo, sin pisarlo.
+document.addEventListener("gcperros:history", ({ detail: points }) => {
+  if (lastTeams.length !== 2) return;
+  const first = history.length ? history[0].minute : Infinity;
+  const estimate = GCP.config.estimate;
+  const earlier = points
+    .filter((point) => point.minute < first && lastTeams.every((t) => point.indicators[t]))
+    .map((point) => ({
+      minute: point.minute,
+      xg: Object.fromEntries(lastTeams.map((t) => [t, point.indicators[t][estimate]])),
+    }));
+  history.unshift(...earlier.filter((p, i) => earlier[i + 1]?.minute !== p.minute));
+  drawXg(lastTeams);
+});
+
 document.addEventListener("gcperros:state", ({ detail: state }) => {
   if (state.teams.length !== 2) return;
+  lastTeams = state.teams;
   const estimate = GCP.config.estimate;
   const xg = Object.fromEntries(state.teams.map((t) => [t, state.indicators[t][estimate]]));
   const last = history.at(-1);

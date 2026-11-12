@@ -731,6 +731,19 @@ ejecutar sobre datos ya guardados: es el propio camino del dato el que produce l
 medición. Un paso del pipeline lo ejecuta con `--strict` sobre el flujo de
 referencia, de modo que una regresión de calidad rompe la construcción.
 
+### Las mismas cinco dimensiones para el baloncesto (#98)
+
+Las reglas y sus umbrales no cambian con el deporte; cambian el contrato que
+juzga la frontera y los indicadores con los que se mide la consistencia. La
+validez es la del contrato del baloncesto: un tiro que diga valer otra cosa que
+dos o tres, o una falta con más de tres tiros libres, se rechaza como fuera de
+dominio y se escala a quien el catálogo declara para `basketball-events`. La
+consistencia usa la vara del harness de cada deporte (sección 21): puntos, que
+como los goles no admiten margen; puntos esperados; posesión; y la contabilidad
+de eventos. Son cuatro comprobaciones, igual que en el fútbol, así que un punto
+perdido entre los dos planos es un fallo crítico. La CI mide los dos flujos del
+baloncesto con `--strict`, junto a los del fútbol.
+
 ---
 
 ## 9. Trazabilidad de los indicadores
@@ -1074,6 +1087,25 @@ consultas preexistentes, BigQuery admite adiciones de columnas en modo `NULLABLE
 provocar fallos de serialización ni errores en agregaciones históricas, permitiendo
 a consultas nuevas explotar el campo añadido sin requerir reprocesos retroactivos.
 
+### Un modelo estrella para los dos deportes (#94)
+
+El segundo deporte es justo la evolución de esquema que esta sección promete
+tolerar. Entra una dimensión, `dim_sport`, con lo que una consulta necesita para
+comparar deportes: sus flujos, cuántos periodos tiene y cuánto dura cada uno. Y
+una columna `sport` en `dim_match` y en las dos tablas de hechos. Todo lo que se
+añade a una tabla existente es `NULLABLE`; una fila sin deporte es de fútbol,
+que era el único cuando se escribió, así que una consulta por deporte usa
+`COALESCE(sport, 'football')` y no hay que reprocesar nada.
+
+Los hechos del baloncesto van en `fact_match_events`, no en una tabla aparte:
+comparten el sobre igual que sus flujos (sección 17), y el particionado por
+`event_time` y el agrupamiento por partido y tipo de evento les sirven tal cual.
+Sus columnas propias —valor del tiro, si entró y sus puntos esperados— quedan
+vacías en el fútbol, y el xG en el baloncesto. `tests/test_multisport_analytics.py`
+fija las columnas que ya existían, con su tipo y su modo, y exige que toda
+columna nueva en una tabla existente sea `NULLABLE`: añadir un deporte no puede
+romper los datos del anterior.
+
 ---
 
 ## 13. Particionamiento, agrupamiento y benchmark físico (HU-23)
@@ -1172,6 +1204,40 @@ retenidos por la marca de agua se cuentan en la de en vivo, y las cifras de
 particionamiento se presentan como estimación, porque salen de un modelo de
 costes y no de un plan de ejecución de BigQuery.
 
+### Quien llega tarde ve el partido entero (#96)
+
+Las gráficas se dibujaban con lo que llegaba por el canal en vivo: quien abría
+la página en el minuto 60 veía sesenta minutos en blanco. Como la repetición
+avanza cuando alguien pregunta, ahora avanza **minuto a minuto** hasta el
+instante pedido y guarda un punto por minuto —indicadores y, si hay, modelo y
+operadores—, también cuando el reloj salta media parte de golpe. La página lo
+pide con `/api/matches/{id}/history` al llegar el primer estado y lo pone por
+delante de lo que ya dibujó. Es el mismo cálculo del estado vivo, sólo que
+muestreado: el último punto coincide con el estado que se está viendo.
+
+### Una pantalla que se lee de un vistazo (#96)
+
+En pantalla ancha, «En vivo» pasa a dos columnas: el mercado junto a sus
+señales, y lo esperado junto a la posesión y las estadísticas, en vez de una
+columna estrecha que obligaba a bajar. El estado del partido se dice con
+palabras y color —en juego, con un pulso; descanso; final—, no sólo con el
+reloj. Un marcador que cambia late una vez, al final se apaga el que pierde, y
+cada línea de lo esperado lleva su equipo y su cifra al final, sin leyenda que
+buscar. Las animaciones se desactivan para quien las tiene desactivadas en su
+sistema.
+
+### Cada evento dice cuánto aportó (#99)
+
+El diálogo de un número enseñaba la lista de eventos y su huella, pero no por
+qué pesaba cada uno. Ahora cada evento lleva su aportación: se aplica solo a un
+estado vacío del mismo deporte —el mismo truco con el que ya se reconstruía la
+lista, sin copiar reglas del motor— y se lee cuánto movió el indicador. Un
+triple aporta 3, un tiro libre 1, un remate su xG. Sumadas dan el número, y una
+prueba lo exige en los dos deportes. La huella entera no se lee: se enseñan sus
+extremos y el resto queda en el título. El diálogo de una señal dibuja el
+modelo frente al precio del operador en dos barras, con la separación en puntos
+frente al umbral del deporte.
+
 ---
 
 ## 15. Catálogo y glosario (historia #24)
@@ -1231,6 +1297,18 @@ tiempo, y confundirlas es el error que la HU-20 corrigió.
 
 `gcperros-catalog` lo consulta por rol o por clase, y con `--glossary` saca el
 glosario: «¿de quién es esto?» y «¿qué significa?» sin abrir el código.
+
+### El vocabulario del segundo deporte (#97)
+
+Cada término dice a qué deportes se aplica. Lo que no depende del deporte —el
+margen, la probabilidad implícita, el linaje— se define una vez para los dos;
+la señal y la marca de agua también, con la cifra de cada deporte leída de su
+constante. Lo que sí depende tiene su término: la posesión del baloncesto corta
+en el reloj de 24 s y no en 10, los puntos esperados son su xG, el ritmo cuenta
+posesiones y no tiempo, y sus dos mercados, ganador sin empate y total de
+puntos, no existen en el fútbol. Una prueba exige que el glosario conozca cada
+deporte que corre el motor: un tercero sin vocabulario rompe la construcción.
+`gcperros-catalog --glossary --sport basketball` saca sólo lo que vale en uno.
 
 ---
 
@@ -1353,9 +1431,14 @@ o tres. El tiro libre sí lo es, porque llega con el reloj parado y no tiene
 coordenadas. Un tiro que dijera valer cuatro lo rechaza la frontera, con su
 causa.
 
-El topic y su entrada en el catálogo (historia 24) se declaran junto con la capa
-analítica del segundo deporte: el catálogo exige que todo flujo del Terraform
-esté catalogado, y es mejor declararlos a la vez.
+Los dos flujos del baloncesto, `basketball-events` y `basketball-odds`, son dos
+entradas más en `locals.streams` del Terraform (#97): cada una trae su topic, su
+dead letter, sus suscripciones y su tabla Raw, sin copiar un recurso. Se
+declaran a la vez que su entrada en el catálogo, porque el catálogo exige que
+todo flujo del Terraform esté catalogado. Una prueba cierra el círculo: cada
+contrato de `core/schema.py` tiene su topic en el Terraform y su tabla en el
+cargador Raw, de modo que un flujo nuevo no puede quedarse sin por dónde llegar
+ni sin dónde guardarse.
 
 ---
 
@@ -1550,6 +1633,12 @@ vocabulario —sin pases— manda menos de la mitad. Como la marca de agua sólo
 avanza cuando llega algo, avanza menos a menudo, y **el p95 se duplica**. Es el
 mismo mecanismo que la sección 3 encontró en el fútbol, visto desde el otro
 lado: la latencia no la pone el motor, la pone la densidad del flujo.
+
+**Y la densidad también cambia lo que significa una alerta (#95).** La de
+backlog avisa a los 50 mensajes sin entregar: 4,5 minutos de fútbol, pero más de
+10 de baloncesto. Se suma una alerta por la antigüedad del mensaje más viejo sin
+confirmar, en 300 s, que no depende de cuántos eventos mande cada deporte y que,
+sin filtro por suscripción, cubre los cuatro flujos.
 
 **Sobre el p90 del umbral.** La sección 20 lo mide sobre cada resultado que se
 separa del modelo, también al reevaluar los precios vigentes tras cada evento,

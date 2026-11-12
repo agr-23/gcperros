@@ -4,6 +4,13 @@
 # Tablas de hechos para eventos y señales con distinción explícita de
 # event_time vs ingestion_time, particionadas por event_time y clusterizadas
 # por match_id y market (o event_type) para optimizar consultas de benchmark.
+#
+# Multideporte (#94): una dimensión `dim_sport` y una columna `sport` en el
+# partido y en los hechos. Todo lo que se añade es NULLABLE, porque es la única
+# forma de añadir una columna a una tabla que ya existe; una fila sin deporte es
+# de fútbol, que era el único deporte cuando se escribió. Los hechos del
+# baloncesto comparten tabla con los del fútbol: el mismo sobre que comparten
+# sus flujos, con las columnas de cada deporte vacías en el otro.
 ###############################################################################
 
 locals {
@@ -19,6 +26,23 @@ resource "google_bigquery_dataset" "analytics" {
   depends_on  = [google_project_service.this]
 }
 
+resource "google_bigquery_table" "dim_sport" {
+  dataset_id          = google_bigquery_dataset.analytics.dataset_id
+  table_id            = "dim_sport"
+  project             = var.project_id
+  deletion_protection = var.raw_table_deletion_protection
+  labels              = local.common_labels
+
+  schema = jsonencode([
+    { name = "sport", type = "STRING", mode = "REQUIRED", description = "Clave del deporte (football, basketball), la de --sport." },
+    { name = "sport_name", type = "STRING", mode = "REQUIRED", description = "Nombre del deporte." },
+    { name = "events_stream", type = "STRING", mode = "REQUIRED", description = "Flujo de sus eventos (match-events, basketball-events)." },
+    { name = "odds_stream", type = "STRING", mode = "REQUIRED", description = "Flujo de sus cuotas (odds-updates, basketball-odds)." },
+    { name = "periods", type = "INTEGER", mode = "REQUIRED", description = "Periodos reglamentarios: 2 partes o 4 cuartos." },
+    { name = "period_minutes", type = "INTEGER", mode = "REQUIRED", description = "Duración de cada periodo, en minutos." }
+  ])
+}
+
 resource "google_bigquery_table" "dim_match" {
   dataset_id          = google_bigquery_dataset.analytics.dataset_id
   table_id            = "dim_match"
@@ -32,7 +56,8 @@ resource "google_bigquery_table" "dim_match" {
     { name = "season", type = "STRING", mode = "REQUIRED", description = "Temporada deportiva." },
     { name = "home_team", type = "STRING", mode = "REQUIRED", description = "Código del equipo local." },
     { name = "away_team", type = "STRING", mode = "REQUIRED", description = "Código del equipo visitante." },
-    { name = "match_date", type = "DATE", mode = "REQUIRED", description = "Fecha del encuentro." }
+    { name = "match_date", type = "DATE", mode = "REQUIRED", description = "Fecha del encuentro." },
+    { name = "sport", type = "STRING", mode = "NULLABLE", description = "FK a dim_sport. Vacío en los partidos anteriores al segundo deporte: fútbol." }
   ])
 }
 
@@ -44,7 +69,7 @@ resource "google_bigquery_table" "dim_market" {
   labels              = local.common_labels
 
   schema = jsonencode([
-    { name = "market", type = "STRING", mode = "REQUIRED", description = "Clave del mercado (1x2, over_under_2_5)." },
+    { name = "market", type = "STRING", mode = "REQUIRED", description = "Clave del mercado (1x2, over_under_2_5, moneyline, total_points)." },
     { name = "market_name", type = "STRING", mode = "REQUIRED", description = "Nombre descriptivo del mercado." },
     { name = "outcomes", type = "STRING", mode = "REPEATED", description = "Resultados posibles." },
     { name = "market_type", type = "STRING", mode = "REQUIRED", description = "Tipo de mercado." }
@@ -87,11 +112,16 @@ resource "google_bigquery_table" "fact_match_events" {
     { name = "ingestion_time", type = "TIMESTAMP", mode = "REQUIRED", description = "Tiempo de carga en el almacén." },
     { name = "minute", type = "INTEGER", mode = "NULLABLE", description = "Minuto de partido." },
     { name = "second", type = "INTEGER", mode = "NULLABLE", description = "Segundo dentro del minuto." },
-    { name = "period", type = "INTEGER", mode = "NULLABLE", description = "Periodo reglamentario (1 o 2)." },
+    { name = "period", type = "INTEGER", mode = "NULLABLE", description = "Periodo: parte (1 o 2) en fútbol, cuarto o prórroga en baloncesto." },
     { name = "time_window_15m", type = "STRING", mode = "NULLABLE", description = "Ventana temporal de 15m (ej. 00-15)." },
     { name = "xg", type = "FLOAT", mode = "NULLABLE", description = "Goles esperados en remates/goles." },
-    { name = "x", type = "FLOAT", mode = "NULLABLE", description = "Coordenada X en campo." },
-    { name = "y", type = "FLOAT", mode = "NULLABLE", description = "Coordenada Y en campo." }
+    { name = "x", type = "FLOAT", mode = "NULLABLE", description = "Coordenada X en campo o cancha." },
+    { name = "y", type = "FLOAT", mode = "NULLABLE", description = "Coordenada Y en campo o cancha." },
+    # Multideporte (#94). NULLABLE, y vacías en el deporte que no las tiene.
+    { name = "sport", type = "STRING", mode = "NULLABLE", description = "FK a dim_sport. Vacío en los hechos anteriores al segundo deporte: fútbol." },
+    { name = "points_value", type = "INTEGER", mode = "NULLABLE", description = "Lo que vale un tiro de baloncesto: 2 o 3; 1 el tiro libre." },
+    { name = "made", type = "BOOLEAN", mode = "NULLABLE", description = "Si el tiro o el tiro libre entró." },
+    { name = "expected_points", type = "FLOAT", mode = "NULLABLE", description = "Puntos esperados del tiro (modelo ep-1.0.0)." }
   ])
 }
 
@@ -127,6 +157,7 @@ resource "google_bigquery_table" "fact_market_signals" {
     # añadir una columna a una tabla de BigQuery que ya existe.
     { name = "model_version", type = "STRING", mode = "NULLABLE", description = "Versión del modelo que calculó la probabilidad." },
     { name = "lineage_digest", type = "STRING", mode = "NULLABLE", description = "Huella de los eventos y la cuota que produjeron la señal." },
-    { name = "lineage_event_count", type = "INTEGER", mode = "NULLABLE", description = "Cuántos eventos se plegaron en la huella." }
+    { name = "lineage_event_count", type = "INTEGER", mode = "NULLABLE", description = "Cuántos eventos se plegaron en la huella." },
+    { name = "sport", type = "STRING", mode = "NULLABLE", description = "FK a dim_sport (#94). Vacío en las señales anteriores al segundo deporte: fútbol." }
   ])
 }

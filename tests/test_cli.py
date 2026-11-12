@@ -101,15 +101,16 @@ def test_an_unknown_stream_is_rejected() -> None:
 ###############################################################################
 
 
+@pytest.mark.parametrize(("stream", "sport"), [("match", "football"), ("basketball", "basketball")])
 def test_raw_loader_dry_run_persists_every_line(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, stream: str, sport: str
 ) -> None:
     events = tmp_path / "partido.jsonl"
-    generators_cli.main([*SEED, "--out", str(events)])
+    generators_cli.main([*SEED, "--sport", sport, "--out", str(events)])
     line_count = len(events.read_text(encoding="utf-8").splitlines())
 
     with caplog.at_level("INFO"):
-        exit_code = loading_cli.main(["--dry-run", "--stream", "match", "--in", str(events)])
+        exit_code = loading_cli.main(["--dry-run", "--stream", stream, "--in", str(events)])
 
     assert exit_code == 0
     summary = next(r for r in caplog.records if "extraídos" in r.message)

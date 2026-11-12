@@ -39,6 +39,21 @@ function renderQuarters(state, home, away) {
   );
 }
 
+// En juego, parado o terminado: se dice con palabras y con color, no sólo con el reloj.
+const STATES = { final: ["final", "Final"], descanso: ["paused", "Descanso"], previa: ["paused", "Previa"] };
+
+// Un marcador que cambia se nota: el número late una vez (#96).
+function setScore(id, value) {
+  const node = $(id);
+  if (node.textContent !== String(value) && node.dataset.ready) {
+    node.classList.remove("bump");
+    void node.offsetWidth; // reinicia la animación si llegan dos canastas seguidas
+    node.classList.add("bump");
+  }
+  node.textContent = value;
+  node.dataset.ready = "1";
+}
+
 function render(state) {
   const config = GCP.config;
   const [home, away] = state.teams.length === 2 ? state.teams : ["", ""];
@@ -48,12 +63,19 @@ function render(state) {
   $("home-name").textContent = home || "Local";
   $("away-name").textContent = away || "Visitante";
   for (const [id, team] of [["home-goals", home], ["away-goals", away]]) {
-    $(id).textContent = score(team);
+    setScore(id, score(team));
     $(id).dataset.team = team;
     $(id).dataset.indicator = config.headline;
   }
   $("minute").textContent = config.clock(state.clock);
   $("phase").textContent = phaseLabel(config, state.clock);
+  const [phase, label] = STATES[state.clock.phase] ?? ["live", "En juego"];
+  $("state").dataset.phase = phase;
+  $("state").textContent = label;
+  // Al final se ve quién ganó: el que pierde se apaga, en un empate ninguno.
+  const board = document.querySelector(".board");
+  const lead = Math.sign(score(home) - score(away));
+  board.dataset.winner = phase === "final" && lead ? (lead > 0 ? "home" : "away") : "";
   $("pending").textContent = state.pending;
   setSplit("running", state.possession.running_share, home, away);
   setSplit("window", state.possession.window_share, home, away);
@@ -152,9 +174,16 @@ async function start() {
 
   const source = new EventSource(`/api/matches/${encodeURIComponent(GCP.matchId)}/stream`);
   source.onopen = () => setLink("live", "en vivo");
+  let seeded = false;
   source.onmessage = (message) => {
     const state = JSON.parse(message.data);
     render(state);
+    // Quien llega tarde ve las gráficas desde el principio (#96): el primer
+    // estado ya llevó al servidor hasta ahora, así que su historia está entera.
+    if (!seeded) {
+      seeded = true;
+      loadHistory();
+    }
     // El servidor cierra el canal al final; sin esto el navegador
     // reconectaría solo y repetiría el final una y otra vez.
     if (state.clock.phase === "final") {
@@ -165,6 +194,13 @@ async function start() {
   source.onerror = () => {
     if (source.readyState !== EventSource.CLOSED) setLink("lost", "reconectando");
   };
+}
+
+async function loadHistory() {
+  const response = await fetch(`/api/matches/${encodeURIComponent(GCP.matchId)}/history`);
+  if (!response.ok) return;
+  const points = await response.json();
+  document.dispatchEvent(new CustomEvent("gcperros:history", { detail: points }));
 }
 
 start().catch(() => setLink("lost", "sin conexión con el servidor"));

@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 from gcperros.core.basketball_stats import summarize_basketball
 from gcperros.core.contracts import MatchEvent
-from gcperros.core.divergence import Thresholds
+from gcperros.core.divergence import Breach, Thresholds
 from gcperros.core.possession import MAX_IN_PLAY_GAP_S, PossessionTracker
 from gcperros.core.stats import summarize_events
 from gcperros.engine.basketball_state import (
@@ -168,15 +168,23 @@ class SportDivergence:
     exact: int
     events: int
 
-    def passes(self, thresholds: Thresholds | None = None) -> bool:
-        """Los umbrales del OE-2: lo exacto y los eventos, sin margen."""
+    def breaches(self, thresholds: Thresholds | None = None) -> tuple[Breach, ...]:
+        """Los umbrales del OE-2 que se superan: lo exacto y los eventos, sin margen."""
         limits = thresholds or Thresholds()
-        return (
-            self.possession_share < limits.possession_share
-            and self.estimate < limits.total_xg
-            and self.exact == 0
-            and self.events == 0
-        )
+        found = []
+        if self.possession_share >= limits.possession_share:
+            found.append(Breach("possession_share", self.possession_share, limits.possession_share))
+        if self.estimate >= limits.total_xg:
+            found.append(Breach("estimate", self.estimate, limits.total_xg))
+        if self.exact:
+            found.append(Breach("exact", float(self.exact), 0.0))
+        if self.events:
+            found.append(Breach("events", float(self.events), 0.0))
+        return tuple(found)
+
+    def passes(self, thresholds: Thresholds | None = None) -> bool:
+        """Indica si la separación cabe dentro de lo declarado."""
+        return not self.breaches(thresholds)
 
 
 def _widest_gap(reference: dict[str, float], observed: dict[str, float]) -> float:
