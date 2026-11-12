@@ -125,7 +125,7 @@
         <div class="infra-card"><span class="infra-icon">⚡</span><div><b>Estado en Vivo (Firestore)</b><p>1 base de datos nativa para persistir el documento vivo de cada partido.</p></div></div>
         <div class="infra-card"><span class="infra-icon">🛡️</span><div><b>Seguridad e Identidad (IAM)</b><p>5 cuentas de servicio con mínimos privilegios, sin credenciales estáticas; la de los datos de usuario no puede leer lo que publica.</p></div></div>
         <div class="infra-card"><span class="infra-icon">📦</span><div><b>Registro de Artefactos</b><p>Artifact Registry para la imagen del motor en contenedor (Cloud Run).</p></div></div>
-        <div class="infra-card"><span class="infra-icon">🚀</span><div><b>El motor (Cloud Run)</b><p>Recibe Pub/Sub por push, con un latido por segundo, y escribe en Firestore. Se despliega al indicar <code>engine_image</code>.</p></div></div>
+        <div class="infra-card"><span class="infra-icon">🚀</span><div><b>El motor (Cloud Run)</b><p>Recibe Pub/Sub por push y escribe el documento vivo en Firestore. Se despliega al indicar <code>engine_image</code>.</p></div></div>
       </div>
       <p class="aside">Todo declarado en Terraform y validado en CI. Sin dependencias opacas y con migraciones reproducibles.</p>
     </section>
