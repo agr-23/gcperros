@@ -68,6 +68,18 @@ const SPORTS = {
       ["Faltas", (s) => s.fouls, "fouls"],
       ["Rojas", (s) => s.red_cards, "red_cards"],
     ],
+    pastMatches: [
+      { home: "ATM", away: "SEV", score: "2 – 0", date: "Ayer", venue: "Metropolitano, Madrid" },
+      { home: "BET", away: "VAL", score: "1 – 1", date: "10 Nov", venue: "Benito Villamarín, Sevilla" },
+      { home: "RSO", away: "ATH", score: "0 – 1", date: "9 Nov", venue: "Reale Arena, San Sebastián" },
+      { home: "VIL", away: "CEL", score: "3 – 1", date: "8 Nov", venue: "La Cerámica, Villarreal" },
+    ],
+    upcomingMatches: [
+      { home: "JUV", away: "INT", time: "20:45", date: "Mañana", venue: "Allianz Stadium, Turín" },
+      { home: "LIV", away: "MCI", time: "17:30", date: "Sáb 15", venue: "Anfield, Liverpool" },
+      { home: "PSG", away: "MAR", time: "21:00", date: "Dom 16", venue: "Parc des Princes, París" },
+      { home: "BAY", away: "DOR", time: "18:30", date: "Dom 16", venue: "Allianz Arena, Múnich" },
+    ],
   },
   basketball: {
     label: "Baloncesto",
@@ -106,6 +118,18 @@ const SPORTS = {
       ["Pérdidas", (s) => s.turnovers, "turnovers"],
       ["Faltas", (s) => s.fouls, "fouls"],
       ["Tiempos muertos", (s) => s.timeouts, "timeouts"],
+    ],
+    pastMatches: [
+      { home: "DEN", away: "GSW", score: "114 – 109", date: "Ayer", venue: "Ball Arena, Denver" },
+      { home: "MIL", away: "PHI", score: "118 – 116", date: "10 Nov", venue: "Fiserv Forum, Milwaukee" },
+      { home: "DAL", away: "PHX", score: "105 – 101", date: "9 Nov", venue: "American Airlines, Dallas" },
+      { home: "MIA", away: "NYK", score: "98 – 95", date: "8 Nov", venue: "Kaseya Center, Miami" },
+    ],
+    upcomingMatches: [
+      { home: "LAL", away: "BOS", time: "21:30", date: "Mañana", venue: "Crypto.com, Los Ángeles" },
+      { home: "OKC", away: "MIN", time: "20:00", date: "Sáb 15", venue: "Paycom Center, Oklahoma" },
+      { home: "CLE", away: "IND", time: "19:00", date: "Sáb 15", venue: "Rocket Mortgage, Cleveland" },
+      { home: "SAC", away: "MEM", time: "21:00", date: "Dom 16", venue: "Golden 1, Sacramento" },
     ],
   },
 };
@@ -146,6 +170,18 @@ SPORTS.american_football = {
     ["Pérdidas", (s) => s.turnovers, "turnovers"],
     ["Despejes", (s) => s.punts, "punts"],
     ["Tiempos muertos", (s) => s.timeouts, "timeouts"],
+  ],
+  pastMatches: [
+    { home: "BAL", away: "CIN", score: "35 – 34", date: "Jueves", venue: "M&T Bank, Baltimore" },
+    { home: "DET", away: "GB", score: "24 – 14", date: "10 Nov", venue: "Ford Field, Detroit" },
+    { home: "PHI", away: "DAL", score: "34 – 6", date: "9 Nov", venue: "Lincoln Financial, Filadelfia" },
+    { home: "PIT", away: "WAS", score: "28 – 27", date: "8 Nov", venue: "Acrisure Stadium, Pittsburgh" },
+  ],
+  upcomingMatches: [
+    { home: "KC", away: "BUF", time: "16:25", date: "Dom 16", venue: "Highmark, Orchard Park" },
+    { home: "SF", away: "SEA", time: "16:05", date: "Dom 16", venue: "Levi's, Santa Clara" },
+    { home: "HOU", away: "DAL", time: "20:15", date: "Lun 17", venue: "AT&T Stadium, Arlington" },
+    { home: "MIN", away: "TEN", time: "13:00", date: "Dom 16", venue: "Nissan Stadium, Nashville" },
   ],
 };
 

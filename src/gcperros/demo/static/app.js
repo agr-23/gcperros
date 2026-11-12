@@ -112,12 +112,39 @@ function renderSelector(sports, current) {
   $("sports").hidden = sports.length < 2;
 }
 
+function renderFixtures(config) {
+  const past = $("past-matches");
+  const upcoming = $("upcoming-matches");
+  if (!past || !upcoming) return;
+  past.innerHTML = (config.pastMatches ?? [])
+    .map(
+      (m) =>
+        `<div class="fixture-card">` +
+        `<div class="fixture-meta"><span>${m.date}</span><span class="fixture-score">${m.score}</span></div>` +
+        `<div class="fixture-teams"><span>${m.home}</span><span class="vs">vs</span><span>${m.away}</span></div>` +
+        `<div class="fixture-venue">📍 ${m.venue}</div>` +
+        `</div>`,
+    )
+    .join("");
+  upcoming.innerHTML = (config.upcomingMatches ?? [])
+    .map(
+      (m) =>
+        `<div class="fixture-card">` +
+        `<div class="fixture-meta"><span>${m.date}</span><span class="fixture-time">${m.time}</span></div>` +
+        `<div class="fixture-teams"><span>${m.home}</span><span class="vs">vs</span><span>${m.away}</span></div>` +
+        `<div class="fixture-venue">📍 ${m.venue}</div>` +
+        `</div>`,
+    )
+    .join("");
+}
+
 function applySport(sport) {
   const config = SPORTS[sport] ?? SPORTS.football;
   Object.assign(GCP, { sport, config });
   document.body.dataset.sport = sport;
   $("signal-hint").textContent = config.signalHint;
   $("estimate-title").textContent = config.estimateTitle;
+  renderFixtures(config);
   // Sin cuotas no hay mercado ni señales que enseñar (fútbol americano).
   for (const panel of document.querySelectorAll(".market, .signals-panel")) panel.hidden = config.market === false;
   $("held").title =

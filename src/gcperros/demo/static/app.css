@@ -531,3 +531,106 @@ body[data-sport="american_football"] .board {
 }
 /* Un panel escondido se esconde también en la rejilla ancha, que le da display. */
 .wrap.live > [hidden] { display: none; }
+
+/* Disposición panorámica: laterales con partidos pasados y futuros */
+.stage-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 12px;
+}
+.side-column {
+  width: 220px;
+  min-width: 190px;
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 16px;
+}
+.side-header {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.side-badge {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 700;
+}
+.side-heading {
+  margin: 2px 0 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.fixture-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fixture-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+.fixture-card:hover {
+  border-color: rgba(255 255 255 / 24%);
+  background: rgba(255 255 255 / 4%);
+  transform: translateY(-1px);
+}
+.fixture-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.fixture-teams {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+.fixture-teams .vs {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+.fixture-score {
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 800;
+  color: var(--ink);
+}
+.fixture-time {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(255 255 255 / 6%);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.fixture-venue {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 960px) {
+  .stage-container { flex-direction: column; align-items: center; }
+  .side-column { width: 100%; max-width: 880px; position: static; }
+}
