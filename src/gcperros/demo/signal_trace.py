@@ -37,6 +37,8 @@ class SignalTrace:
             "market": self.signal.market,
             "outcome": self.signal.outcome,
             "model_version": self.signal.model_version,
+            "model_probability": self.signal.model_probability,
+            "market_probability": self.signal.market_probability,
             "lineage": self.signal.lineage.to_dict(),
             "verified": self.verified,
             "events": [
