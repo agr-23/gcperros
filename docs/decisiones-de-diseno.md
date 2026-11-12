@@ -1498,3 +1498,62 @@ linaje no cambian. ¿Sigue valiendo 0,05? Medido sobre 8 partidos:
 precios rancios y el sesgo de las casas se queda por debajo del umbral. Pero las
 discrepancias del baloncesto son el doble de anchas, así que el umbral del
 baloncesto se declara en 0,10, elegido con la misma regla que el del fútbol.
+
+---
+
+## 21. Fútbol frente a baloncesto: lo que cambió, lo que no y lo medido
+
+La entrega final pedía ensayar el motor con otro deporte. La tesis era que
+deduplicar, reordenar y aplicar no dependen del fútbol, y quedó comprobada en
+el código: **`dedup.py`, `watermark.py` y `possession.py` no cambiaron ni una
+línea** (sección 19).
+
+**Lo que cambió es la capa del deporte**, y sólo ella: contrato y flujos propios
+(17), generador calibrado (18), estado vivo con su linaje (19), modelo de mercado
+y umbral de la señal (20), y la demo con un selector. Cada pieza nueva se inyecta
+en una que ya existía: `StreamEngine` recibe el estado, el detector recibe su
+`MarketReader`, el harness recibe un `SportProfile`.
+
+**Dos parámetros no se pudieron heredar**, y se recalibraron con datos igual que
+se eligieron para el fútbol:
+
+- **Margen de la marca de agua: 15 s.** Con 10 s, 1 de los 72 escenarios
+  comprometidos pierde canastas. Con un evento cada ~12 s, el que adelanta a otro
+  ya le saca más de 10 s, así que el margen tiene que superar el hueco típico
+  entre eventos.
+- **Corte de juego parado: 24 s, el reloj de posesión.** El de 10 s descartaba el
+  90 % del tiempo vivo del baloncesto, y no hay banda vacía que separe juego y
+  parón. Lo puso el reglamento: ningún hueco vivo supera los 24 s.
+
+### La tabla
+
+`gcperros-compare-sports` la reproduce desde las semillas, sobre los mismos 12
+partidos y los mismos escenarios por deporte, y con `--strict` es puerta de CI.
+
+| | Fútbol | Baloncesto |
+|---|---|---|
+| Eventos por minuto | 11,1 | 4,8 |
+| Margen mínimo que cumple el OE-2 | 10 s | 15 s |
+| Escenarios comprometidos | 72/72 | 72/72 |
+| Oportunidad (peor partido) | 99,66 % | 100 % |
+| Separación de posesión (máx.) | 0,0074 | 0,0000 |
+| Latencia p50 / p95 | 12,7 / 31,8 s | 23,5 / 66,1 s |
+| Latencia máxima | 932 s | 920 s |
+| Umbral de la señal | 0,05 | 0,10 |
+| Capacidad del motor | ~55.000 ev/s | ~53.000 ev/s |
+
+### Lo que dice
+
+**La hipótesis de partida salió al revés.** Se esperaba que el baloncesto, más
+rápido, mandara más eventos por minuto y bajara la latencia. Con nuestro
+vocabulario —sin pases— manda menos de la mitad. Como la marca de agua sólo
+avanza cuando llega algo, avanza menos a menudo, y **el p95 se duplica**. Es el
+mismo mecanismo que la sección 3 encontró en el fútbol, visto desde el otro
+lado: la latencia no la pone el motor, la pone la densidad del flujo.
+
+**La capacidad no cambia**, porque el motor es el mismo: el coste por evento es
+el del motor, no el del deporte.
+
+**La máxima es el descanso en los dos.** Lo que se retiene durante el descanso
+largo sale al reanudarse, y es lo que fija la cola de la latencia en ambos
+deportes; no es un fallo del baloncesto, es el SLA que ya estaba pendiente.

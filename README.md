@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/agr-23/gcperros/actions/workflows/ci.yml/badge.svg)](https://github.com/agr-23/gcperros/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
-[![Pruebas](https://img.shields.io/badge/pruebas-657-brightgreen)](tests/)
-[![Cobertura](https://img.shields.io/badge/cobertura-97%25-brightgreen)](pyproject.toml)
+[![Pruebas](https://img.shields.io/badge/pruebas-816-brightgreen)](tests/)
+[![Cobertura](https://img.shields.io/badge/cobertura-98%25-brightgreen)](pyproject.toml)
 
 Ingerimos dos flujos de eventos —las acciones de un partido de fútbol y las
 actualizaciones de cuotas de varias casas de apuestas— y los convertimos, en
@@ -12,6 +12,10 @@ tiempo real, en indicadores del partido y señales de apoyo a la decisión.
 El problema de fondo no es el fútbol: es que el broker entrega **al menos una
 vez y sin orden**. Todo el proyecto gira alrededor de convertir eso en un
 resultado correcto y auditable.
+
+Y para demostrar que no es el fútbol, la entrega final ensaya el mismo motor con
+**baloncesto**: deduplicar, reordenar y aplicar no cambiaron ni una línea
+([el segundo deporte](#el-segundo-deporte-baloncesto)).
 
 **SI4002 · Proyecto de Ingeniería de Datos · EAFIT · 2026-2**
 Prof. Jose Fabio Jaramillo Castro
@@ -257,6 +261,12 @@ sostiene.
 | [#70](https://github.com/agr-23/gcperros/issues/70) | 27 | Seudonimización y matriz de acceso | [`governance/privacy.py`](src/gcperros/governance/privacy.py) | [`test_privacy.py`](tests/test_privacy.py), [`test_access_terraform.py`](tests/test_access_terraform.py) | ✅ sin desplegar |
 | [#62](https://github.com/agr-23/gcperros/issues/62) | 28 | Puerta de CI: streaming contra batch | [`ci.yml`](.github/workflows/ci.yml) | CI: Reproducibilidad | ✅ |
 | [#30–#35](https://github.com/agr-23/gcperros/issues/30), [#61](https://github.com/agr-23/gcperros/issues/61) | 29 | Panel en vivo para el usuario | [`demo/`](src/gcperros/demo/) | [`test_demo_*.py`](tests/) | ✅ en local |
+| [#87](https://github.com/agr-23/gcperros/issues/87) | final | Contrato y reglas del baloncesto | [`core/court.py`](src/gcperros/core/court.py) | [`test_basketball_contract.py`](tests/test_basketball_contract.py) | ✅ |
+| [#88](https://github.com/agr-23/gcperros/issues/88) | final | Generador de baloncesto, calibrado | [`generators/basketball.py`](src/gcperros/generators/basketball.py) | [`test_basketball_statistics.py`](tests/test_basketball_statistics.py) | ✅ |
+| [#89](https://github.com/agr-23/gcperros/issues/89) | final | El motor recibe el deporte por inyección | [`engine/sport.py`](src/gcperros/engine/sport.py) | [`test_basketball_engine.py`](tests/test_basketball_engine.py) | ✅ |
+| [#90](https://github.com/agr-23/gcperros/issues/90) | final | Mercado de baloncesto y su señal | [`core/basketball_odds.py`](src/gcperros/core/basketball_odds.py) | [`test_basketball_signals.py`](tests/test_basketball_signals.py) | ✅ |
+| [#91](https://github.com/agr-23/gcperros/issues/91) | final | Fútbol frente a baloncesto, medidos | [`engine/sport_harness.py`](src/gcperros/engine/sport_harness.py) | [`test_compare_cli.py`](tests/test_compare_cli.py) | ✅ |
+| [#92](https://github.com/agr-23/gcperros/issues/92) | final | Demo con los dos deportes | [`demo/static/sport.js`](src/gcperros/demo/static/sport.js) | [`test_demo_basketball.py`](tests/test_demo_basketball.py) | ✅ en local |
 
 **Tres numeraciones, una tabla.** El código y los commits usan `HU-N`, la
 numeración con la que nació el repositorio; desde el sprint 2, las historias
@@ -369,6 +379,36 @@ El mismo código publica en GCP en cuanto se quita esa variable.
 
 ---
 
+## El segundo deporte: baloncesto
+
+La tesis del proyecto es que el motor no sabe de fútbol. Para probarla, el mismo
+motor procesa baloncesto FIBA, y **`dedup.py`, `watermark.py` y `possession.py`
+no cambiaron ni una línea**. Lo que cambia es la capa del deporte, que se inyecta:
+el estado en el motor, el lector del partido en la señal y el perfil en el harness.
+
+```bash
+gcperros-generate-match --sport basketball --seed 7 --summary   # un partido, calibrado
+gcperros-generate-odds --sport basketball --seed 7 --summary    # sus cuotas: ganador y total
+gcperros-compare-sports --strict                                # la tabla de abajo, y puerta de CI
+```
+
+| | Fútbol | Baloncesto |
+|---|---|---|
+| Eventos por minuto | 11,1 | 4,8 |
+| Margen mínimo que cumple el OE-2 | 10 s | 15 s |
+| Escenarios comprometidos | 72/72 | 72/72 |
+| Latencia p50 / p95 | 12,7 / 31,8 s | 23,5 / 66,1 s |
+| Umbral de la señal | 0,05 | 0,10 |
+| Capacidad del motor | ~55.000 ev/s | ~53.000 ev/s |
+
+Llegan menos eventos por minuto —no hay pases—, así que la marca de agua avanza
+menos a menudo: **la latencia sube**, al revés de lo que esperábamos. El margen
+y el corte de juego parado se recalibraron con datos, como en fútbol. El porqué
+de cada decisión, en las secciones 17 a 21 de
+[`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md).
+
+---
+
 ## La demo para un cliente
 
 Lo que se le enseña a alguien que no va a leer código: un partido que pasa en
@@ -376,14 +416,20 @@ vivo, el mercado frente al modelo y por qué fiarse de los números.
 
 ```bash
 pip install -e ".[demo]"
-gcperros-demo                        # http://127.0.0.1:8000
+gcperros-demo                        # http://127.0.0.1:8000, fútbol y baloncesto
+gcperros-demo --sport basketball     # sólo el baloncesto
 ```
+
+Por defecto sirve los dos partidos de exhibición —RMA 2-1 BAR y BOS 67-66 LAL— y
+la cabecera trae un selector. Cada deporte tiene su estética sobre los mismos
+componentes: césped a franjas en el fútbol, parqué y el naranja del balón en el
+baloncesto, con el marcador por cuartos y el reloj de juego.
 
 Tres pantallas, en el orden en que importan:
 
 | Pantalla | Qué enseña |
 |---|---|
-| **En vivo** | Marcador, posesión, xG en el tiempo y estadísticas. Cada número se puede pulsar y abre los eventos que lo formaron, con su huella verificada contra el motor. |
+| **En vivo** | Marcador —goles, o puntos por cuarto con el reloj de juego—, el ganador según el modelo y según cada casa, las señales, posesión, lo esperado en el tiempo (xG o puntos esperados) y estadísticas. Cada número se puede pulsar y abre los eventos que lo formaron, con su huella verificada contra el motor. |
 | **Por qué confiar** | El harness (correcto), el banco de carga (rápido) y la calidad de la ingestión (limpio), leídos de los informes que escriben las CLI. Y el SLA que todavía no cumplimos, en la misma pantalla. |
 | **Bajo el capó** | El recorrido de un evento, las dos bases de datos, el modelo estrella y lo que declara el Terraform. |
 
