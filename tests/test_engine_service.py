@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 import json
+import time
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -90,3 +92,37 @@ def test_the_stream_comes_from_the_engine_subscription_with_or_without_prefix() 
     assert stream_of("projects/p/subscriptions/dev-match-events-engine") == "match-events"
     with pytest.raises(ValueError, match="no es la suscripción"):
         stream_of("projects/p/subscriptions/match-events-raw")
+
+
+def test_a_beat_publishes_what_the_margin_already_passed_without_new_arrivals() -> None:
+    """Sin latido, lo último antes de una pausa esperaría a que el juego se reanudara."""
+    store = InMemoryDocumentStore()
+    now = [FOOTBALL[0].event_time]
+    service = EngineService(store, clock=lambda: now[0])
+    for event in FOOTBALL[:50]:
+        now[0] = event.event_time
+        service.receive("match-events", event.to_json())
+    applied = store.documents["srv-fb"]["event_count"]
+    assert isinstance(applied, int)
+    waiting = 50 - applied
+
+    assert waiting > 0 and service.tick() == 0  # aún dentro del margen
+    now[0] = FOOTBALL[49].event_time + timedelta(seconds=11)
+
+    assert service.tick() == waiting
+    assert store.documents["srv-fb"]["event_count"] == 50
+
+
+def test_while_the_app_lives_the_heartbeat_keeps_beating(monkeypatch: pytest.MonkeyPatch) -> None:
+    beats: list[int] = []
+
+    def beat(_self: EngineService) -> int:
+        beats.append(1)
+        return 0
+
+    monkeypatch.setattr(EngineService, "tick", beat)
+
+    with TestClient(create_service(EngineService(InMemoryDocumentStore()), heartbeat_s=0.01)):
+        time.sleep(0.2)
+
+    assert len(beats) >= 2
