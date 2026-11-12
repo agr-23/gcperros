@@ -473,7 +473,7 @@ vivo, el mercado frente al modelo y por qué fiarse de los números.
 
 ```bash
 pip install -e ".[demo]"
-gcperros-demo                        # http://127.0.0.1:8000, fútbol y baloncesto
+gcperros-demo                        # http://127.0.0.1:8000, los tres deportes
 gcperros-demo --sport basketball     # sólo el baloncesto
 ```
 

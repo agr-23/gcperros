@@ -487,3 +487,24 @@ body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
   .trace-events li { grid-template-columns: 36px 1fr 72px; }
   .kpi b { font-size: 1.6rem; }
 }
+
+/* Fútbol americano (sección 22): césped con las líneas de cada diez yardas, y
+   sin mercado la rejilla de «En vivo» sube lo esperado junto a la posesión. */
+body[data-sport="american_football"] {
+  --home: #e8584f;
+  --away: #4f8ff0;
+  --accent: #d9a441;
+}
+body[data-sport="american_football"] .board {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgb(255 255 255 / 16%) calc(10% - 2px) 10%),
+    linear-gradient(90deg, #6b1d1d 0 6%, transparent 6% 94%, #1d3266 94%),
+    repeating-linear-gradient(90deg, #1f5a32 0 5%, #23633a 5% 10%);
+}
+@media (min-width: 1100px) {
+  body[data-sport="american_football"] .wrap.live {
+    grid-template-areas: "board board" "estimate possession" "estimate stats" "held held";
+  }
+}
+/* Un panel escondido se esconde también en la rejilla ancha, que le da display. */
+.wrap.live > [hidden] { display: none; }
