@@ -39,6 +39,21 @@ function renderQuarters(state, home, away) {
   );
 }
 
+// En juego, parado o terminado: se dice con palabras y con color, no sólo con el reloj.
+const STATES = { final: ["final", "Final"], descanso: ["paused", "Descanso"], previa: ["paused", "Previa"] };
+
+// Un marcador que cambia se nota: el número late una vez (#96).
+function setScore(id, value) {
+  const node = $(id);
+  if (node.textContent !== String(value) && node.dataset.ready) {
+    node.classList.remove("bump");
+    void node.offsetWidth; // reinicia la animación si llegan dos canastas seguidas
+    node.classList.add("bump");
+  }
+  node.textContent = value;
+  node.dataset.ready = "1";
+}
+
 function render(state) {
   const config = GCP.config;
   const [home, away] = state.teams.length === 2 ? state.teams : ["", ""];
@@ -48,12 +63,19 @@ function render(state) {
   $("home-name").textContent = home || "Local";
   $("away-name").textContent = away || "Visitante";
   for (const [id, team] of [["home-goals", home], ["away-goals", away]]) {
-    $(id).textContent = score(team);
+    setScore(id, score(team));
     $(id).dataset.team = team;
     $(id).dataset.indicator = config.headline;
   }
   $("minute").textContent = config.clock(state.clock);
   $("phase").textContent = phaseLabel(config, state.clock);
+  const [phase, label] = STATES[state.clock.phase] ?? ["live", "En juego"];
+  $("state").dataset.phase = phase;
+  $("state").textContent = label;
+  // Al final se ve quién ganó: el que pierde se apaga, en un empate ninguno.
+  const board = document.querySelector(".board");
+  const lead = Math.sign(score(home) - score(away));
+  board.dataset.winner = phase === "final" && lead ? (lead > 0 ? "home" : "away") : "";
   $("pending").textContent = state.pending;
   setSplit("running", state.possession.running_share, home, away);
   setSplit("window", state.possession.window_share, home, away);

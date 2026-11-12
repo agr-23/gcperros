@@ -1183,6 +1183,17 @@ pide con `/api/matches/{id}/history` al llegar el primer estado y lo pone por
 delante de lo que ya dibujó. Es el mismo cálculo del estado vivo, sólo que
 muestreado: el último punto coincide con el estado que se está viendo.
 
+### Una pantalla que se lee de un vistazo (#96)
+
+En pantalla ancha, «En vivo» pasa a dos columnas: el mercado junto a sus
+señales, y lo esperado junto a la posesión y las estadísticas, en vez de una
+columna estrecha que obligaba a bajar. El estado del partido se dice con
+palabras y color —en juego, con un pulso; descanso; final—, no sólo con el
+reloj. Un marcador que cambia late una vez, al final se apaga el que pierde, y
+cada línea de lo esperado lleva su equipo y su cifra al final, sin leyenda que
+buscar. Las animaciones se desactivan para quien las tiene desactivadas en su
+sistema.
+
 ---
 
 ## 15. Catálogo y glosario (historia #24)
