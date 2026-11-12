@@ -24,10 +24,12 @@ def test_each_panel_has_its_place_in_the_wide_layout() -> None:
     page = CLIENT.get("/").text
     css = CLIENT.get("/app.css").text
 
-    for panel in ("signals-panel", "possession-panel", "estimate-panel", "stats-panel"):
+    panels = ("signals-panel", "possession-panel", "estimate-panel", "stats-panel", "h2h-panel")
+    for panel in panels:
         assert f"panel {panel}" in page
         assert f".{panel} {{ grid-area:" in css
     assert "grid-template-areas" in css
+    assert "BigQuery Analytics" in page
     # Sólo «En vivo»: las otras pantallas siguen en una columna.
     assert '<main class="wrap live">' in page and ".wrap.live {" in css
 

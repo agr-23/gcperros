@@ -79,6 +79,35 @@
       <table class="stats"><tbody id="stats-body"></tbody></table>
     </section>
 
+    <section class="panel h2h-panel" id="h2h-panel" aria-label="Histórico cara a cara">
+      <div class="h2h-header">
+        <h2>Histórico cara a cara</h2>
+        <span class="h2h-badge">BigQuery Analytics</span>
+      </div>
+      <div class="h2h-summary">
+        <div class="h2h-col home">
+          <span class="h2h-name" id="h2h-home-name">Local</span>
+          <span class="h2h-wins" id="h2h-home-wins">—</span>
+          <span class="h2h-avg" id="h2h-home-avg">—</span>
+        </div>
+        <div class="h2h-draws" id="h2h-draws-wrap">
+          <span class="h2h-draws-label">Empates</span>
+          <span class="h2h-draws-val" id="h2h-draws-count">—</span>
+        </div>
+        <div class="h2h-col away">
+          <span class="h2h-name" id="h2h-away-name">Visitante</span>
+          <span class="h2h-wins" id="h2h-away-wins">—</span>
+          <span class="h2h-avg" id="h2h-away-avg">—</span>
+        </div>
+      </div>
+      <div class="h2h-bar" id="h2h-bar" role="progressbar" aria-label="Distribución de victorias históricas">
+        <div class="h2h-seg home" id="h2h-bar-home"></div>
+        <div class="h2h-seg draw" id="h2h-bar-draw"></div>
+        <div class="h2h-seg away" id="h2h-bar-away"></div>
+      </div>
+      <p class="h2h-insight" id="h2h-insight"></p>
+    </section>
+
     <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
       <b id="pending">0</b> eventos esperando a la marca de agua
     </p>

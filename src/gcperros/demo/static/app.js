@@ -80,6 +80,7 @@ function render(state) {
   setSplit("running", state.possession.running_share, home, away);
   setSplit("window", state.possession.window_share, home, away);
   renderQuarters(state, home, away);
+  renderH2H(config, home, away);
 
   // Para que las piezas siguientes (gráficas, señales) escuchen el mismo flujo.
   document.dispatchEvent(new CustomEvent("gcperros:state", { detail: state }));
@@ -138,6 +139,34 @@ function renderFixtures(config) {
     .join("");
 }
 
+function renderH2H(config, home, away) {
+  const panel = $("h2h-panel");
+  if (!panel || !config.h2h) return;
+  const h = config.h2h;
+  if (home) $("h2h-home-name").textContent = home;
+  if (away) $("h2h-away-name").textContent = away;
+  $("h2h-home-wins").textContent = `${h.homeWins} V`;
+  $("h2h-away-wins").textContent = `${h.awayWins} V`;
+  $("h2h-home-avg").textContent = `${h.homeAvg} ${h.unit}`;
+  $("h2h-away-avg").textContent = `${h.awayAvg} ${h.unit}`;
+
+  const drawsWrap = $("h2h-draws-wrap");
+  const total = h.homeWins + h.draws + h.awayWins || 1;
+  const homePct = Math.round((h.homeWins / total) * 100);
+  const awayPct = Math.round((h.awayWins / total) * 100);
+  const drawPct = 100 - homePct - awayPct;
+
+  if (drawsWrap) {
+    drawsWrap.hidden = h.draws === 0;
+    $("h2h-draws-count").textContent = `${h.draws} E`;
+  }
+  $("h2h-bar-home").style.width = `${homePct}%`;
+  $("h2h-bar-draw").style.width = `${h.draws > 0 ? drawPct : 0}%`;
+  $("h2h-bar-draw").hidden = h.draws === 0;
+  $("h2h-bar-away").style.width = `${awayPct}%`;
+  $("h2h-insight").textContent = h.insight;
+}
+
 function applySport(sport) {
   const config = SPORTS[sport] ?? SPORTS.football;
   Object.assign(GCP, { sport, config });
@@ -145,6 +174,7 @@ function applySport(sport) {
   $("signal-hint").textContent = config.signalHint;
   $("estimate-title").textContent = config.estimateTitle;
   renderFixtures(config);
+  renderH2H(config, "", "");
   // Sin cuotas no hay mercado ni señales que enseñar (fútbol americano).
   for (const panel of document.querySelectorAll(".market, .signals-panel")) panel.hidden = config.market === false;
   $("held").title =
