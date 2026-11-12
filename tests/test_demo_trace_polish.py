@@ -8,6 +8,7 @@ que el diálogo enseña junto a la huella.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import pytest
 
@@ -83,3 +84,15 @@ def test_the_signal_dialog_gets_both_probabilities() -> None:
 
     assert payload["model_probability"] == tape.signals[0].model_probability
     assert payload["market_probability"] == tape.signals[0].market_probability
+
+
+def test_the_dialog_shows_the_proof_the_facts_and_each_contribution() -> None:
+    """El diálogo pinta lo que la traza trae: prueba, ficha, aportaciones y versus."""
+    script = (
+        Path(__file__).resolve().parent.parent / "src/gcperros/demo/static/trace.js"
+    ).read_text(encoding="utf-8")
+
+    for needle in ("function verdict", "function facts", "function timeline", "function versus"):
+        assert needle in script
+    assert "event.contribution" in script and "shortDigest" in script
+    assert "trace.model_probability" in script and "GCP.config.threshold" in script
