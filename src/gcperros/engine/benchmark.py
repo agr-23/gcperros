@@ -27,7 +27,7 @@ from dataclasses import dataclass
 
 from gcperros.core.contracts import MatchEvent
 from gcperros.engine.latency import percentile
-from gcperros.engine.pipeline import MatchEngine
+from gcperros.engine.pipeline import MatchEngine, StreamEngine
 
 #: Tasas de emisión del barrido por defecto, en eventos por segundo. Un partido
 #: emite del orden de 0,2; el barrido sube hasta donde una máquina corriente
@@ -41,7 +41,7 @@ DEFAULT_REPEATS = 3
 
 def measure_costs(
     events: list[MatchEvent],
-    engine_factory: Callable[[], MatchEngine] = MatchEngine,
+    engine_factory: Callable[[], StreamEngine[object]] = MatchEngine,
     repeats: int = DEFAULT_REPEATS,
 ) -> list[float]:
     """Coste en segundos de consumir cada evento, medido con el motor real.
@@ -153,7 +153,7 @@ class BenchmarkReport:
 def run_benchmark(
     events: list[MatchEvent],
     rates: tuple[float, ...] = DEFAULT_RATES,
-    engine_factory: Callable[[], MatchEngine] = MatchEngine,
+    engine_factory: Callable[[], StreamEngine[object]] = MatchEngine,
     repeats: int = DEFAULT_REPEATS,
 ) -> BenchmarkReport:
     """Mide los costes una vez y barre las tasas con ellos.

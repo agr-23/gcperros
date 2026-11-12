@@ -62,6 +62,7 @@ gcperros-catalog = "gcperros.governance.catalog_cli:main"
 gcperros-load-raw = "gcperros.loading.cli:main"
 gcperros-signals = "gcperros.engine.cli:main"
 gcperros-validate-streaming = "gcperros.engine.validate_cli:main"
+gcperros-compare-sports = "gcperros.engine.compare_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gcperros"]

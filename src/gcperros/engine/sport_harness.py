@@ -29,7 +29,7 @@ from gcperros.engine.basketball_state import (
 )
 from gcperros.engine.harness import DEFAULT_SCENARIOS, Scenario, degrade
 from gcperros.engine.latency import LatencyStats
-from gcperros.engine.pipeline import EngineResult, MatchEngine
+from gcperros.engine.pipeline import EngineResult, MatchEngine, StreamEngine
 from gcperros.engine.watermark import DEFAULT_ALLOWED_LATENESS_S
 from gcperros.generators.basketball import simulate_basketball
 from gcperros.generators.match import simulate_match
@@ -76,6 +76,8 @@ class SportProfile:
     stream: Callable[[list[MatchEvent], float], SportRun]
     #: El margen de la marca de agua elegido para el deporte, con datos.
     allowed_lateness_s: float
+    #: El motor del deporte, vacío, para el banco de carga (#91).
+    engine: Callable[[], StreamEngine[object]] = MatchEngine
 
 
 def _possession(events: list[MatchEvent], max_gap_s: float) -> dict[str, float]:
@@ -152,6 +154,7 @@ BASKETBALL = SportProfile(
     _basketball_batch,
     _basketball_stream,
     BASKETBALL_ALLOWED_LATENESS_S,
+    basketball_engine,
 )
 SPORTS: dict[str, SportProfile] = {sport.name: sport for sport in (FOOTBALL, BASKETBALL)}
 
