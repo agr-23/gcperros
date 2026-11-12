@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agr-23/gcperros/actions/workflows/ci.yml/badge.svg)](https://github.com/agr-23/gcperros/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
-[![Pruebas](https://img.shields.io/badge/pruebas-816-brightgreen)](tests/)
+[![Pruebas](https://img.shields.io/badge/pruebas-980-brightgreen)](tests/)
 [![Cobertura](https://img.shields.io/badge/cobertura-98%25-brightgreen)](pyproject.toml)
 
 Ingerimos dos flujos de eventos —las acciones de un partido de fútbol y las
@@ -280,7 +280,7 @@ tenga que deducirla comparando títulos.
 
 ## Cómo sabemos que funciona
 
-**657 pruebas, 98 % de cobertura.** Pero el número que importa no es ese, sino
+**980 pruebas, 98 % de cobertura.** Pero el número que importa no es ese, sino
 qué vigila cada familia:
 
 | Familia | Qué protege |
@@ -305,6 +305,8 @@ La integración continua corre en cada push ([`ci.yml`](.github/workflows/ci.yml
   con duplicados y desorden sobre dos partidos. Es comprobación obligatoria de
   `main`: si un escenario comprometido se sale de los umbrales, la PR no entra.
 - **Terraform** — `fmt -check`, `init` y `validate` sin credenciales.
+- **Imagen del motor** — construye el `Dockerfile` y comprueba que el contenedor
+  arranca y responde a su sonda de salud.
 
 En todo el repositorio no hay **ni un solo `type: ignore` ni `noqa`**. Las
 excepciones reales están declaradas en [`pyproject.toml`](pyproject.toml) con su
@@ -323,6 +325,7 @@ src/gcperros/engine/        Motor con estado: dedup, marca de agua, estado vivo
 src/gcperros/loading/       Capa histórica Raw hacia BigQuery
 src/gcperros/firestore/     Documento de estado vivo por partido
 src/gcperros/demo/          Panel en vivo para un cliente: repetición, API, SSE y páginas
+src/gcperros/service/       El motor detrás del endpoint push de Pub/Sub, para Cloud Run
 tests/                      Unitarias por componente y de tubería completa
 infra/terraform/            Infraestructura como código
 docs/                       Decisiones de diseño con su evidencia
@@ -338,16 +341,15 @@ fueran dos implementaciones distintas, comparar los dos planos no probaría nada
 
 Preferimos decirlo aquí a que se descubra leyendo:
 
-- **Nada está desplegado en GCP.** El Terraform está escrito y validado en CI,
-  pero nunca se ha ejecutado `apply`: hace falta un proyecto con facturación, y
-  el plan del proyecto contempla usar créditos educativos.
-- **Una tensión medida y sin resolver.** El margen de la marca de agua que
-  cumple los umbrales de divergencia (10 s) da un p95 de latencia de 31 s,
-  contra el SLA de 2 s que declaramos: la marca de agua sólo avanza cuando llega
-  algo, y en una pausa del juego no llega nadie. Las cifras y las dos salidas
-  —un latido para la marca de agua y estado provisional corregido al cerrar la
-  ventana— están en [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md),
-  sección 3. Ninguna de las dos está implementada.
+- **Nada está desplegado en GCP todavía, pero está listo.** El motor tiene su
+  servicio, su imagen y su Cloud Run en el Terraform; falta un proyecto con
+  facturación y seguir [los pasos de abajo](#desplegar-en-gcp).
+- **El SLA de 2 s, sólo en la vista provisional.** El latido de la marca de
+  agua (motor y servicio) bajó el p95 de la vista definitiva de 31 a 11 s en
+  fútbol y de 68 a 16 s en baloncesto, sin cambiar un resultado; lo que queda es
+  el propio margen. La vista provisional enseña el marcador en cuanto llega y no
+  se corrige nunca en lo exacto, pero ni el servicio ni la demo la publican
+  todavía. Sección 3 de [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md).
 - **Cifras de particionamiento estimadas.** Las de la HU-23 salen de un modelo
   de costes, no de un plan de ejecución de BigQuery: sin nada desplegado no hay
   plan real que medir.
@@ -357,8 +359,49 @@ Preferimos decirlo aquí a que se descubra leyendo:
 - **Nadie produce todavía actividad de usuario.** La seudonimización, el topic
   `user-activity` y su matriz de acceso existen, pero ningún componente emite
   esa actividad, y la clave de seudónimos se carga a mano tras el `apply`.
-- **Historias del documento que todavía no están en el repositorio:** la 30
-  (paneles operativos con alertas) y la 31 (informe consolidado de validación).
+- **La señal no se calcula en el servicio.** Necesita las dos fuentes de un
+  partido a la vez; hoy la calculan la CLI y la demo. El fútbol americano,
+  además, todavía no tiene mercado de cuotas.
+- **Historia del documento que todavía no está en el repositorio:** la 31
+  (informe consolidado de validación).
+
+---
+
+## Desplegar en GCP
+
+Hace falta un proyecto con facturación (o créditos educativos), y `gcloud`,
+`terraform` y `docker` instalados. Desde la raíz del repositorio:
+
+```bash
+gcloud auth login && gcloud auth application-default login
+gcloud config set project <proyecto>
+
+# 1. La infraestructura, sin el motor todavía: topics, BigQuery, Firestore,
+#    IAM, alertas y el repositorio de la imagen.
+cd infra/terraform
+terraform init
+terraform apply -var project_id=<proyecto> -var create_artifact_registry=true
+
+# 2. La imagen del motor, en Artifact Registry.
+cd ../..
+gcloud auth configure-docker us-central1-docker.pkg.dev
+IMAGEN=us-central1-docker.pkg.dev/<proyecto>/gcperros/engine:v1
+docker build -t "$IMAGEN" . && docker push "$IMAGEN"
+
+# 3. El motor en Cloud Run: su URL alimenta sola las suscripciones push.
+cd infra/terraform
+terraform apply -var project_id=<proyecto> -var create_artifact_registry=true \
+  -var engine_image="$IMAGEN"
+terraform output engine_url
+
+# 4. A jugar: publicar un partido y ver su documento en Firestore.
+gcperros-publish --seed 20260826 --project <proyecto>
+```
+
+La clave de seudonimización se carga a mano después del primer `apply`
+([`infra/terraform/README.md`](infra/terraform/README.md)): el Terraform crea el
+secreto sin valor para que la clave no quede en su estado. Para probar el
+servicio sin cuenta: `docker run -p 8080:8080 <imagen> gcperros-engine-service --memory`.
 
 ---
 
@@ -406,6 +449,20 @@ menos a menudo: **la latencia sube**, al revés de lo que esperábamos. El marge
 y el corte de juego parado se recalibraron con datos, como en fútbol. El porqué
 de cada decisión, en las secciones 17 a 21 de
 [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md).
+
+### Y un tercero: fútbol americano
+
+Si el baloncesto probó que el motor no sabe de fútbol, el fútbol americano prueba
+que añadir un deporte es seguir un camino que las pruebas obligan a recorrer
+entero: contrato con su topic, su tabla Raw y su catálogo; generador calibrado
+contra la NFL; estado inyectado en el motor de siempre; y vocabulario en el
+glosario. Es el más distinto de los tres —un evento cada 37 s y parones largos
+tras cada anotación— y cumple los 72 escenarios comprometidos con un margen de
+15 s. Sección 22.
+
+```bash
+gcperros-generate-match --sport american_football --seed 7 --summary
+```
 
 ---
 
