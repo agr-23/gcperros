@@ -15,7 +15,16 @@
     <span class="link" id="link" data-state="connecting">conectando</span>
   </header>
 
-  <main class="wrap live">
+  <div class="stage-container">
+    <aside class="side-column side-left" aria-label="Partidos pasados">
+      <div class="side-header">
+        <span class="side-badge">Finalizados</span>
+        <h3 class="side-heading">Resultados recientes</h3>
+      </div>
+      <div class="fixture-cards" id="past-matches"></div>
+    </aside>
+
+    <main class="wrap live">
     <section class="board" aria-label="Marcador">
       <div class="team home"><span class="name" id="home-name">Local</span></div>
       <div class="score">
@@ -73,7 +82,16 @@
     <p class="held" id="held" title="La marca de agua retiene cada evento hasta que llega otro más de 10 s posterior: así ningún evento atrasado reordena el pasado. Cuenta aquí, a la vista, en vez de esconderse.">
       <b id="pending">0</b> eventos esperando a la marca de agua
     </p>
-  </main>
+    </main>
+
+    <aside class="side-column side-right" aria-label="Partidos que vienen">
+      <div class="side-header">
+        <span class="side-badge">Próximos</span>
+        <h3 class="side-heading">Partidos que vienen</h3>
+      </div>
+      <div class="fixture-cards" id="upcoming-matches"></div>
+    </aside>
+  </div>
 
   <aside class="disclaimer" role="note" aria-label="Uso responsable">
     <b>Uso responsable.</b> Proyecto académico con datos sintéticos. La señal informa, no recomienda apostar:
