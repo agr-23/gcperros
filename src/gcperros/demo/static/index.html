@@ -10,6 +10,7 @@
   <header class="bar">
     <span class="brand">GCPerros</span>
     <nav class="nav"><a href="/" aria-current="page">En vivo</a><a href="confianza.html">Por qué confiar</a><a href="bajo-el-capo.html">Bajo el capó</a></nav>
+    <nav class="sports" id="sports" aria-label="Deporte"></nav>
     <span class="match" id="match-id">—</span>
     <span class="link" id="link" data-state="connecting">conectando</span>
   </header>
@@ -22,6 +23,9 @@
         <span class="clock"><span id="minute">0'</span> · <span id="phase">previa</span></span>
       </div>
       <div class="team away"><span class="name" id="away-name">Visitante</span></div>
+      <table class="quarters" id="quarters" hidden aria-label="Puntos por cuarto">
+        <thead><tr id="quarters-head"></tr></thead><tbody id="quarters-body"></tbody>
+      </table>
     </section>
 
     <section class="panel market" aria-label="Mercado frente a modelo">

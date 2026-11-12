@@ -264,3 +264,56 @@ body {
 }
 .disclaimer b { color: var(--away); }
 body { padding-bottom: 72px; }
+
+/* Segundo deporte (#92). Los mismos componentes; cambian los colores y el
+   suelo del marcador. Lo esencial está aquí; el pulido, en T3 y A3. */
+.sports { display: flex; gap: 6px; }
+.sports a {
+  color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600;
+  padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line);
+}
+.sports a:hover { color: var(--ink); border-color: var(--muted); }
+.sports a[aria-current="true"] { color: var(--ground); background: var(--accent); border-color: var(--accent); }
+.sports a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+:root { --accent: var(--ok); }
+
+/* Fútbol: el césped segado a franjas y el círculo central. */
+body[data-sport="football"] .board {
+  background:
+    radial-gradient(circle at 50% 50%, transparent 58px, rgb(255 255 255 / 9%) 59px, rgb(255 255 255 / 9%) 61px, transparent 62px),
+    linear-gradient(90deg, transparent calc(50% - 1px), rgb(255 255 255 / 9%) calc(50% - 1px), rgb(255 255 255 / 9%) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(90deg, #143d2a 0 64px, #17452f 64px 128px);
+}
+
+/* Baloncesto: parqué, el naranja del balón y la línea de tres. */
+body[data-sport="basketball"] {
+  --ground: #120d0a;
+  --panel: #1f1712;
+  --line: #3a2a1f;
+  --muted: #b39a86;
+  --home: #f28a2e;
+  --away: #5ab4e5;
+  --accent: #f28a2e;
+}
+body[data-sport="basketball"] .board {
+  background:
+    radial-gradient(ellipse 34% 120% at 0% 50%, transparent 98%, rgb(255 255 255 / 14%) 99%, transparent 100%),
+    radial-gradient(ellipse 34% 120% at 100% 50%, transparent 98%, rgb(255 255 255 / 14%) 99%, transparent 100%),
+    radial-gradient(circle at 50% 50%, transparent 52px, rgb(255 255 255 / 14%) 53px, rgb(255 255 255 / 14%) 55px, transparent 56px),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0%) 0 22px, rgb(0 0 0 / 10%) 22px 23px),
+    linear-gradient(180deg, #8a5a33, #6f4524);
+}
+body[data-sport="basketball"] .disclaimer { background: rgb(18 13 10 / 96%); }
+.board .team .name, .board .score { text-shadow: 0 2px 8px rgb(0 0 0 / 45%); }
+
+.quarters {
+  grid-column: 1 / -1; justify-self: center; margin-top: 6px;
+  border-collapse: collapse; font: 600 0.9rem ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums; background: rgb(0 0 0 / 35%); border-radius: 6px;
+}
+.quarters th, .quarters td { padding: 4px 10px; text-align: center; }
+.quarters thead th { color: var(--muted); font-weight: 500; font-size: 0.75rem; }
+.quarters tbody th { text-align: left; }
+.quarters tbody th.home { color: var(--home); }
+.quarters tbody th.away { color: var(--away); }

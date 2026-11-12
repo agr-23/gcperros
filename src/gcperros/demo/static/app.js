@@ -15,6 +15,30 @@ function setSplit(id, share, home, away) {
   awayBar.textContent = total > 0 ? `${100 - homePct}%` : "";
 }
 
+// Puntos por cuarto, en baloncesto: Q1…Q4 y las prórrogas que haya.
+function renderQuarters(state, home, away) {
+  const table = $("quarters");
+  table.hidden = !state.periods;
+  if (!state.periods) return;
+  const count = Math.max(4, ...[home, away].map((team) => state.periods[team]?.length ?? 0));
+  const labels = Array.from({ length: count }, (_, i) => (i < 4 ? `Q${i + 1}` : `PR${i - 3}`));
+  const cell = (tag, text, cls) => {
+    const node = document.createElement(tag);
+    node.textContent = text;
+    if (cls) node.className = cls;
+    return node;
+  };
+  $("quarters-head").replaceChildren(cell("th", ""), ...labels.map((label) => cell("th", label)));
+  $("quarters-body").replaceChildren(
+    ...[[home, "home"], [away, "away"]].map(([team, side]) => {
+      const row = document.createElement("tr");
+      const points = state.periods[team] ?? [];
+      row.append(cell("th", team, side), ...labels.map((_, i) => cell("td", points[i] ?? "–")));
+      return row;
+    }),
+  );
+}
+
 function render(state) {
   const config = GCP.config;
   const [home, away] = state.teams.length === 2 ? state.teams : ["", ""];
@@ -33,6 +57,7 @@ function render(state) {
   $("pending").textContent = state.pending;
   setSplit("running", state.possession.running_share, home, away);
   setSplit("window", state.possession.window_share, home, away);
+  renderQuarters(state, home, away);
 
   // Para que las piezas siguientes (gráficas, señales) escuchen el mismo flujo.
   document.dispatchEvent(new CustomEvent("gcperros:state", { detail: state }));
@@ -41,6 +66,22 @@ function render(state) {
 function setLink(state, text) {
   $("link").dataset.state = state;
   $("link").textContent = text;
+}
+
+// El selector: un enlace por partido. Cambiar de deporte recarga la página, así
+// cada pantalla empieza limpia y no mezcla la cinta de un partido con la de otro.
+function renderSelector(sports, current) {
+  $("sports").replaceChildren(
+    ...sports.map(({ match_id: matchId, sport }) => {
+      const link = document.createElement("a");
+      const config = SPORTS[sport] ?? SPORTS.football;
+      link.href = `?partido=${encodeURIComponent(matchId)}`;
+      link.textContent = `${config.icon} ${config.label}`;
+      if (matchId === current) link.setAttribute("aria-current", "true");
+      return link;
+    }),
+  );
+  $("sports").hidden = sports.length < 2;
 }
 
 function applySport(sport) {
@@ -60,6 +101,7 @@ async function start() {
   const chosen = sports.find((entry) => entry.match_id === wanted) ?? sports[0];
   GCP.matchId = chosen.match_id;
   applySport(chosen.sport);
+  renderSelector(sports, chosen.match_id);
 
   const source = new EventSource(`/api/matches/${encodeURIComponent(GCP.matchId)}/stream`);
   source.onopen = () => setLink("live", "en vivo");
